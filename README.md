@@ -2,7 +2,7 @@
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
-This repository is a monorepo. Phase 5 delivers Sketch Sessions and the Timer Selection / Active Sketch flow on top of Phase 4’s Daily Prompt and Home experience.
+This repository is a monorepo. Phase 6 delivers camera capture, local Drafts, and Review Submission on top of Phase 5’s Sketch Sessions.
 
 ## Prerequisites
 
@@ -49,6 +49,16 @@ make ios-build
 | `ios/` | SwiftUI app (`DailySketch`) |
 | `spec/` | Product, design, architecture, implementation, infrastructure |
 
+## Phase 6 — Camera, Local Drafts, and Review Submission
+
+- **Local only:** No OpenAPI or backend changes. Server upload and Submission publication remain Phase 7.
+- **Capture:** After Finish / Take Photo, a focused “Add your sketch” screen offers **Take Photo** (native camera) and **Choose from Library** (`PhotosUI`). Camera permission denial still allows library selection and deep-links to Settings.
+- **Review Submission:** Mandatory **Ready to share?** screen with image preview, prompt + timer metadata, optional caption (client limit 280 pending Phase 7 contract), **Replace/Retake**, **Submit to Community**, and **Save to Drafts**.
+- **Drafts:** Metadata in Application Support JSON (`DraftStore`); JPEG files under `Application Support/DailySketch/Drafts/` with complete file protection (`DraftImageStore`). Never UserDefaults for image bytes. Retention purge defaults to 30 days on Home load.
+- **Guest checkpoint:** **Save Your Creativity** preserves the Draft through Create Account / Sign In and returns to Review; **Continue Later** saves and returns Home.
+- **Home recovery:** Draft card (**Ready when you are**) with Continue / Discard. Authenticated Submit in Phase 6 marks `pendingPublication` and shows a restrained “publishing arrives next” placeholder — no upload yet.
+- **Permissions:** `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in `Info.plist`.
+
 ## Phase 5 — Sketch Sessions and Timer Flow
 
 - **Contract (authenticated):**
@@ -58,7 +68,7 @@ make ios-build
   - `POST /api/v1/sketch-sessions/{session_id}/abandon` — abandon (idempotent when already abandoned).
 - **Database:** `sketch_sessions` + `sketch_session_events` (migration `0005_sketch_sessions`); `idempotency_keys` (migration `0006_idempotency_keys`). Reuses existing `timer_mode` enum; durations `{60,180,300,600}`.
 - **iOS Timer Flow:** Timer Selection sheet (1/3/5/10 min + No timer, Remember off by default). Remembered choice bypasses the sheet (guest via UserDefaults; authenticated via preferences). Active Sketch supports countdown, pause/resume, finish, cancel confirmation, and recovers after interruption. Guests keep sessions local-only. Authenticated session-create/event failures continue the timer locally and mark sync pending.
-- **Out of Phase 5:** Camera / photo capture / upload (Phase 6–7). Finish ends at a “photo coming soon” placeholder with the session marked `ready_for_photo`.
+- **Photo step:** Finish / Take Photo continues into Phase 6 capture → Review Submission.
 
 ## Phase 4 — Daily Prompt and Home experience
 
@@ -88,7 +98,7 @@ make ios-build
 - **Contract:** `GET /api/v1/me` returns the current local user (id, username, display name, profile completion, account status, preferences summary). Requires `Authorization: Bearer <Descope JWT>`.
 - **Backend:** Verifies Descope JWTs via JWKS (`DESCOPE_JWKS_URL`, defaulting from `DESCOPE_PROJECT_ID`), provisions a local `users` row on first login (idempotent by `descope_subject`), and rejects suspended/deleted accounts.
 - **Local mock auth:** When `DESCOPE_PROJECT_ID=replace-me` (the committed placeholder), the iOS app uses `MockAuthService` and the backend accepts matching HS256 local-dev JWTs so guest → sign-in → `GET /me` works without real Descope credentials. Replace placeholders with a development Descope project ID to use Descope Flows.
-- **iOS:** Guest launch is unchanged. Profile offers Create Free Account / Sign In. Sessions persist in Keychain. Settings offers Sign Out (does not delete local Drafts — none exist yet).
+- **iOS:** Guest launch is unchanged. Profile offers Create Free Account / Sign In. Sessions persist in Keychain. Settings offers Sign Out (local Drafts are preserved).
 - **Secrets:** Never commit real Descope management secrets. Project ID is public configuration only.
 
 ## Phase 1 conventions

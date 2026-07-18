@@ -24,5 +24,9 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Daily Sketch uses the camera so you can photograph your drawing and share it with the community.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.</string>
 </dict>
 </plist>

@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 @testable import DailySketch
 
@@ -15,7 +16,10 @@ final class SketchFlowViewModelTests: XCTestCase {
 
     private func makeFlow(
         guestStore: InMemoryGuestTimerPreferenceStore = InMemoryGuestTimerPreferenceStore(),
-        activeStore: InMemoryActiveSessionStore = InMemoryActiveSessionStore()
+        activeStore: InMemoryActiveSessionStore = InMemoryActiveSessionStore(),
+        draftStore: InMemoryDraftStore = InMemoryDraftStore(),
+        imageStore: InMemoryDraftImageStore = InMemoryDraftImageStore(),
+        camera: FakeCameraAuthorizer = FakeCameraAuthorizer()
     ) -> SketchFlowViewModel {
         let profile = CurrentUserProfile(
             id: UUID(),
@@ -33,7 +37,10 @@ final class SketchFlowViewModelTests: XCTestCase {
             preferencesService: RecordingMeFetcher(profile: profile),
             guestTimerStore: guestStore,
             activeSessionStore: activeStore,
-            sessionService: RecordingSketchSessionRepository()
+            sessionService: RecordingSketchSessionRepository(),
+            draftStore: draftStore,
+            imageStore: imageStore,
+            cameraAuthorizer: camera
         )
     }
 
@@ -82,5 +89,114 @@ final class SketchFlowViewModelTests: XCTestCase {
 
         XCTAssertEqual(guestStore.load(), .noTimer)
         XCTAssertEqual(flow.sessionViewModel?.timerOption, .noTimer)
+    }
+
+    func testCaptureCreatesDraftAndOpensReview() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let flow = makeFlow(draftStore: draftStore, imageStore: imageStore)
+        flow.selectedTimerOption = .oneMinute
+        flow.confirmTimerSelection(prompt: prompt)
+
+        let started = Date().addingTimeInterval(1)
+        while flow.sessionViewModel == nil, Date() < started {
+            await Task.yield()
+        }
+        guard let session = flow.sessionViewModel else {
+            return XCTFail("Expected active session")
+        }
+
+        session.finish()
+        let captureDeadline = Date().addingTimeInterval(1)
+        while !flow.showsCaptureSource, Date() < captureDeadline {
+            await Task.yield()
+        }
+        XCTAssertTrue(flow.showsCaptureSource)
+
+        let jpeg = makeTestJPEGData()
+        flow.handleCapturedImageData(jpeg)
+
+        XCTAssertTrue(flow.showsReviewSubmission)
+        XCTAssertNotNil(flow.reviewViewModel)
+        XCTAssertEqual(try draftStore.list().count, 1)
+        let draft = try draftStore.list()[0]
+        XCTAssertTrue(imageStore.contains(draft.imageFileName))
+    }
+
+    func testContinueLaterReturnsHomeWithDraft() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let flow = makeFlow(draftStore: draftStore, imageStore: imageStore)
+        flow.selectedTimerOption = .oneMinute
+        flow.confirmTimerSelection(prompt: prompt)
+
+        let started = Date().addingTimeInterval(1)
+        while flow.sessionViewModel == nil, Date() < started {
+            await Task.yield()
+        }
+        flow.sessionViewModel?.finish()
+        let captureDeadline = Date().addingTimeInterval(1)
+        while !flow.showsCaptureSource, Date() < captureDeadline {
+            await Task.yield()
+        }
+        flow.handleCapturedImageData(makeTestJPEGData())
+
+        flow.handleReviewOutcome(.needsAuthentication)
+        XCTAssertTrue(flow.showsSaveYourCreativity)
+
+        flow.continueLaterFromCreativity()
+        XCTAssertFalse(flow.showsReviewSubmission)
+        XCTAssertFalse(flow.showsSaveYourCreativity)
+        XCTAssertNotNil(flow.recoverableDraft)
+        XCTAssertEqual(try draftStore.list().count, 1)
+    }
+
+    func testDiscardRemovesLocalFile() throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let flow = makeFlow(draftStore: draftStore, imageStore: imageStore)
+        let fileName = try imageStore.write(makeTestJPEGData())
+        let draft = LocalDraft(
+            id: UUID(),
+            localSessionId: UUID(),
+            serverSessionId: nil,
+            promptId: prompt.id,
+            promptWords: prompt.words,
+            promptAccessibilityLabel: prompt.accessibilityLabel,
+            promptDate: prompt.promptDate,
+            timerMode: "countdown",
+            selectedTimerSeconds: 60,
+            sessionStartedAt: Date(),
+            imageFileName: fileName,
+            caption: "keep me",
+            createdAt: Date(),
+            updatedAt: Date(),
+            pendingAuthentication: true,
+            pendingPublication: false
+        )
+        try draftStore.save(draft)
+        flow.refreshDraftState()
+
+        flow.discardDraft(draft)
+
+        XCTAssertTrue(try draftStore.list().isEmpty)
+        XCTAssertFalse(imageStore.contains(fileName))
+        XCTAssertNil(flow.recoverableDraft)
+    }
+
+    func testCameraPermissionDeniedStillOffersLibrary() {
+        let camera = FakeCameraAuthorizer(status: .denied, isCameraAvailable: false)
+        let flow = makeFlow(camera: camera)
+        XCTAssertEqual(flow.cameraAuthorizerForCapture.status, .denied)
+        XCTAssertFalse(flow.cameraAuthorizerForCapture.isCameraAvailable)
+    }
+
+    private func makeTestJPEGData() -> Data {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
+        let image = renderer.image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        return image.jpegData(compressionQuality: 0.9)!
     }
 }

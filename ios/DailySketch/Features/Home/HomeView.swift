@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel: HomeViewModel?
+    @State private var showsDiscardDraftConfirmation = false
 
     var body: some View {
         Group {
@@ -54,6 +55,12 @@ struct HomeView: View {
                         .foregroundStyle(AppColors.textTertiary)
                 }
 
+                if let message = model.sketchFlow.draftSavedBanner {
+                    Text(message)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(AppColors.success)
+                }
+
                 promptSection(model)
 
                 if model.sketchFlow.isCreatingSession {
@@ -65,6 +72,15 @@ struct HomeView: View {
                     action: { model.startSketch() },
                     isDisabled: !model.canStartSketch || model.sketchFlow.isCreatingSession
                 )
+
+                if let draft = model.sketchFlow.recoverableDraft {
+                    DraftCardView(
+                        draft: draft,
+                        thumbnail: model.sketchFlow.recoverableDraftThumbnail,
+                        onContinue: { model.sketchFlow.reopenDraft(draft) },
+                        onDiscard: { showsDiscardDraftConfirmation = true }
+                    )
+                }
 
                 Text("Community Sketches")
                     .font(AppTypography.title3)
@@ -108,6 +124,98 @@ struct HomeView: View {
             if let sessionModel = model.sketchFlow.sessionViewModel {
                 SketchSessionView(model: sessionModel)
             }
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { model.sketchFlow.showsCaptureSource },
+                set: { if !$0 { model.sketchFlow.dismissCaptureSource() } }
+            )
+        ) {
+            CaptureSourceView(
+                cameraAuthorizer: model.sketchFlow.cameraAuthorizerForCapture,
+                onImageData: { data in
+                    model.sketchFlow.handleCapturedImageData(data)
+                },
+                onCancel: {
+                    model.sketchFlow.dismissCaptureSource()
+                },
+                onValidationError: { message in
+                    model.sketchFlow.handleCaptureValidationError(message)
+                }
+            )
+            .overlay(alignment: .bottom) {
+                if let message = model.sketchFlow.captureValidationMessage {
+                    Text(message)
+                        .font(AppTypography.bodySmall)
+                        .foregroundStyle(AppColors.danger)
+                        .padding()
+                        .background(AppColors.dangerSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
+                        .padding()
+                }
+            }
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { model.sketchFlow.showsReviewSubmission },
+                set: { newValue in
+                    if !newValue, !model.sketchFlow.showsSaveYourCreativity, !model.sketchFlow.showsCaptureSource {
+                        model.sketchFlow.handleReviewOutcome(.continueLater)
+                    }
+                }
+            )
+        ) {
+            if let reviewModel = model.sketchFlow.reviewViewModel {
+                ReviewSubmissionView(model: reviewModel)
+                    .fullScreenCover(
+                        isPresented: Binding(
+                            get: { model.sketchFlow.showsSaveYourCreativity },
+                            set: { if !$0 { model.sketchFlow.continueLaterFromCreativity() } }
+                        )
+                    ) {
+                        SaveYourCreativityView(
+                            thumbnail: reviewModel.previewImage,
+                            onCreateAccount: { model.sketchFlow.presentCreateAccountFromCreativity() },
+                            onSignIn: { model.sketchFlow.presentSignInFromCreativity() },
+                            onContinueLater: { model.sketchFlow.continueLaterFromCreativity() }
+                        )
+                        .sheet(
+                            isPresented: Binding(
+                                get: { model.sketchFlow.showsAuthSheet },
+                                set: { model.sketchFlow.showsAuthSheet = $0 }
+                            )
+                        ) {
+                            NavigationStack {
+                                AuthenticationView(mode: model.sketchFlow.authSheetMode)
+                                    .toolbar {
+                                        ToolbarItem(placement: .cancellationAction) {
+                                            Button("Close") {
+                                                model.sketchFlow.showsAuthSheet = false
+                                            }
+                                        }
+                                    }
+                            }
+                            .environment(dependencies)
+                            .onChange(of: dependencies.auth.isAuthenticated) { _, isAuthenticated in
+                                if isAuthenticated {
+                                    model.sketchFlow.handleAuthenticationCompleted()
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+        .confirmationDialog(
+            "Discard this draft?",
+            isPresented: $showsDiscardDraftConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) {
+                model.sketchFlow.discardDraft()
+            }
+            Button("Keep Draft", role: .cancel) {}
+        } message: {
+            Text("This removes the local sketch image from this device.")
         }
     }
 

@@ -13,6 +13,9 @@ final class AppDependencies {
     let sketchSessionRepository: any SketchSessionServing
     let activeSessionStore: any ActiveSessionStoring
     let guestTimerPreferenceStore: any GuestTimerPreferenceStoring
+    let draftStore: any DraftStoring
+    let draftImageStore: any DraftImageStoring
+    let cameraAuthorizer: any CameraAuthorizing
 
     init(
         environment: AppEnvironment,
@@ -24,7 +27,10 @@ final class AppDependencies {
         promptRepository: PromptRepository,
         sketchSessionRepository: any SketchSessionServing,
         activeSessionStore: any ActiveSessionStoring,
-        guestTimerPreferenceStore: any GuestTimerPreferenceStoring
+        guestTimerPreferenceStore: any GuestTimerPreferenceStoring,
+        draftStore: any DraftStoring,
+        draftImageStore: any DraftImageStoring,
+        cameraAuthorizer: any CameraAuthorizing
     ) {
         self.environment = environment
         self.navigation = navigation
@@ -36,6 +42,9 @@ final class AppDependencies {
         self.sketchSessionRepository = sketchSessionRepository
         self.activeSessionStore = activeSessionStore
         self.guestTimerPreferenceStore = guestTimerPreferenceStore
+        self.draftStore = draftStore
+        self.draftImageStore = draftImageStore
+        self.cameraAuthorizer = cameraAuthorizer
     }
 
     @MainActor
@@ -45,7 +54,10 @@ final class AppDependencies {
             preferencesService: preferencesService,
             guestTimerStore: guestTimerPreferenceStore,
             activeSessionStore: activeSessionStore,
-            sessionService: sketchSessionRepository
+            sessionService: sketchSessionRepository,
+            draftStore: draftStore,
+            imageStore: draftImageStore,
+            cameraAuthorizer: cameraAuthorizer
         )
     }
 
@@ -57,6 +69,9 @@ final class AppDependencies {
         let sketchSessionRepository = SketchSessionRepository(baseURL: environment.apiBaseURL)
         let activeSessionStore = ActiveSessionStore()
         let guestTimerPreferenceStore = GuestTimerPreferenceStore()
+        let draftStore = DraftStore()
+        let draftImageStore = DraftImageStore()
+        let cameraAuthorizer = SystemCameraAuthorizer()
         let projectID = environment.descopeProjectID
 
         if projectID == DescopeConfig.placeholderProjectID || projectID.isEmpty {
@@ -75,7 +90,10 @@ final class AppDependencies {
                 promptRepository: promptRepository,
                 sketchSessionRepository: sketchSessionRepository,
                 activeSessionStore: activeSessionStore,
-                guestTimerPreferenceStore: guestTimerPreferenceStore
+                guestTimerPreferenceStore: guestTimerPreferenceStore,
+                draftStore: draftStore,
+                draftImageStore: draftImageStore,
+                cameraAuthorizer: cameraAuthorizer
             )
         }
 
@@ -94,7 +112,10 @@ final class AppDependencies {
             promptRepository: promptRepository,
             sketchSessionRepository: sketchSessionRepository,
             activeSessionStore: activeSessionStore,
-            guestTimerPreferenceStore: guestTimerPreferenceStore
+            guestTimerPreferenceStore: guestTimerPreferenceStore,
+            draftStore: draftStore,
+            draftImageStore: draftImageStore,
+            cameraAuthorizer: cameraAuthorizer
         )
     }
 }

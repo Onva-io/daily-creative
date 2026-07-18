@@ -18,15 +18,15 @@ final class SketchSessionViewModel {
     private(set) var syncPending = false
     private(set) var syncErrorMessage: String?
     private(set) var showsCancelConfirmation = false
-    private(set) var showsPhotoPlaceholder = false
 
     let promptId: UUID
     let promptWords: [String]
     let promptAccessibilityLabel: String
+    let promptDate: Date
     let timerOption: TimerPreferenceOption
     let localSessionId: UUID
 
-    private var serverSessionId: UUID?
+    private(set) var serverSessionId: UUID?
     private var startedAt: Date
     private var pausedAt: Date?
     private var pausedTotalSeconds: Int
@@ -39,6 +39,9 @@ final class SketchSessionViewModel {
     private let activeSessionStore: any ActiveSessionStoring
     private let dateProvider: any DateProviding
     private let onEnded: () -> Void
+    private let onReadyForPhoto: () -> Void
+
+    var sessionStartedAt: Date { startedAt }
 
     init(
         prompt: DailyPromptModel,
@@ -55,11 +58,13 @@ final class SketchSessionViewModel {
         sessionService: any SketchSessionServing,
         activeSessionStore: any ActiveSessionStoring,
         dateProvider: any DateProviding = SystemDateProvider(),
-        onEnded: @escaping () -> Void
+        onEnded: @escaping () -> Void,
+        onReadyForPhoto: @escaping () -> Void = {}
     ) {
         self.promptId = prompt.id
         self.promptWords = prompt.words
         self.promptAccessibilityLabel = prompt.accessibilityLabel
+        self.promptDate = prompt.promptDate
         self.timerOption = timerOption
         self.localSessionId = localSessionId
         self.serverSessionId = serverSessionId
@@ -74,6 +79,7 @@ final class SketchSessionViewModel {
         self.activeSessionStore = activeSessionStore
         self.dateProvider = dateProvider
         self.onEnded = onEnded
+        self.onReadyForPhoto = onReadyForPhoto
 
         switch lifecycle {
         case .active:
@@ -159,10 +165,7 @@ final class SketchSessionViewModel {
             pausedTotalSeconds += delta
             self.pausedAt = nil
         }
-        phase = .readyForPhoto
-        showsPhotoPlaceholder = true
-        persistSnapshot()
-        Task { await postEvent("finished_early") }
+        enterReadyForPhoto(emitFinishedEarly: true)
     }
 
     func requestCancel() {
@@ -187,20 +190,27 @@ final class SketchSessionViewModel {
     func keepSketchingAfterTimer() {
         guard phase == .timerCompleted else { return }
         phase = .readyForPhoto
-        showsPhotoPlaceholder = false
         persistSnapshot()
     }
 
-    func takePhotoPlaceholder() {
-        showsPhotoPlaceholder = true
+    func takePhoto() {
+        if phase == .readyForPhoto {
+            onReadyForPhoto()
+            return
+        }
+        enterReadyForPhoto(emitFinishedEarly: false)
+    }
+
+    private func enterReadyForPhoto(emitFinishedEarly: Bool) {
         phase = .readyForPhoto
         persistSnapshot()
-    }
-
-    func dismissPhotoPlaceholder() {
-        showsPhotoPlaceholder = false
-        stopTicking()
-        onEnded()
+        Task {
+            if emitFinishedEarly {
+                await postEvent("finished_early")
+            }
+            await postEvent("photo_step_reached")
+            onReadyForPhoto()
+        }
     }
 
     func attachServerSessionId(_ id: UUID) {

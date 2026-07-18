@@ -81,20 +81,7 @@ struct SketchSessionView: View {
                 model.confirmCancel()
             }
         } message: {
-            Text("Your progress for this session will be discarded.")
-        }
-        .alert(
-            "Photo capture is coming soon",
-            isPresented: Binding(
-                get: { model.showsPhotoPlaceholder },
-                set: { if !$0 { model.dismissPhotoPlaceholder() } }
-            )
-        ) {
-            Button("OK") {
-                model.dismissPhotoPlaceholder()
-            }
-        } message: {
-            Text("Your session is ready for a photo in the next update. You can resume it from Home until then.")
+            Text("Your drawing will not be deleted, but this timer session will be marked as abandoned.")
         }
         .onAppear {
             model.startTicking()
@@ -111,7 +98,7 @@ struct SketchSessionView: View {
             VStack(spacing: AppSpacing.contentGap) {
                 PrimaryButton(
                     title: "Take Photo",
-                    action: { model.takePhotoPlaceholder() },
+                    action: { model.takePhoto() },
                     systemImage: "camera"
                 )
                 SecondaryButton(
@@ -129,7 +116,7 @@ struct SketchSessionView: View {
             VStack(spacing: AppSpacing.contentGap) {
                 PrimaryButton(
                     title: "Take Photo",
-                    action: { model.takePhotoPlaceholder() },
+                    action: { model.takePhoto() },
                     systemImage: "camera"
                 )
                 SecondaryButton(

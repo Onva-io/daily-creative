@@ -35,6 +35,8 @@ targets:
         API_BASE_URL: $(API_BASE_URL)
         APP_ENVIRONMENT: $(APP_ENVIRONMENT)
         DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
+        NSCameraUsageDescription: Daily Sketch uses the camera so you can photograph your drawing and share it with the community.
+        NSPhotoLibraryUsageDescription: Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig

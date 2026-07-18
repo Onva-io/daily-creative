@@ -43,7 +43,10 @@ final class HomeViewModelTests: XCTestCase {
             ),
             guestTimerStore: InMemoryGuestTimerPreferenceStore(),
             activeSessionStore: InMemoryActiveSessionStore(),
-            sessionService: RecordingSketchSessionRepository()
+            sessionService: RecordingSketchSessionRepository(),
+            draftStore: InMemoryDraftStore(),
+            imageStore: InMemoryDraftImageStore(),
+            cameraAuthorizer: FakeCameraAuthorizer()
         )
     }
 

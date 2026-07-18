@@ -1,28 +1,45 @@
 import Foundation
 import Observation
+import UIKit
 
 @MainActor
 @Observable
 final class SketchFlowViewModel {
     var showsTimerSelection = false
     var showsActiveSession = false
+    var showsCaptureSource = false
+    var showsReviewSubmission = false
+    var showsSaveYourCreativity = false
+    var showsAuthSheet = false
+    var authSheetMode: AuthenticationView.Mode = .signUp
     var showsRecoveryBanner = false
     var isCreatingSession = false
     var selectedTimerOption: TimerPreferenceOption?
     var rememberChoice = false
     var changeTimerHintVisible = false
     var syncBannerMessage: String?
+    var captureValidationMessage: String?
+    var draftSavedBanner: String?
 
     private(set) var sessionViewModel: SketchSessionViewModel?
+    private(set) var reviewViewModel: ReviewSubmissionViewModel?
     private(set) var recoverableSnapshot: ActiveSessionSnapshot?
+    private(set) var recoverableDraft: LocalDraft?
+    private(set) var recoverableDraftThumbnail: UIImage?
 
     private let auth: AuthSessionStore
     private let preferencesService: any PreferencesServing
     private let guestTimerStore: any GuestTimerPreferenceStoring
     private let activeSessionStore: any ActiveSessionStoring
     private let sessionService: any SketchSessionServing
+    private let draftStore: any DraftStoring
+    private let imageStore: any DraftImageStoring
+    private let cameraAuthorizer: any CameraAuthorizing
     private let dateProvider: any DateProviding
     private var cachedAuthenticatedPreference: TimerPreferenceOption?
+    private var replacingImageInReview = false
+
+    var cameraAuthorizerForCapture: any CameraAuthorizing { cameraAuthorizer }
 
     init(
         auth: AuthSessionStore,
@@ -30,6 +47,9 @@ final class SketchFlowViewModel {
         guestTimerStore: any GuestTimerPreferenceStoring,
         activeSessionStore: any ActiveSessionStoring,
         sessionService: any SketchSessionServing,
+        draftStore: any DraftStoring,
+        imageStore: any DraftImageStoring,
+        cameraAuthorizer: any CameraAuthorizing,
         dateProvider: any DateProviding = SystemDateProvider()
     ) {
         self.auth = auth
@@ -37,11 +57,15 @@ final class SketchFlowViewModel {
         self.guestTimerStore = guestTimerStore
         self.activeSessionStore = activeSessionStore
         self.sessionService = sessionService
+        self.draftStore = draftStore
+        self.imageStore = imageStore
+        self.cameraAuthorizer = cameraAuthorizer
         self.dateProvider = dateProvider
     }
 
     func prepareOnAppear() {
         refreshRecoveryState()
+        refreshDraftState()
         Task { await refreshRememberedPreference() }
     }
 
@@ -79,7 +103,6 @@ final class SketchFlowViewModel {
     }
 
     func changeTimerNextTime() {
-        // Clears remembered preference so the next Start Sketch shows the sheet.
         if auth.isAuthenticated {
             Task { await clearAuthenticatedRememberedTimer() }
         } else {
@@ -146,8 +169,195 @@ final class SketchFlowViewModel {
     func handleSessionEnded() {
         showsActiveSession = false
         sessionViewModel?.stopTicking()
-        sessionViewModel = nil
+        if !showsCaptureSource, !showsReviewSubmission {
+            sessionViewModel = nil
+        }
         refreshRecoveryState()
+    }
+
+    func dismissCaptureSource() {
+        showsCaptureSource = false
+        replacingImageInReview = false
+        if reviewViewModel != nil {
+            showsReviewSubmission = true
+        } else if sessionViewModel != nil {
+            showsActiveSession = true
+        }
+    }
+
+    func handleCapturedImageData(_ data: Data) {
+        captureValidationMessage = nil
+        if replacingImageInReview, let reviewViewModel {
+            do {
+                try reviewViewModel.replaceImage(with: data)
+                replacingImageInReview = false
+                showsCaptureSource = false
+                showsReviewSubmission = true
+            } catch {
+                captureValidationMessage = error.localizedDescription
+            }
+            return
+        }
+
+        guard let session = sessionViewModel else { return }
+        do {
+            let draft = try createDraft(from: session, imageData: data)
+            try activeSessionStore.clear()
+            showsActiveSession = false
+            showsCaptureSource = false
+            sessionViewModel?.stopTicking()
+            sessionViewModel = nil
+            presentReview(for: draft, imageData: data)
+            refreshRecoveryState()
+            refreshDraftState()
+        } catch {
+            captureValidationMessage = error.localizedDescription
+        }
+    }
+
+    func handleCaptureValidationError(_ message: String) {
+        captureValidationMessage = message
+    }
+
+    func handleReviewOutcome(_ outcome: ReviewSubmissionOutcome) {
+        switch outcome {
+        case .savedToDrafts, .continueLater, .awaitingPublication:
+            draftSavedBanner = outcome == .awaitingPublication
+                ? "Saved as a Draft. Publishing arrives next."
+                : "Draft saved."
+            showsReviewSubmission = false
+            showsSaveYourCreativity = false
+            showsAuthSheet = false
+            reviewViewModel = nil
+            refreshDraftState()
+        case .needsAuthentication:
+            showsSaveYourCreativity = true
+        }
+    }
+
+    func continueLaterFromCreativity() {
+        do {
+            try reviewViewModel?.continueLaterFromAuthCheckpoint()
+        } catch {
+            // Fall through: still dismiss so the guest is not trapped.
+            syncBannerMessage = "Couldn’t update Draft metadata."
+            showsSaveYourCreativity = false
+            showsReviewSubmission = false
+            reviewViewModel = nil
+            refreshDraftState()
+            return
+        }
+        // onFinished(.continueLater) already clears presentation via handleReviewOutcome.
+        if showsSaveYourCreativity || showsReviewSubmission {
+            showsSaveYourCreativity = false
+            showsReviewSubmission = false
+            reviewViewModel = nil
+            draftSavedBanner = "Draft saved. Continue when you’re ready."
+            refreshDraftState()
+        }
+    }
+
+    func presentCreateAccountFromCreativity() {
+        authSheetMode = .signUp
+        showsAuthSheet = true
+    }
+
+    func presentSignInFromCreativity() {
+        authSheetMode = .signIn
+        showsAuthSheet = true
+    }
+
+    func handleAuthenticationCompleted() {
+        guard auth.isAuthenticated else { return }
+        showsAuthSheet = false
+        showsSaveYourCreativity = false
+        reviewViewModel?.markAuthenticated()
+        showsReviewSubmission = true
+    }
+
+    func reopenDraft(_ draft: LocalDraft? = nil) {
+        let target = draft ?? recoverableDraft
+        guard let target else { return }
+        do {
+            let data = try imageStore.readData(fileName: target.imageFileName)
+            presentReview(for: target, imageData: data)
+        } catch {
+            syncBannerMessage = "Couldn’t open that Draft."
+        }
+    }
+
+    func discardDraft(_ draft: LocalDraft? = nil) {
+        let target = draft ?? recoverableDraft
+        guard let target else { return }
+        try? draftStore.delete(id: target.id)
+        try? imageStore.delete(fileName: target.imageFileName)
+        if reviewViewModel?.draft.id == target.id {
+            showsReviewSubmission = false
+            showsSaveYourCreativity = false
+            reviewViewModel = nil
+        }
+        refreshDraftState()
+    }
+
+    /// Hook for Phase 7: delete the local Draft only after confirmed publication.
+    func deleteDraftAfterPublication(id: UUID) {
+        guard let drafts = try? draftStore.list(),
+              let draft = drafts.first(where: { $0.id == id }) else {
+            return
+        }
+        try? draftStore.delete(id: id)
+        try? imageStore.delete(fileName: draft.imageFileName)
+        refreshDraftState()
+    }
+
+    private func presentReview(for draft: LocalDraft, imageData: Data) {
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: imageData,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            isAuthenticated: { [weak self] in self?.auth.isAuthenticated ?? false },
+            dateProvider: dateProvider,
+            onFinished: { [weak self] outcome in
+                self?.handleReviewOutcome(outcome)
+            },
+            onReplaceRequested: { [weak self] in
+                self?.beginReplaceImage()
+            }
+        )
+        reviewViewModel = model
+        showsReviewSubmission = true
+    }
+
+    private func beginReplaceImage() {
+        replacingImageInReview = true
+        showsCaptureSource = true
+        showsReviewSubmission = false
+    }
+
+    private func createDraft(from session: SketchSessionViewModel, imageData: Data) throws -> LocalDraft {
+        let fileName = try imageStore.write(imageData)
+        let now = dateProvider.now()
+        let draft = LocalDraft(
+            id: UUID(),
+            localSessionId: session.localSessionId,
+            serverSessionId: session.serverSessionId,
+            promptId: session.promptId,
+            promptWords: session.promptWords,
+            promptAccessibilityLabel: session.promptAccessibilityLabel,
+            promptDate: session.promptDate,
+            timerMode: session.timerOption.mode,
+            selectedTimerSeconds: session.timerOption.seconds,
+            sessionStartedAt: session.sessionStartedAt,
+            imageFileName: fileName,
+            caption: nil,
+            createdAt: now,
+            updatedAt: now,
+            pendingAuthentication: !auth.isAuthenticated,
+            pendingPublication: false
+        )
+        try draftStore.save(draft)
+        return draft
     }
 
     private func beginSession(
@@ -195,7 +405,6 @@ final class SketchFlowViewModel {
             model.attachServerSessionId(created.id)
             syncBannerMessage = nil
         } catch {
-            // Continue locally and mark sync pending rather than blocking the session.
             model.markSyncPending(error.localizedDescription)
             syncBannerMessage = "Session sync pending. You can keep sketching."
         }
@@ -230,6 +439,10 @@ final class SketchFlowViewModel {
             dateProvider: dateProvider,
             onEnded: { [weak self] in
                 self?.handleSessionEnded()
+            },
+            onReadyForPhoto: { [weak self] in
+                self?.showsCaptureSource = true
+                self?.showsActiveSession = false
             }
         )
     }
@@ -308,7 +521,29 @@ final class SketchFlowViewModel {
             return
         }
         recoverableSnapshot = snapshot
-        showsRecoveryBanner = !showsActiveSession
+        showsRecoveryBanner = !showsActiveSession && !showsCaptureSource && !showsReviewSubmission
+    }
+
+    func refreshDraftState() {
+        do {
+            let expired = try draftStore.purgeExpired(
+                retentionDays: DraftStore.defaultRetentionDays,
+                now: dateProvider.now()
+            )
+            for draft in expired {
+                try? imageStore.delete(fileName: draft.imageFileName)
+            }
+            recoverableDraft = try draftStore.mostRecentRecoverable()
+            if let draft = recoverableDraft,
+               let data = try? imageStore.readData(fileName: draft.imageFileName) {
+                recoverableDraftThumbnail = UIImage(data: data)
+            } else {
+                recoverableDraftThumbnail = nil
+            }
+        } catch {
+            recoverableDraft = nil
+            recoverableDraftThumbnail = nil
+        }
     }
 }
 
