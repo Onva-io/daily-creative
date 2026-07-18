@@ -4,7 +4,13 @@ info:
   version: 0.1.0
   description: |
     Contract-first OpenAPI definition for Daily Sketch.
-    Feature schemas expand from Phase 1 onward. Version-one API routes use the `/api/v1` prefix.
+
+    Version-one feature routes use the `/api/v1` prefix.
+    Process health probes remain at the root (`/health/live`, `/health/ready`)
+    and are not versioned under `/api/v1`.
+
+    Authenticated feature endpoints use the `bearerAuth` security scheme
+    (Descope-issued JWT). Health probes are unauthenticated.
 servers:
   - url: http://localhost:8000
     description: Local development
@@ -19,12 +25,17 @@ paths:
       responses:
         "200":
           description: Process is alive
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthLiveResponse"
               example:
                 status: ok
+        "500":
+          $ref: "#/components/responses/InternalError"
   /health/ready:
     get:
       operationId: getHealthReady
@@ -35,6 +46,9 @@ paths:
       responses:
         "200":
           description: Service is ready
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
@@ -46,6 +60,9 @@ paths:
                   storage_config: ok
         "503":
           description: Service is not ready
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
@@ -55,8 +72,109 @@ paths:
                 checks:
                   database: unavailable
                   storage_config: ok
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Descope-issued access/session JWT sent as Authorization Bearer token.
+  headers:
+    RequestId:
+      description: |
+        Opaque request correlation identifier. Clients may supply
+        `X-Request-ID`; otherwise the server generates one. The same
+        value is returned on every response and embedded in error bodies
+        as `error.request_id`.
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+  responses:
+    InternalError:
+      description: Unexpected server error
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: internal_error
+              message: An unexpected error occurred.
+              details: {}
+              request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
   schemas:
+    UUID:
+      type: string
+      format: uuid
+      description: Canonical UUID string identifier.
+      example: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+    Timestamp:
+      type: string
+      format: date-time
+      description: RFC 3339 UTC timestamp.
+      example: "2026-07-18T20:00:00Z"
+    ErrorBody:
+      type: object
+      required:
+        - code
+        - message
+        - details
+        - request_id
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code.
+          example: submission_not_found
+        message:
+          type: string
+          description: User-safe explanation of the error.
+          example: The requested sketch could not be found.
+        details:
+          type: object
+          additionalProperties: true
+          description: Optional structured details for clients and support.
+          example: {}
+        request_id:
+          $ref: "#/components/schemas/UUID"
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+      example:
+        error:
+          code: submission_not_found
+          message: The requested sketch could not be found.
+          details: {}
+          request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+    CursorPage:
+      type: object
+      required:
+        - items
+        - next_cursor
+      properties:
+        items:
+          type: array
+          description: Page of results. Concrete item schemas are defined per endpoint.
+          items: {}
+        next_cursor:
+          type:
+            - string
+            - "null"
+          description: Opaque cursor for the next page, or null when no further pages exist.
+      example:
+        items: []
+        next_cursor: null
     HealthLiveResponse:
       type: object
       required:

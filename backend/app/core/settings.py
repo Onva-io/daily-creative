@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     app_env: str = Field(default="local", alias="APP_ENV")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     api_public_url: str = Field(default="http://localhost:8000", alias="API_PUBLIC_URL")
+    release_version: str = Field(default="0.1.0", alias="RELEASE_VERSION")
+    commit_sha: str = Field(default="unknown", alias="COMMIT_SHA")
+    request_timeout_seconds: int = Field(default=30, alias="REQUEST_TIMEOUT_SECONDS")
+    prompt_date_timezone: str = Field(default="UTC", alias="PROMPT_DATE_TIMEZONE")
 
     database_url: str = Field(
         default="postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",
@@ -37,6 +41,29 @@ class Settings(BaseSettings):
         alias="DESCOPE_ISSUER",
     )
     descope_audience: str = Field(default="replace-me", alias="DESCOPE_AUDIENCE")
+
+    @field_validator("request_timeout_seconds")
+    @classmethod
+    def validate_request_timeout(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("REQUEST_TIMEOUT_SECONDS must be at least 1")
+        return value
+
+    @field_validator("prompt_date_timezone")
+    @classmethod
+    def validate_prompt_date_timezone(cls, value: str) -> str:
+        if value != "UTC":
+            raise ValueError("PROMPT_DATE_TIMEZONE must be UTC in version one")
+        return value
+
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, value: str) -> str:
+        allowed = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
+        upper = value.upper()
+        if upper not in allowed:
+            raise ValueError(f"LOG_LEVEL must be one of {sorted(allowed)}")
+        return upper
 
     @property
     def is_production(self) -> bool:

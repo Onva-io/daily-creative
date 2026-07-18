@@ -26,6 +26,7 @@ open class HealthAPI {
      Liveness probe
      - GET /health/live
      - Confirms the process can respond. Does not check dependencies.
+     - responseHeaders: [X-Request-ID(UUID)]
      - returns: RequestBuilder<HealthLiveResponse> 
      */
     open class func getHealthLiveWithRequestBuilder() -> RequestBuilder<HealthLiveResponse> {
@@ -60,6 +61,7 @@ open class HealthAPI {
      Readiness probe
      - GET /health/ready
      - Confirms required configuration and database connectivity.
+     - responseHeaders: [X-Request-ID(UUID)]
      - returns: RequestBuilder<HealthReadyResponse> 
      */
     open class func getHealthReadyWithRequestBuilder() -> RequestBuilder<HealthReadyResponse> {

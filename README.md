@@ -2,7 +2,7 @@
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
-This repository is a monorepo. Phase 0 establishes tooling and a local environment only.
+This repository is a monorepo. Phase 1 establishes the shared API contract conventions and application shell on top of the Phase 0 tooling foundation.
 
 ## Prerequisites
 
@@ -48,6 +48,16 @@ make ios-build
 | `ios/` | SwiftUI app (`DailySketch`) |
 | `spec/` | Product, design, architecture, implementation, infrastructure |
 
+## Phase 1 conventions
+
+- **API prefix:** Feature routes use `/api/v1`. Health probes stay at `/health/live` and `/health/ready`.
+- **Auth scheme:** `bearerAuth` (Descope JWT) is defined in the contract for authenticated feature endpoints (wired in Phase 2).
+- **Errors:** Responses use the shared `Error` envelope (`error.code`, `error.message`, `error.details`, `error.request_id`).
+- **Pagination:** List endpoints use the shared `CursorPage` shape (`items`, `next_cursor`).
+- **Request ID:** Every response includes `X-Request-ID`. Clients may supply one; otherwise the server generates a UUID. The same value appears in error bodies.
+- **Backend foundations:** Structured JSON logging, injectable UTC clock, and a storage adapter interface (implementation in Phase 7).
+- **iOS shell:** Two tabs (Home, Profile), settings route from Profile, semantic design tokens, and reusable buttons / loading / empty / error components.
+
 ## Make targets
 
 | Target | Description |
@@ -57,7 +67,7 @@ make ios-build
 | `make backend-run` | Run API with reload on `:8000` |
 | `make backend-test` / `lint` / `typecheck` | Backend quality gates |
 | `make db-migrate` / `db-reset` | Alembic migrate (reset destroys local volume) |
-| `make seed` | No-op in Phase 0 |
+| `make seed` | No-op until prompt/fixture seeding arrives |
 | `make api-validate` | Validate OpenAPI |
 | `make api-generate-ios` | Regenerate Swift client |
 | `make api-check-generated` | Fail if generated client is stale |
@@ -83,6 +93,7 @@ Credentials are local placeholders only — see `.env.example`. Never commit rea
 - Minimum iOS: **18.0**
 - Bundle ID placeholder: `com.example.dailysketch.dev`
 - Apple Team ID is not committed; set `DEVELOPMENT_TEAM` locally when needed
+- Debug builds use `API_BASE_URL=http://localhost:8000` and `APP_ENVIRONMENT=local`
 
 ## OpenAPI workflow
 
@@ -96,4 +107,4 @@ CI fails when generated clients drift from `api/openapi/openapi.yaml`.
 
 ## Specs
 
-Authoritative documents live in `spec/`. Architectural decisions for Phase 0 are recorded under `spec/decisions/`.
+Authoritative documents live in `spec/`. Architectural decisions are recorded under `spec/decisions/`.

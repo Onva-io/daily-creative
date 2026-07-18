@@ -11,4 +11,5 @@ enum AppTypography {
     static let bodySmall = Font.subheadline
     static let caption = Font.caption
     static let labelCaps = Font.caption.weight(.semibold)
+    static let timer = Font.system(size: 72, weight: .medium, design: .monospaced)
 }

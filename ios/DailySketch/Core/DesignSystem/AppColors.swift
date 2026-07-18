@@ -6,6 +6,7 @@ enum AppColors {
     static let surfacePrimary = Color(light: "FFFFFF", dark: "26231F")
     static let surfaceSecondary = Color(light: "FAF2EC", dark: "2E2A26")
     static let surfaceTertiary = Color(light: "F4ECE7", dark: "37322D")
+    static let surfaceElevated = Color(light: "EEE7E1", dark: "403A34")
     static let textPrimary = Color(light: "1E1B18", dark: "F7EFE9")
     static let textSecondary = Color(light: "5F5E5B", dark: "CBC4BE")
     static let textTertiary = Color(light: "76786F", dark: "A9A29C")
@@ -14,7 +15,10 @@ enum AppColors {
     static let primarySoft = Color(light: "DFE5CD", dark: "434937")
     static let onPrimary = Color(light: "FFFFFF", dark: "181D0F")
     static let divider = Color(light: "E0D9D3", dark: "46413C")
+    static let outline = Color(light: "C7C7BD", dark: "625D57")
     static let danger = Color(light: "BA1A1A", dark: "FFB4AB")
+    static let dangerSoft = Color(light: "FFDAD6", dark: "5D1F1B")
+    static let success = Color(light: "5E6B52", dark: "C3C9B2")
 }
 
 private extension Color {
