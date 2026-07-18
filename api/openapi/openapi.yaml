@@ -83,7 +83,7 @@ paths:
       description: |
         Returns the local application user for the authenticated Descope subject.
         On first successful authentication the backend provisions a local user
-        with an incomplete profile.
+        with an incomplete profile and default preferences.
       security:
         - bearerAuth: []
       responses:
@@ -114,6 +114,185 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      operationId: updateMe
+      tags:
+        - me
+      summary: Update current user profile
+      description: |
+        Updates the authenticated user's public profile fields.
+        Setting a valid unique username and a non-empty display name completes
+        the profile (`profile_completed` becomes true and status becomes active).
+        Usernames are case-insensitive and must match `^[A-Za-z0-9_]{3,30}$`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+            example:
+              username: sketchy_matt
+              display_name: Matt
+              bio: Sketching every day.
+      responses:
+        "200":
+          description: Updated current user
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+              example:
+                id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                username: sketchy_matt
+                display_name: Matt
+                profile_completed: true
+                status: active
+                preferences:
+                  notifications_enabled: false
+                  notification_time_local: null
+                  timezone: UTC
+                  remember_timer_option: false
+                  remembered_timer_mode: null
+                  remembered_timer_seconds: null
+                  appearance: system
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/me/preferences:
+    get:
+      operationId: getMyPreferences
+      tags:
+        - me
+      summary: Current user preferences
+      description: Returns server-backed preferences for the authenticated user.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Preferences
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesSummary"
+              example:
+                notifications_enabled: true
+                notification_time_local: "09:00:00"
+                timezone: UTC
+                remember_timer_option: true
+                remembered_timer_mode: countdown
+                remembered_timer_seconds: 300
+                appearance: system
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      operationId: updateMyPreferences
+      tags:
+        - me
+      summary: Update current user preferences
+      description: |
+        Partially updates preferences. Timer preferences must be consistent:
+        `countdown` requires `remembered_timer_seconds` in {60, 180, 300, 600};
+        `no_timer` requires `remembered_timer_seconds` to be null.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesUpdate"
+            example:
+              notifications_enabled: true
+              notification_time_local: "09:00:00"
+              remember_timer_option: true
+              remembered_timer_mode: countdown
+              remembered_timer_seconds: 300
+              appearance: dark
+      responses:
+        "200":
+          description: Updated preferences
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesSummary"
+              example:
+                notifications_enabled: true
+                notification_time_local: "09:00:00"
+                timezone: UTC
+                remember_timer_option: true
+                remembered_timer_mode: countdown
+                remembered_timer_seconds: 300
+                appearance: dark
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/users/{username}:
+    get:
+      operationId: getPublicUser
+      tags:
+        - users
+      summary: Public profile by username
+      description: |
+        Returns a public-safe projection of an active user with a completed profile.
+        Does not require authentication. Excludes email, Descope subject, preferences,
+        moderation internals, Drafts, and private session analytics.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Public username (case-insensitive lookup).
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 30
+          example: sketchy_matt
+      responses:
+        "200":
+          description: Public profile
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicUser"
+              example:
+                id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                username: sketchy_matt
+                display_name: Matt
+                bio: Sketching every day.
+                avatar_url: null
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 components:
@@ -176,6 +355,86 @@ components:
                 error:
                   code: account_unavailable
                   message: This account is no longer available.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            profile_incomplete:
+              summary: Profile incomplete
+              value:
+                error:
+                  code: profile_incomplete
+                  message: Complete your profile before publishing.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+    Conflict:
+      description: Request conflicts with existing state
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: username_taken
+              message: That username is already taken.
+              details: {}
+              request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+    NotFound:
+      description: Requested resource was not found
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: user_not_found
+              message: The requested profile could not be found.
+              details: {}
+              request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+    ValidationError:
+      description: Request body failed validation or domain rules
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            username_invalid:
+              summary: Invalid username format
+              value:
+                error:
+                  code: username_invalid
+                  message: Usernames must be 3–30 characters and use only letters, numbers, and underscores.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            username_reserved:
+              summary: Reserved username
+              value:
+                error:
+                  code: username_reserved
+                  message: That username is reserved.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            invalid_timer_preference:
+              summary: Invalid timer preference combination
+              value:
+                error:
+                  code: invalid_timer_preference
+                  message: Timer preference mode and seconds are inconsistent.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            validation_error:
+              summary: Schema validation failure
+              value:
+                error:
+                  code: validation_error
+                  message: The request could not be validated.
                   details: {}
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     InternalError:
@@ -307,8 +566,8 @@ components:
     PreferencesSummary:
       type: object
       description: |
-        Preference summary returned with the current user.
-        Phase 2 returns defaults; server-backed preferences arrive in Phase 3.
+        Preference summary returned with the current user and preferences endpoints.
+        Values are persisted in `user_preferences`.
       required:
         - notifications_enabled
         - notification_time_local
@@ -345,6 +604,60 @@ components:
           example: null
         appearance:
           $ref: "#/components/schemas/AppearancePreference"
+    PreferencesUpdate:
+      type: object
+      description: Partial preferences update. Omitted fields are left unchanged.
+      additionalProperties: false
+      properties:
+        notifications_enabled:
+          type: boolean
+        notification_time_local:
+          type:
+            - string
+            - "null"
+          description: Local reminder time as HH:MM:SS, or null to clear.
+          example: "09:00:00"
+        timezone:
+          type: string
+          example: UTC
+        remember_timer_option:
+          type: boolean
+        remembered_timer_mode:
+          oneOf:
+            - $ref: "#/components/schemas/TimerMode"
+            - type: "null"
+        remembered_timer_seconds:
+          type:
+            - integer
+            - "null"
+          description: Allowed countdown values are 60, 180, 300, or 600.
+        appearance:
+          $ref: "#/components/schemas/AppearancePreference"
+    UpdateMeRequest:
+      type: object
+      description: Partial profile update. Omitted fields are left unchanged.
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+          description: |
+            Public username. Must match `^[A-Za-z0-9_]{3,30}$`.
+            Uniqueness is case-insensitive.
+          minLength: 3
+          maxLength: 30
+          example: sketchy_matt
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Matt
+        bio:
+          type:
+            - string
+            - "null"
+          description: Optional short bio. Null clears an existing bio.
+          maxLength: 280
+          example: Sketching every day.
     CurrentUser:
       type: object
       required:
@@ -374,8 +687,39 @@ components:
           $ref: "#/components/schemas/UserStatus"
         preferences:
           $ref: "#/components/schemas/PreferencesSummary"
+    PublicUser:
+      type: object
+      description: Public-safe user projection. Excludes private and moderation fields.
+      required:
+        - id
+        - username
+        - display_name
+        - bio
+        - avatar_url
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        username:
+          type: string
+          example: sketchy_matt
+        display_name:
+          type: string
+          example: Matt
+        bio:
+          type:
+            - string
+            - "null"
+          example: Sketching every day.
+        avatar_url:
+          type:
+            - string
+            - "null"
+          description: Signed or CDN avatar URL when available; null until avatar upload exists.
+          example: null
 tags:
   - name: health
     description: Process health probes
   - name: me
     description: Authenticated current-user endpoints
+  - name: users
+    description: Public user profile endpoints

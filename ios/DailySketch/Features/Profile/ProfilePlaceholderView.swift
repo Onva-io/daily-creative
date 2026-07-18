@@ -42,15 +42,27 @@ struct ProfilePlaceholderView: View {
             .foregroundStyle(AppColors.textPrimary)
             .multilineTextAlignment(.center)
 
-        Text(user.username.map { "@\($0)" } ?? "Username arrives in profile completion")
+        Text(user.username.map { "@\($0)" } ?? "Choose a username to complete your profile")
             .font(AppTypography.body)
             .foregroundStyle(AppColors.textSecondary)
             .multilineTextAlignment(.center)
 
-        Text(user.profileCompleted ? "Profile complete" : "Profile incomplete")
-            .font(AppTypography.caption)
-            .foregroundStyle(AppColors.textSecondary)
-            .accessibilityLabel(user.profileCompleted ? "Profile complete" : "Profile incomplete")
+        if user.profileCompleted {
+            Text("Profile complete")
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+                .accessibilityLabel("Profile complete")
+        } else {
+            Text("Profile incomplete")
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+                .accessibilityLabel("Profile incomplete")
+
+            PrimaryButton(title: "Complete Profile") {
+                dependencies.navigation.profilePath.append(.profileCompletion)
+            }
+            .accessibilityLabel("Complete Profile")
+        }
     }
 
     @ViewBuilder

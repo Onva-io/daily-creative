@@ -10,15 +10,40 @@ final class AuthSessionStore {
 
     private let authService: any AuthServing
     private let meFetcher: any MeFetching
+    private let profileUpdater: (any ProfileUpdating)?
 
-    init(authService: any AuthServing, meFetcher: any MeFetching) {
+    init(
+        authService: any AuthServing,
+        meFetcher: any MeFetching,
+        profileUpdater: (any ProfileUpdating)? = nil
+    ) {
         self.authService = authService
         self.meFetcher = meFetcher
+        self.profileUpdater = profileUpdater
     }
 
     var isAuthenticated: Bool {
         if case .authenticated = state { return true }
         return false
+    }
+
+    var needsProfileCompletion: Bool {
+        isAuthenticated && currentUser?.profileCompleted == false
+    }
+
+    /// Publish-gated flows must call this before starting upload/publication.
+    func requireCompleteProfileForPublishing() -> Bool {
+        if needsProfileCompletion {
+            return false
+        }
+        return isAuthenticated
+    }
+
+    var accessToken: String? {
+        if case .authenticated(let session) = state {
+            return session.accessToken
+        }
+        return nil
     }
 
     var usesMockAuthentication: Bool {
@@ -48,6 +73,31 @@ final class AuthSessionStore {
 
     func applyExternalSession(_ session: AuthSession) async {
         await applyAuthenticated(session: session)
+    }
+
+    func completeProfile(username: String, displayName: String) async throws {
+        guard let token = accessToken else {
+            throw ProfileAPIError.sessionExpired
+        }
+        guard let profileUpdater else {
+            throw ProfileAPIError.underlying("Profile updates are unavailable.")
+        }
+        let profile = try await profileUpdater.updateMe(
+            accessToken: token,
+            username: username,
+            displayName: displayName,
+            bio: nil
+        )
+        currentUser = profile
+    }
+
+    func refreshCurrentUser() async {
+        guard let token = accessToken else { return }
+        do {
+            currentUser = try await meFetcher.fetchMe(accessToken: token)
+        } catch {
+            // Keep existing profile snapshot on refresh failure.
+        }
     }
 
     func signOut() async {
@@ -87,6 +137,8 @@ final class AuthSessionStore {
             currentUser = nil
             DailySketchAPITokenBridge.clear()
             if let authError = error as? AuthServiceError, authError == .sessionExpired {
+                state = .failed(message: AuthServiceError.sessionExpired.localizedDescription)
+            } else if let profileError = error as? ProfileAPIError, profileError == .sessionExpired {
                 state = .failed(message: AuthServiceError.sessionExpired.localizedDescription)
             } else {
                 let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

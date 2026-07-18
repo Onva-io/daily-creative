@@ -10,7 +10,7 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Preference summary returned with the current user. Phase 2 returns defaults; server-backed preferences arrive in Phase 3.  */
+/** Preference summary returned with the current user and preferences endpoints. Values are persisted in &#x60;user_preferences&#x60;.  */
 public struct PreferencesSummary: Codable, JSONEncodable, Hashable {
 
     public var notificationsEnabled: Bool

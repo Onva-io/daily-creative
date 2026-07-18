@@ -114,7 +114,12 @@ struct AuthenticationView: View {
             await dependencies.auth.signIn(displayName: displayName)
         }
         if dependencies.auth.isAuthenticated {
-            dependencies.navigation.profilePath.removeAll { $0 == .authentication(.signUp) || $0 == .authentication(.signIn) }
+            dependencies.navigation.profilePath.removeAll {
+                $0 == .authentication(.signUp) || $0 == .authentication(.signIn)
+            }
+            if dependencies.auth.needsProfileCompletion {
+                dependencies.navigation.profilePath.append(.profileCompletion)
+            }
         }
     }
 }

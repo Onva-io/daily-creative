@@ -25,7 +25,7 @@ open class MeAPI {
     /**
      Current authenticated user
      - GET /api/v1/me
-     - Returns the local application user for the authenticated Descope subject. On first successful authentication the backend provisions a local user with an incomplete profile. 
+     - Returns the local application user for the authenticated Descope subject. On first successful authentication the backend provisions a local user with an incomplete profile and default preferences. 
      - Bearer Token:
        - type: http
        - name: bearerAuth
@@ -48,5 +48,123 @@ open class MeAPI {
         let localVariableRequestBuilder: RequestBuilder<CurrentUser>.Type = DailySketchAPIAPI.requestBuilderFactory.getBuilder()
 
         return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
+    }
+
+    /**
+     Current user preferences
+     
+     - returns: PreferencesSummary
+     */
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+    open class func getMyPreferences() async throws -> PreferencesSummary {
+        return try await getMyPreferencesWithRequestBuilder().execute().body
+    }
+
+    /**
+     Current user preferences
+     - GET /api/v1/me/preferences
+     - Returns server-backed preferences for the authenticated user.
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
+     - responseHeaders: [X-Request-ID(UUID)]
+     - returns: RequestBuilder<PreferencesSummary> 
+     */
+    open class func getMyPreferencesWithRequestBuilder() -> RequestBuilder<PreferencesSummary> {
+        let localVariablePath = "/api/v1/me/preferences"
+        let localVariableURLString = DailySketchAPIAPI.basePath + localVariablePath
+        let localVariableParameters: [String: Any]? = nil
+
+        let localVariableUrlComponents = URLComponents(string: localVariableURLString)
+
+        let localVariableNillableHeaders: [String: Any?] = [
+            :
+        ]
+
+        let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
+
+        let localVariableRequestBuilder: RequestBuilder<PreferencesSummary>.Type = DailySketchAPIAPI.requestBuilderFactory.getBuilder()
+
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
+    }
+
+    /**
+     Update current user profile
+     
+     - parameter updateMeRequest: (body)  
+     - returns: CurrentUser
+     */
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+    open class func updateMe(updateMeRequest: UpdateMeRequest) async throws -> CurrentUser {
+        return try await updateMeWithRequestBuilder(updateMeRequest: updateMeRequest).execute().body
+    }
+
+    /**
+     Update current user profile
+     - PATCH /api/v1/me
+     - Updates the authenticated user's public profile fields. Setting a valid unique username and a non-empty display name completes the profile (`profile_completed` becomes true and status becomes active). Usernames are case-insensitive and must match `^[A-Za-z0-9_]{3,30}$`. 
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
+     - responseHeaders: [X-Request-ID(UUID)]
+     - parameter updateMeRequest: (body)  
+     - returns: RequestBuilder<CurrentUser> 
+     */
+    open class func updateMeWithRequestBuilder(updateMeRequest: UpdateMeRequest) -> RequestBuilder<CurrentUser> {
+        let localVariablePath = "/api/v1/me"
+        let localVariableURLString = DailySketchAPIAPI.basePath + localVariablePath
+        let localVariableParameters = JSONEncodingHelper.encodingParameters(forEncodableObject: updateMeRequest)
+
+        let localVariableUrlComponents = URLComponents(string: localVariableURLString)
+
+        let localVariableNillableHeaders: [String: Any?] = [
+            "Content-Type": "application/json",
+        ]
+
+        let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
+
+        let localVariableRequestBuilder: RequestBuilder<CurrentUser>.Type = DailySketchAPIAPI.requestBuilderFactory.getBuilder()
+
+        return localVariableRequestBuilder.init(method: "PATCH", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
+    }
+
+    /**
+     Update current user preferences
+     
+     - parameter preferencesUpdate: (body)  
+     - returns: PreferencesSummary
+     */
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+    open class func updateMyPreferences(preferencesUpdate: PreferencesUpdate) async throws -> PreferencesSummary {
+        return try await updateMyPreferencesWithRequestBuilder(preferencesUpdate: preferencesUpdate).execute().body
+    }
+
+    /**
+     Update current user preferences
+     - PATCH /api/v1/me/preferences
+     - Partially updates preferences. Timer preferences must be consistent: `countdown` requires `remembered_timer_seconds` in {60, 180, 300, 600}; `no_timer` requires `remembered_timer_seconds` to be null. 
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
+     - responseHeaders: [X-Request-ID(UUID)]
+     - parameter preferencesUpdate: (body)  
+     - returns: RequestBuilder<PreferencesSummary> 
+     */
+    open class func updateMyPreferencesWithRequestBuilder(preferencesUpdate: PreferencesUpdate) -> RequestBuilder<PreferencesSummary> {
+        let localVariablePath = "/api/v1/me/preferences"
+        let localVariableURLString = DailySketchAPIAPI.basePath + localVariablePath
+        let localVariableParameters = JSONEncodingHelper.encodingParameters(forEncodableObject: preferencesUpdate)
+
+        let localVariableUrlComponents = URLComponents(string: localVariableURLString)
+
+        let localVariableNillableHeaders: [String: Any?] = [
+            "Content-Type": "application/json",
+        ]
+
+        let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
+
+        let localVariableRequestBuilder: RequestBuilder<PreferencesSummary>.Type = DailySketchAPIAPI.requestBuilderFactory.getBuilder()
+
+        return localVariableRequestBuilder.init(method: "PATCH", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
     }
 }

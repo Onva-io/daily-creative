@@ -4,6 +4,7 @@ import Observation
 enum AppRoute: Hashable {
     case settings
     case authentication(AuthenticationView.Mode)
+    case profileCompletion
 }
 
 @Observable

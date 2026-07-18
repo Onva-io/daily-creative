@@ -16,6 +16,7 @@ from app.auth.jwt import set_token_verifier
 from app.db.session import Base, get_db_session
 from app.main import create_app
 from app.models.user import User, UserStatus
+from app.models.user_preferences import UserPreferences  # noqa: F401
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",

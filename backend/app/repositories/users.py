@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.models.user import User, UserStatus
 
 
@@ -23,6 +25,12 @@ class UserRepository:
 
     async def get_by_id(self, user_id: uuid.UUID) -> User | None:
         result = await self._session.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+
+    async def get_by_username_normalized(self, username_normalized: str) -> User | None:
+        result = await self._session.execute(
+            select(User).where(User.username_normalized == username_normalized)
+        )
         return result.scalar_one_or_none()
 
     async def create(
@@ -47,5 +55,41 @@ class UserRepository:
             if existing is not None:
                 return existing
             raise
+        await self._session.refresh(user)
+        return user
+
+    async def update_profile(
+        self,
+        user: User,
+        *,
+        username: str | None = None,
+        username_normalized: str | None = None,
+        display_name: str | None = None,
+        bio: str | None | object = ...,
+        status: UserStatus | None = None,
+        profile_completed_at: datetime | None | object = ...,
+    ) -> User:
+        if username is not None:
+            user.username = username
+        if username_normalized is not None:
+            user.username_normalized = username_normalized
+        if display_name is not None:
+            user.display_name = display_name
+        if bio is not ...:
+            user.bio = bio  # type: ignore[assignment]
+        if status is not None:
+            user.status = status
+        if profile_completed_at is not ...:
+            user.profile_completed_at = profile_completed_at  # type: ignore[assignment]
+
+        try:
+            await self._session.commit()
+        except IntegrityError as exc:
+            await self._session.rollback()
+            raise AppError(
+                code="username_taken",
+                message="That username is already taken.",
+                status_code=409,
+            ) from exc
         await self._session.refresh(user)
         return user

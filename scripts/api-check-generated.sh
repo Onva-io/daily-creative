@@ -18,6 +18,9 @@ fi
 
 API_GENERATED_OUT="${FRESH}/ios" bash "${ROOT}/scripts/api-generate-ios.sh"
 
+# Xcode may create .swiftpm under the committed package; ignore it in drift checks.
+rm -rf "${OUT}/.swiftpm" "${FRESH}/ios/.swiftpm"
+
 if ! diff -ru "${OUT}" "${FRESH}/ios"; then
   echo "Generated OpenAPI client is stale. Run make api-generate-ios and commit." >&2
   exit 1

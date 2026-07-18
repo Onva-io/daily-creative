@@ -7,6 +7,7 @@ DailySketchAPI/Classes/OpenAPIs/APIHelper.swift
 DailySketchAPI/Classes/OpenAPIs/APIs.swift
 DailySketchAPI/Classes/OpenAPIs/APIs/HealthAPI.swift
 DailySketchAPI/Classes/OpenAPIs/APIs/MeAPI.swift
+DailySketchAPI/Classes/OpenAPIs/APIs/UsersAPI.swift
 DailySketchAPI/Classes/OpenAPIs/CodableHelper.swift
 DailySketchAPI/Classes/OpenAPIs/Configuration.swift
 DailySketchAPI/Classes/OpenAPIs/Extensions.swift
@@ -21,7 +22,10 @@ DailySketchAPI/Classes/OpenAPIs/Models/HealthLiveResponse.swift
 DailySketchAPI/Classes/OpenAPIs/Models/HealthReadyResponse.swift
 DailySketchAPI/Classes/OpenAPIs/Models/ModelError.swift
 DailySketchAPI/Classes/OpenAPIs/Models/PreferencesSummary.swift
+DailySketchAPI/Classes/OpenAPIs/Models/PreferencesUpdate.swift
+DailySketchAPI/Classes/OpenAPIs/Models/PublicUser.swift
 DailySketchAPI/Classes/OpenAPIs/Models/TimerMode.swift
+DailySketchAPI/Classes/OpenAPIs/Models/UpdateMeRequest.swift
 DailySketchAPI/Classes/OpenAPIs/Models/UserStatus.swift
 DailySketchAPI/Classes/OpenAPIs/OpenISO8601DateFormatter.swift
 DailySketchAPI/Classes/OpenAPIs/SynchronizedDictionary.swift
@@ -39,7 +43,11 @@ docs/HealthReadyResponse.md
 docs/MeAPI.md
 docs/ModelError.md
 docs/PreferencesSummary.md
+docs/PreferencesUpdate.md
+docs/PublicUser.md
 docs/TimerMode.md
+docs/UpdateMeRequest.md
 docs/UserStatus.md
+docs/UsersAPI.md
 git_push.sh
 project.yml

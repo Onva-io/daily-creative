@@ -11,24 +11,38 @@ final class MockAuthService: AuthServing {
     private let keychainAccount = "mock.auth.session"
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    /// Fallback when Keychain is unavailable (unsigned simulator / CI).
+    private var memorySession: StoredSession?
 
     var usesMockAuthentication: Bool { true }
 
     func restoreSession() async -> AuthSession? {
-        guard let data = try? KeychainStore.load(account: keychainAccount),
-              let stored = try? decoder.decode(StoredSession.self, from: data)
-        else {
-            return nil
+        if let data = try? KeychainStore.load(account: keychainAccount),
+           let stored = try? decoder.decode(StoredSession.self, from: data) {
+            memorySession = stored
+            if isExpired(token: stored.accessToken) {
+                KeychainStore.delete(account: keychainAccount)
+                memorySession = nil
+                return nil
+            }
+            return AuthSession(
+                accessToken: stored.accessToken,
+                subject: stored.subject,
+                displayName: stored.displayName
+            )
         }
-        if isExpired(token: stored.accessToken) {
-            KeychainStore.delete(account: keychainAccount)
-            return nil
+        if let stored = memorySession {
+            if isExpired(token: stored.accessToken) {
+                memorySession = nil
+                return nil
+            }
+            return AuthSession(
+                accessToken: stored.accessToken,
+                subject: stored.subject,
+                displayName: stored.displayName
+            )
         }
-        return AuthSession(
-            accessToken: stored.accessToken,
-            subject: stored.subject,
-            displayName: stored.displayName
-        )
+        return nil
     }
 
     func signUp(displayName: String) async throws -> AuthSession {
@@ -41,6 +55,7 @@ final class MockAuthService: AuthServing {
 
     func signOut() async {
         KeychainStore.delete(account: keychainAccount)
+        memorySession = nil
     }
 
     func refreshIfNeeded(_ session: AuthSession) async throws -> AuthSession {
@@ -55,8 +70,10 @@ final class MockAuthService: AuthServing {
         let token = try Self.mintToken(subject: subject, name: displayName)
         let session = AuthSession(accessToken: token, subject: subject, displayName: displayName)
         let stored = StoredSession(accessToken: token, subject: subject, displayName: displayName)
-        let data = try encoder.encode(stored)
-        try KeychainStore.save(account: keychainAccount, data: data)
+        memorySession = stored
+        if let data = try? encoder.encode(stored) {
+            try? KeychainStore.save(account: keychainAccount, data: data)
+        }
         return session
     }
 

@@ -2,7 +2,7 @@
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
-This repository is a monorepo. Phase 2 adds Descope authentication, local user provisioning, and `GET /api/v1/me` on top of the Phase 1 contract and application shell.
+This repository is a monorepo. Phase 3 adds profile completion, server-backed preferences, and public profiles on top of Phase 2 authentication.
 
 ## Prerequisites
 
@@ -48,12 +48,23 @@ make ios-build
 | `ios/` | SwiftUI app (`DailySketch`) |
 | `spec/` | Product, design, architecture, implementation, infrastructure |
 
+## Phase 3 — Profile completion and preferences
+
+- **Contract:**
+  - `PATCH /api/v1/me` — update username, display name, and optional bio; completing username + display name marks the profile complete.
+  - `GET /api/v1/me/preferences` / `PATCH /api/v1/me/preferences` — server-backed reminder, timer, timezone, and appearance preferences.
+  - `GET /api/v1/users/{username}` — public-safe profile projection (no auth required).
+- **Database:** `user_preferences` table (migration `0003_user_preferences`) with `timer_mode` and `appearance` enums. Username uniqueness remains case-insensitive via `users.username_normalized`.
+- **Username rules (Phase 3 assumption):** `^[A-Za-z0-9_]{3,30}$`, reserved names rejected, availability resolved on save (`409 username_taken`).
+- **iOS:** Profile completion onboarding after first sign-in; Settings includes profile summary, reminder, timer preference, appearance, and Sign Out. Incomplete profiles are routed to completion before publish-gated actions.
+- **Out of Phase 3:** avatar upload, live username-availability endpoint, submission/streak counts on public profiles, local notification scheduling.
+
 ## Phase 2 — Authentication
 
 - **Contract:** `GET /api/v1/me` returns the current local user (id, username, display name, profile completion, account status, preferences summary). Requires `Authorization: Bearer <Descope JWT>`.
 - **Backend:** Verifies Descope JWTs via JWKS (`DESCOPE_JWKS_URL`, defaulting from `DESCOPE_PROJECT_ID`), provisions a local `users` row on first login (idempotent by `descope_subject`), and rejects suspended/deleted accounts.
 - **Local mock auth:** When `DESCOPE_PROJECT_ID=replace-me` (the committed placeholder), the iOS app uses `MockAuthService` and the backend accepts matching HS256 local-dev JWTs so guest → sign-in → `GET /me` works without real Descope credentials. Replace placeholders with a development Descope project ID to use Descope Flows.
-- **iOS:** Guest launch is unchanged. Profile offers Create Free Account / Sign In. Sessions persist in Keychain. Settings offers Sign Out (does not delete local Drafts — none exist yet in Phase 2).
+- **iOS:** Guest launch is unchanged. Profile offers Create Free Account / Sign In. Sessions persist in Keychain. Settings offers Sign Out (does not delete local Drafts — none exist yet).
 - **Secrets:** Never commit real Descope management secrets. Project ID is public configuration only.
 
 ## Phase 1 conventions

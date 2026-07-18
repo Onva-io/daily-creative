@@ -1,5 +1,12 @@
 """ORM models."""
 
 from app.models.user import User, UserStatus
+from app.models.user_preferences import AppearancePreference, TimerMode, UserPreferences
 
-__all__ = ["User", "UserStatus"]
+__all__ = [
+    "AppearancePreference",
+    "TimerMode",
+    "User",
+    "UserPreferences",
+    "UserStatus",
+]

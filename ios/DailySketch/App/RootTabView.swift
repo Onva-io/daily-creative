@@ -28,15 +28,23 @@ struct RootTabView: View {
             }
         }
         .tint(AppColors.primary)
+        .onChange(of: dependencies.auth.needsProfileCompletion) { _, needsCompletion in
+            guard needsCompletion else { return }
+            if !dependencies.navigation.profilePath.contains(.profileCompletion) {
+                dependencies.navigation.profilePath.append(.profileCompletion)
+            }
+        }
     }
 
     @ViewBuilder
     private func destination(for route: AppRoute) -> some View {
         switch route {
         case .settings:
-            SettingsPlaceholderView()
+            SettingsView()
         case .authentication(let mode):
             AuthenticationView(mode: mode)
+        case .profileCompletion:
+            ProfileCompletionView()
         }
     }
 }

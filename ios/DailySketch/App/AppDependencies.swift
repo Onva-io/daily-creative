@@ -7,33 +7,59 @@ final class AppDependencies {
     let navigation: AppNavigationStore
     let auth: AuthSessionStore
     let descopeAuthService: DescopeAuthService?
+    let preferencesService: any PreferencesServing
+    let profileUpdater: any ProfileUpdating
 
     init(
         environment: AppEnvironment,
         navigation: AppNavigationStore = AppNavigationStore(),
         auth: AuthSessionStore,
-        descopeAuthService: DescopeAuthService? = nil
+        descopeAuthService: DescopeAuthService? = nil,
+        preferencesService: any PreferencesServing,
+        profileUpdater: any ProfileUpdating
     ) {
         self.environment = environment
         self.navigation = navigation
         self.auth = auth
         self.descopeAuthService = descopeAuthService
+        self.preferencesService = preferencesService
+        self.profileUpdater = profileUpdater
     }
 
     @MainActor
     static var live: AppDependencies {
         let environment = AppEnvironment.current
-        let meFetcher = MeRepository(baseURL: environment.apiBaseURL)
+        let repository = MeRepository(baseURL: environment.apiBaseURL)
         let projectID = environment.descopeProjectID
 
         if projectID == DescopeConfig.placeholderProjectID || projectID.isEmpty {
             let authService = MockAuthService()
-            let auth = AuthSessionStore(authService: authService, meFetcher: meFetcher)
-            return AppDependencies(environment: environment, auth: auth, descopeAuthService: nil)
+            let auth = AuthSessionStore(
+                authService: authService,
+                meFetcher: repository,
+                profileUpdater: repository
+            )
+            return AppDependencies(
+                environment: environment,
+                auth: auth,
+                descopeAuthService: nil,
+                preferencesService: repository,
+                profileUpdater: repository
+            )
         }
 
         let descope = DescopeAuthService(projectID: projectID)
-        let auth = AuthSessionStore(authService: descope, meFetcher: meFetcher)
-        return AppDependencies(environment: environment, auth: auth, descopeAuthService: descope)
+        let auth = AuthSessionStore(
+            authService: descope,
+            meFetcher: repository,
+            profileUpdater: repository
+        )
+        return AppDependencies(
+            environment: environment,
+            auth: auth,
+            descopeAuthService: descope,
+            preferencesService: repository,
+            profileUpdater: repository
+        )
     }
 }
