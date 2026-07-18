@@ -6,7 +6,7 @@ This repository is a monorepo. Phase 0 establishes tooling and a local environme
 
 ## Prerequisites
 
-- Python 3.13
+- Python 3.14
 - [uv](https://github.com/astral-sh/uv)
 - Docker and Docker Compose
 - Xcode 16+ with an iOS 18 simulator
@@ -53,7 +53,7 @@ make ios-build
 | Target | Description |
 | --- | --- |
 | `make up` / `down` / `logs` | Local Docker Compose services |
-| `make backend-install` | Create Python 3.13 venv and install deps |
+| `make backend-install` | Create Python 3.14 venv and install deps |
 | `make backend-run` | Run API with reload on `:8000` |
 | `make backend-test` / `lint` / `typecheck` | Backend quality gates |
 | `make db-migrate` / `db-reset` | Alembic migrate (reset destroys local volume) |
@@ -70,7 +70,7 @@ make ios-build
 
 Docker Compose provides:
 
-- PostgreSQL 16 on `localhost:5432`
+- PostgreSQL 18 on `localhost:5432`
 - MinIO on `localhost:9000` (console `:9001`)
 - Backend API on `localhost:8000`
 

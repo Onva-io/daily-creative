@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.13.0-slim-bookworm AS builder
+FROM python:3.14.6-slim-trixie AS builder
 
 WORKDIR /build
 
@@ -14,7 +14,7 @@ COPY app ./app
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir --prefix=/install .
 
-FROM python:3.13.0-slim-bookworm AS runtime
+FROM python:3.14.6-slim-trixie AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

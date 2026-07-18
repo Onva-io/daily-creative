@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16.6-alpine
+    image: postgres:18.4-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-dailysketch}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dailysketch}
@@ -16,7 +16,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -28,7 +28,7 @@ services:
       - minio_data:/data
 
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_started

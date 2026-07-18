@@ -231,7 +231,7 @@ Create:
 
 Configure:
 
-- Python 3.13;
+- Python 3.14;
 - FastAPI;
 - Pydantic v2;
 - SQLAlchemy 2.x;

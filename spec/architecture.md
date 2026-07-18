@@ -3,7 +3,7 @@
 **Version:** 1.1
 **Status:** Canonical technical baseline
 **Primary client:** Native iOS using Swift and SwiftUI
-**Backend:** Python 3.13 with FastAPI
+**Backend:** Python 3.14 with FastAPI
 **Database:** PostgreSQL
 **Authentication:** Descope
 **Media storage:** S3-compatible private object storage
@@ -167,7 +167,7 @@ Do not rely on free-text logs to understand production behaviour.
                   ▼
 ┌────────────────────────────────────┐
 │ FastAPI Backend                    │
-│ Python 3.13                        │
+│ Python 3.14                        │
 │                                    │
 │ - request validation               │
 │ - JWT verification                 │
@@ -247,7 +247,7 @@ Avoid:
 
 Use:
 
-- Python 3.13;
+- Python 3.14;
 - FastAPI;
 - Pydantic v2;
 - SQLAlchemy 2.x;
@@ -2169,7 +2169,7 @@ Future additions must preserve:
 
 - SwiftUI native iOS client.
 - Minimum supported operating system is iOS 18.0.
-- Python 3.13 FastAPI backend.
+- Python 3.14 FastAPI backend.
 - PostgreSQL as durable application store.
 - No Redis in version one.
 - Descope for authentication.

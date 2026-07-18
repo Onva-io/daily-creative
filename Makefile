@@ -24,7 +24,7 @@ logs:
 	$(COMPOSE) logs -f
 
 backend-install:
-	cd $(BACKEND) && uv venv .venv --python 3.13 && uv pip install -e ".[dev]"
+	cd $(BACKEND) && uv venv .venv --python 3.14 && uv pip install -e ".[dev]"
 
 backend-run:
 	cd $(BACKEND) && . .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
