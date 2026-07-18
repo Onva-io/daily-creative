@@ -1,0 +1,8 @@
+// Shared Debug / Release base settings.
+IPHONEOS_DEPLOYMENT_TARGET = 18.0
+SWIFT_VERSION = 6.0
+PRODUCT_BUNDLE_IDENTIFIER = com.example.dailysketch.dev
+// Owner must supply the Apple Developer Team ID before signed device builds.
+// DEVELOPMENT_TEAM =
+API_BASE_URL = http:/$()/localhost:8000
+APP_ENVIRONMENT = local

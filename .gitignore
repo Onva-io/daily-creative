@@ -1,0 +1,67 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.p12
+*.mobileprovision
+GoogleService-Info.plist
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+backend/.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Node / OpenAPI generator (local CLI cache only; committed client keeps api/generated/ios/.openapi-generator)
+node_modules/
+/openapitools.json
+
+# iOS / Xcode
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/DerivedData/
+DerivedData/
+*.xccheckout
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+.swiftpm/
+Package.resolved
+
+# Docker / local data
+.minio-data/
+.postgres-data/
+docker-data/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary
+tmp/
+temp/
+.cache/

@@ -1,0 +1,73 @@
+name: DailySketch
+options:
+  bundleIdPrefix: com.example.dailysketch
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  xcodeVersion: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "0.1.0"
+    GENERATE_INFOPLIST_FILE: YES
+configs:
+  Debug: debug
+  Release: release
+targets:
+  DailySketch:
+    type: application
+    platform: iOS
+    sources:
+      - path: DailySketch
+    info:
+      path: DailySketch/Resources/Info.plist
+      properties:
+        API_BASE_URL: $(API_BASE_URL)
+        APP_ENVIRONMENT: $(APP_ENVIRONMENT)
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.dailysketch.dev
+        PRODUCT_NAME: DailySketch
+        INFOPLIST_FILE: DailySketch/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGNING_ALLOWED: "YES"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_REQUIRED: "NO"
+    scheme:
+      testTargets:
+        - DailySketchTests
+        - DailySketchUITests
+  DailySketchTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DailySketchTests
+    dependencies:
+      - target: DailySketch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.dailysketch.dev.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DailySketch.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/DailySketch"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  DailySketchUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: DailySketchUITests
+    dependencies:
+      - target: DailySketch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.dailysketch.dev.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: DailySketch

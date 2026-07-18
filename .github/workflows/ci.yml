@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repository checks
+        run: make repo-checks
+
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install backend tooling
+        run: make backend-install
+      - name: Validate OpenAPI
+        run: make api-validate
+      - name: Ensure generated client is committed and fresh
+        run: |
+          if [ ! -d api/generated/ios ]; then
+            echo "api/generated/ios missing; run make api-generate-ios and commit" >&2
+            exit 1
+          fi
+          make api-check-generated
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.6-alpine
+        env:
+          POSTGRES_USER: dailysketch
+          POSTGRES_PASSWORD: dailysketch
+          POSTGRES_DB: dailysketch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dailysketch -d dailysketch"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v5
+      - name: Install
+        run: make backend-install
+      - name: Lint
+        run: make backend-lint
+      - name: Typecheck
+        run: make backend-typecheck
+      - name: Test
+        run: make backend-test
+      - name: Apply migrations
+        run: make db-migrate
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: make docker-build
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install detect-secrets
+        run: pip install detect-secrets==1.5.0
+      - name: Scan for secrets
+        run: detect-secrets scan --baseline .secrets.baseline --exclude-files 'api/generated/.*|spec/stitch_daily_sketch_journal\.zip|\.env$'
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: make ios-generate
+      - name: Build for simulator
+        run: |
+          xcodebuild \
+            -project ios/DailySketch.xcodeproj \
+            -scheme DailySketch \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.1' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Unit tests
+        run: |
+          xcodebuild \
+            -project ios/DailySketch.xcodeproj \
+            -scheme DailySketch \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.1' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:DailySketchTests \
+            test

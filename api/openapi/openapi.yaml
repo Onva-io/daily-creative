@@ -1,0 +1,86 @@
+openapi: 3.1.0
+info:
+  title: Daily Sketch API
+  version: 0.1.0
+  description: |
+    Contract-first OpenAPI definition for Daily Sketch.
+    Feature schemas expand from Phase 1 onward. Version-one API routes use the `/api/v1` prefix.
+servers:
+  - url: http://localhost:8000
+    description: Local development
+paths:
+  /health/live:
+    get:
+      operationId: getHealthLive
+      tags:
+        - health
+      summary: Liveness probe
+      description: Confirms the process can respond. Does not check dependencies.
+      responses:
+        "200":
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLiveResponse"
+              example:
+                status: ok
+  /health/ready:
+    get:
+      operationId: getHealthReady
+      tags:
+        - health
+      summary: Readiness probe
+      description: Confirms required configuration and database connectivity.
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+              example:
+                status: ok
+                checks:
+                  database: ok
+                  storage_config: ok
+        "503":
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
+              example:
+                status: unavailable
+                checks:
+                  database: unavailable
+                  storage_config: ok
+components:
+  schemas:
+    HealthLiveResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+    HealthReadyResponse:
+      type: object
+      required:
+        - status
+        - checks
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - unavailable
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+tags:
+  - name: health
+    description: Process health probes
