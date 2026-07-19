@@ -45,6 +45,12 @@ class UploadRepository:
         result = await self._session.execute(select(Upload).where(Upload.id == upload_id))
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, upload_ids: list[uuid.UUID]) -> dict[uuid.UUID, Upload]:
+        if not upload_ids:
+            return {}
+        result = await self._session.execute(select(Upload).where(Upload.id.in_(upload_ids)))
+        return {upload.id: upload for upload in result.scalars().all()}
+
     async def save(self, upload: Upload) -> Upload:
         await self._session.commit()
         await self._session.refresh(upload)

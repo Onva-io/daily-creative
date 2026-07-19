@@ -102,7 +102,7 @@ open class MeAPI {
     /**
      Update current user profile
      - PATCH /api/v1/me
-     - Updates the authenticated user's public profile fields. Setting a valid unique username and a non-empty display name completes the profile (`profile_completed` becomes true and status becomes active). Usernames are case-insensitive and must match `^[A-Za-z0-9_]{3,30}$`. 
+     - Updates the authenticated user's public profile fields. Setting a valid unique username and a non-empty display name completes the profile (`profile_completed` becomes true and status becomes active). Usernames are case-insensitive and must match `^[A-Za-z0-9_]{3,30}$`. Optionally attach a ready avatar upload via `avatar_upload_id` (purpose must be `avatar`). The upload is consumed on success. 
      - Bearer Token:
        - type: http
        - name: bearerAuth

@@ -82,6 +82,7 @@ class UpdateMeRequest(BaseModel):
     username: str | None = Field(default=None, min_length=3, max_length=30)
     display_name: str | None = Field(default=None, min_length=1, max_length=120)
     bio: str | None = Field(default=None, max_length=280)
+    avatar_upload_id: UUID | None = None
 
 
 class CurrentUserResponse(BaseModel):
@@ -92,6 +93,7 @@ class CurrentUserResponse(BaseModel):
     display_name: str
     profile_completed: bool
     status: UserStatusSchema
+    avatar_url: str | None
     preferences: PreferencesSummary
 
     @classmethod
@@ -99,6 +101,8 @@ class CurrentUserResponse(BaseModel):
         cls,
         user: User,
         preferences: PreferencesSummary | None = None,
+        *,
+        avatar_url: str | None = None,
     ) -> CurrentUserResponse:
         return cls(
             id=user.id,
@@ -106,6 +110,7 @@ class CurrentUserResponse(BaseModel):
             display_name=user.display_name,
             profile_completed=user.profile_completed_at is not None,
             status=UserStatusSchema(user.status.value),
+            avatar_url=avatar_url,
             preferences=preferences or PreferencesSummary(),
         )
 
@@ -118,3 +123,6 @@ class PublicUserResponse(BaseModel):
     display_name: str
     bio: str | None
     avatar_url: str | None
+    submission_count: int = Field(ge=0)
+    current_streak: int = Field(ge=0)
+    is_self: bool = False

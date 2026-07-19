@@ -125,11 +125,17 @@ enum PublicationAPIError: LocalizedError, Equatable {
     }
 }
 
+enum AppUploadPurpose: String, Sendable {
+    case submission
+    case avatar
+}
+
 protocol UploadServing: Sendable {
     func createUpload(
         accessToken: String,
         contentType: String,
         byteSize: Int,
+        purpose: AppUploadPurpose,
         idempotencyKey: String?
     ) async throws -> UploadSlotModel
 
@@ -198,12 +204,14 @@ struct UploadRepository: UploadServing {
         accessToken: String,
         contentType: String,
         byteSize: Int,
+        purpose: AppUploadPurpose,
         idempotencyKey: String?
     ) async throws -> UploadSlotModel {
         configureClient(accessToken: accessToken)
         do {
+            let apiPurpose: UploadPurpose = purpose == .avatar ? .avatar : .submission
             let request = CreateUploadRequest(
-                purpose: .submission,
+                purpose: apiPurpose,
                 contentType: contentType,
                 byteSize: byteSize
             )
@@ -410,9 +418,11 @@ final class RecordingUploadRepository: UploadServing, @unchecked Sendable {
         accessToken: String,
         contentType: String,
         byteSize: Int,
+        purpose: AppUploadPurpose,
         idempotencyKey: String?
     ) async throws -> UploadSlotModel {
         createCallCount += 1
+        _ = purpose
         if let createError { throw createError }
         if let nextSlot { return nextSlot }
         return UploadSlotModel(

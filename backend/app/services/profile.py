@@ -2,35 +2,67 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import uuid
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError
+from app.core.pagination import decode_cursor, encode_cursor
+from app.core.settings import Settings, get_settings
 from app.core.usernames import (
     is_reserved_username,
     is_valid_username_format,
     normalize_username,
 )
+from app.models.upload import UploadPurpose, UploadStatus
 from app.models.user import User, UserStatus
+from app.repositories.likes import LikeRepository
+from app.repositories.submissions import SubmissionRepository
+from app.repositories.uploads import UploadRepository
 from app.repositories.users import UserRepository
+from app.schemas.feed import FeedItem, RecentFeedResponse
 from app.schemas.me import (
     CurrentUserResponse,
     PreferencesSummary,
     PublicUserResponse,
     UpdateMeRequest,
 )
+from app.services.feed_items import build_feed_item
+from app.services.media_urls import resolve_avatar_url
 from app.services.preferences import PreferencesService
+from app.services.streaks import compute_current_streak
+from app.storage.base import StorageAdapter
 
 
 class ProfileService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        clock: Clock | None = None,
+        storage: StorageAdapter | None = None,
+        settings: Settings | None = None,
+    ) -> None:
+        self._session = session
         self._users = UserRepository(session)
+        self._uploads = UploadRepository(session)
+        self._submissions = SubmissionRepository(session)
+        self._likes = LikeRepository(session)
         self._preferences_service = PreferencesService(session)
+        self._clock = clock or SystemClock()
+        self._storage = storage
+        self._settings = settings or get_settings()
 
     async def get_current_user_response(self, user: User) -> CurrentUserResponse:
         prefs = await self._preferences_service.get_or_create(user.id)
-        return CurrentUserResponse.from_user(user, PreferencesSummary.from_orm_prefs(prefs))
+        avatar_url = await self._resolve_user_avatar_url(user)
+        return CurrentUserResponse.from_user(
+            user,
+            PreferencesSummary.from_orm_prefs(prefs),
+            avatar_url=avatar_url,
+        )
 
     async def update_me(self, user: User, payload: UpdateMeRequest) -> CurrentUserResponse:
         username = payload.username
@@ -76,6 +108,14 @@ class ProfileService:
         if "bio" in payload.model_fields_set:
             bio_sentinel = payload.bio
 
+        avatar_upload_id_sentinel: object = ...
+        if "avatar_upload_id" in payload.model_fields_set:
+            assert payload.avatar_upload_id is not None
+            avatar_upload_id_sentinel = await self._consume_avatar_upload(
+                user=user,
+                avatar_upload_id=payload.avatar_upload_id,
+            )
+
         effective_username = username if username is not None else user.username
         effective_display = display_name if display_name is not None else user.display_name
         should_complete = (
@@ -97,12 +137,94 @@ class ProfileService:
             username_normalized=username_normalized,
             display_name=display_name,
             bio=bio_sentinel,
+            avatar_upload_id=avatar_upload_id_sentinel,
             status=status_update,
             profile_completed_at=completed_at,
         )
         return await self.get_current_user_response(user)
 
-    async def get_public_user(self, username: str) -> PublicUserResponse:
+    async def get_public_user(
+        self,
+        username: str,
+        *,
+        viewer: User | None = None,
+    ) -> PublicUserResponse:
+        user = await self._require_public_profile(username)
+        submission_count = await self._submissions.count_user_published(user.id)
+        prompt_dates = await self._submissions.published_prompt_dates(user.id)
+        current_streak = compute_current_streak(prompt_dates, today=self._clock.today())
+        avatar_url = await self._resolve_user_avatar_url(user)
+        return PublicUserResponse(
+            id=user.id,
+            username=user.username or "",
+            display_name=user.display_name,
+            bio=user.bio,
+            avatar_url=avatar_url,
+            submission_count=submission_count,
+            current_streak=current_streak,
+            is_self=viewer is not None and viewer.id == user.id,
+        )
+
+    async def get_user_submissions(
+        self,
+        username: str,
+        *,
+        cursor: str | None = None,
+        limit: int = 20,
+        viewer: User | None = None,
+    ) -> RecentFeedResponse:
+        if self._storage is None:
+            raise RuntimeError("Storage adapter is required for profile submissions")
+
+        user = await self._require_public_profile(username)
+        cursor_published_at = None
+        cursor_id = None
+        if cursor:
+            cursor_published_at, cursor_id = decode_cursor(cursor)
+
+        rows = await self._submissions.list_user_published(
+            user_id=user.id,
+            limit=limit + 1,
+            cursor_published_at=cursor_published_at,
+            cursor_id=cursor_id,
+            viewer_id=viewer.id if viewer is not None else None,
+        )
+        page_rows = rows[:limit]
+        next_cursor: str | None = None
+        if len(rows) > limit:
+            last = page_rows[-1].submission
+            next_cursor = encode_cursor(
+                published_at=last.published_at,
+                submission_id=last.id,
+            )
+
+        liked_ids: set[uuid.UUID] = set()
+        if viewer is not None and page_rows:
+            liked_ids = await self._likes.liked_submission_ids(
+                user_id=viewer.id,
+                submission_ids=[row.submission.id for row in page_rows],
+            )
+
+        expires_at = self._clock.now() + timedelta(
+            seconds=self._settings.signed_read_expiry_seconds
+        )
+        avatar_url = await self._resolve_user_avatar_url(user, expires_at=expires_at)
+
+        items: list[FeedItem] = []
+        for row in page_rows:
+            items.append(
+                await build_feed_item(
+                    row=row,
+                    viewer=viewer,
+                    storage=self._storage,
+                    expires_at=expires_at,
+                    viewer_has_liked=row.submission.id in liked_ids,
+                    avatar_url=avatar_url,
+                )
+            )
+        return RecentFeedResponse(items=items, next_cursor=next_cursor)
+
+    async def _require_public_profile(self, username: str) -> User:
         normalized = normalize_username(username)
         user = await self._users.get_by_username_normalized(normalized)
         if (
@@ -117,12 +239,75 @@ class ProfileService:
                 message="The requested profile could not be found.",
                 status_code=404,
             )
-        return PublicUserResponse(
-            id=user.id,
-            username=user.username,
-            display_name=user.display_name,
-            bio=user.bio,
-            avatar_url=None,
+        return user
+
+    async def _consume_avatar_upload(
+        self,
+        *,
+        user: User,
+        avatar_upload_id: uuid.UUID,
+    ) -> uuid.UUID:
+        # Idempotent retry: same avatar already attached and previously consumed.
+        if user.avatar_upload_id == avatar_upload_id:
+            existing = await self._uploads.get_by_id(avatar_upload_id)
+            if (
+                existing is not None
+                and existing.user_id == user.id
+                and existing.purpose == UploadPurpose.avatar
+                and existing.status == UploadStatus.consumed
+            ):
+                return avatar_upload_id
+
+        upload = await self._uploads.get_by_id(avatar_upload_id)
+        if upload is None or upload.user_id != user.id:
+            raise AppError(
+                code="upload_not_found",
+                message="The requested upload could not be found.",
+                status_code=404,
+            )
+        if upload.purpose != UploadPurpose.avatar:
+            raise AppError(
+                code="avatar_upload_invalid",
+                message="That upload cannot be used as an avatar.",
+                status_code=422,
+            )
+        if upload.status == UploadStatus.consumed:
+            raise AppError(
+                code="upload_already_consumed",
+                message="This upload has already been used.",
+                status_code=409,
+            )
+        if upload.status != UploadStatus.ready:
+            raise AppError(
+                code="upload_not_ready",
+                message="This upload is not ready to publish yet.",
+                status_code=422,
+                details={"status": upload.status.value},
+            )
+
+        await self._uploads.mark_consumed(
+            upload,
+            consumed_at=self._clock.now(),
+            commit=False,
+        )
+        return avatar_upload_id
+
+    async def _resolve_user_avatar_url(
+        self,
+        user: User,
+        *,
+        expires_at: datetime | None = None,
+    ) -> str | None:
+        if self._storage is None or user.avatar_upload_id is None:
+            return None
+        upload = await self._uploads.get_by_id(user.avatar_upload_id)
+        expiry = expires_at or (
+            self._clock.now() + timedelta(seconds=self._settings.signed_read_expiry_seconds)
+        )
+        return await resolve_avatar_url(
+            storage=self._storage,
+            upload=upload,
+            expires_at=expiry,
         )
 
     @staticmethod

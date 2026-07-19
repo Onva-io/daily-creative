@@ -19,4 +19,21 @@ struct CurrentUserProfile: Equatable, Sendable {
     let displayName: String
     let profileCompleted: Bool
     let status: String
+    let avatarURL: URL?
+
+    init(
+        id: UUID,
+        username: String?,
+        displayName: String,
+        profileCompleted: Bool,
+        status: String,
+        avatarURL: URL? = nil
+    ) {
+        self.id = id
+        self.username = username
+        self.displayName = displayName
+        self.profileCompleted = profileCompleted
+        self.status = status
+        self.avatarURL = avatarURL
+    }
 }

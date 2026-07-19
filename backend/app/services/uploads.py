@@ -214,11 +214,13 @@ class UploadService:
                 message="That image is too large to upload.",
                 status_code=422,
             )
-        if payload.purpose != UploadPurposeSchema.submission:
-            # Avatar uploads are deferred; reject until avatar flow is implemented.
+        if payload.purpose not in {
+            UploadPurposeSchema.submission,
+            UploadPurposeSchema.avatar,
+        }:
             raise AppError(
                 code="validation_error",
-                message="Only submission uploads are supported in this phase.",
+                message="That upload purpose is not supported.",
                 status_code=422,
             )
 

@@ -18,7 +18,7 @@ struct RootTabView: View {
             }
 
             NavigationStack(path: $navigation.profilePath) {
-                ProfilePlaceholderView()
+                ProfileView(mode: .own)
                     .navigationDestination(for: AppRoute.self) { route in
                         destination(for: route)
                     }
@@ -61,14 +61,15 @@ struct RootTabView: View {
                         dependencies.navigation.feedNeedsRefresh = true
                     },
                     onLikeChanged: { id, liked, count in
-                        // Feed refresh on return covers sync when Home reloads.
                         _ = (id, liked, count)
                         dependencies.navigation.feedNeedsRefresh = true
                     }
                 )
             )
         case .publicProfile(let username):
-            PublicProfilePlaceholderView(username: username)
+            ProfileView(mode: .other(username: username))
+        case .editProfile:
+            EditProfileView()
         }
     }
 }

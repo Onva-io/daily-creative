@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -33,7 +33,16 @@ class User(Base):
     username_normalized: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    avatar_upload_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    avatar_upload_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "uploads.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_users_avatar_upload_id",
+        ),
+        nullable=True,
+    )
     status: Mapped[UserStatus] = mapped_column(
         Enum(UserStatus, name="user_status", native_enum=True),
         nullable=False,

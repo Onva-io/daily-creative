@@ -280,6 +280,18 @@ class SubmissionService:
             key=thumbnail_key,
             expires_at=expires_at,
         )
+        avatar_url = None
+        if user.avatar_upload_id is not None:
+            avatar_upload = await self._uploads.get_by_id(user.avatar_upload_id)
+            if avatar_upload is not None:
+                avatar_display_key = self._storage.derivative_key(
+                    original_key=avatar_upload.storage_key,
+                    kind="display",
+                )
+                avatar_url = await self._storage.read_url(
+                    key=avatar_display_key,
+                    expires_at=expires_at,
+                )
         is_owner = viewer is not None and viewer.id == submission.user_id
         viewer_has_liked = False
         if viewer is not None:
@@ -296,6 +308,7 @@ class SubmissionService:
             thumbnail_url=thumbnail_url,
             is_owner=is_owner,
             viewer_has_liked=viewer_has_liked,
+            avatar_url=avatar_url,
         )
 
 

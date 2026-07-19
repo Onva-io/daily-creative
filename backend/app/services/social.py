@@ -22,6 +22,7 @@ from app.repositories.idempotency import IdempotencyRepository
 from app.repositories.likes import LikeRepository
 from app.repositories.reflections import ReflectionRepository
 from app.repositories.submissions import SubmissionRepository
+from app.repositories.uploads import UploadRepository
 from app.repositories.users import UserRepository
 from app.schemas.feed import FeedUserSummary
 from app.schemas.social import (
@@ -30,7 +31,9 @@ from app.schemas.social import (
     ReflectionListResponse,
     ReflectionResponse,
 )
+from app.services.media_urls import resolve_avatar_url, resolve_avatar_urls
 from app.services.profile import ProfileService
+from app.storage.base import StorageAdapter
 
 CREATE_REFLECTION_ENDPOINT = "POST /api/v1/submissions/{submission_id}/reflections"
 
@@ -43,16 +46,19 @@ class SocialService:
         session: AsyncSession,
         clock: Clock,
         settings: Settings | None = None,
+        storage: StorageAdapter | None = None,
     ) -> None:
         self._session = session
         self._likes = LikeRepository(session)
         self._reflections = ReflectionRepository(session)
         self._activity = ActivityEventRepository(session)
         self._submissions = SubmissionRepository(session)
+        self._uploads = UploadRepository(session)
         self._users = UserRepository(session)
         self._idempotency = IdempotencyRepository(session)
         self._clock = clock
         self._settings = settings or get_settings()
+        self._storage = storage
 
     async def like(self, *, user: User, submission_id: uuid.UUID) -> LikeState:
         submission = await self._require_visible_submission(submission_id)
@@ -120,14 +126,35 @@ class SocialService:
                 reflection_id=last.id,
             )
 
-        items = [
-            self._to_reflection_response(
-                reflection=row.reflection,
-                author=row.user,
-                viewer=viewer,
+        expires_at = self._clock.now() + timedelta(
+            seconds=self._settings.signed_read_expiry_seconds
+        )
+        avatar_urls: dict[uuid.UUID, str | None] = {}
+        if self._storage is not None and page_rows:
+            avatar_upload_ids = [row.user.avatar_upload_id for row in page_rows]
+            uploads_by_id = await self._uploads.get_by_ids(
+                [upload_id for upload_id in avatar_upload_ids if upload_id is not None]
             )
-            for row in page_rows
-        ]
+            avatar_urls = await resolve_avatar_urls(
+                storage=self._storage,
+                uploads_by_id=uploads_by_id,
+                avatar_upload_ids=avatar_upload_ids,
+                expires_at=expires_at,
+            )
+
+        items = []
+        for row in page_rows:
+            avatar_url = None
+            if row.user.avatar_upload_id is not None:
+                avatar_url = avatar_urls.get(row.user.avatar_upload_id)
+            items.append(
+                self._to_reflection_response(
+                    reflection=row.reflection,
+                    author=row.user,
+                    viewer=viewer,
+                    avatar_url=avatar_url,
+                )
+            )
         return ReflectionListResponse(items=items, next_cursor=next_cursor)
 
     async def create_reflection(
@@ -181,10 +208,21 @@ class SocialService:
         await self._session.commit()
         await self._session.refresh(reflection)
 
+        avatar_url = None
+        if self._storage is not None and user.avatar_upload_id is not None:
+            avatar_upload = await self._uploads.get_by_id(user.avatar_upload_id)
+            avatar_url = await resolve_avatar_url(
+                storage=self._storage,
+                upload=avatar_upload,
+                expires_at=self._clock.now()
+                + timedelta(seconds=self._settings.signed_read_expiry_seconds),
+            )
+
         response = self._to_reflection_response(
             reflection=reflection,
             author=user,
             viewer=user,
+            avatar_url=avatar_url,
         )
         if idempotency_key:
             await self._idempotency.put(
@@ -263,6 +301,7 @@ class SocialService:
         reflection: Reflection,
         author: User,
         viewer: User | None,
+        avatar_url: str | None = None,
     ) -> ReflectionResponse:
         return ReflectionResponse(
             id=reflection.id,
@@ -271,7 +310,7 @@ class SocialService:
                 id=author.id,
                 username=author.username or "",
                 display_name=author.display_name,
-                avatar_url=None,
+                avatar_url=avatar_url,
             ),
             body=reflection.body,
             created_at=reflection.created_at,

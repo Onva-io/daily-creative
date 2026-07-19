@@ -9,6 +9,7 @@ final class AppDependencies {
     let descopeAuthService: DescopeAuthService?
     let preferencesService: any PreferencesServing
     let profileUpdater: any ProfileUpdating
+    let profileRepository: any ProfileFetching
     let promptRepository: PromptRepository
     let sketchSessionRepository: any SketchSessionServing
     let uploadRepository: any UploadServing
@@ -29,6 +30,7 @@ final class AppDependencies {
         descopeAuthService: DescopeAuthService? = nil,
         preferencesService: any PreferencesServing,
         profileUpdater: any ProfileUpdating,
+        profileRepository: any ProfileFetching,
         promptRepository: PromptRepository,
         sketchSessionRepository: any SketchSessionServing,
         uploadRepository: any UploadServing,
@@ -48,6 +50,7 @@ final class AppDependencies {
         self.descopeAuthService = descopeAuthService
         self.preferencesService = preferencesService
         self.profileUpdater = profileUpdater
+        self.profileRepository = profileRepository
         self.promptRepository = promptRepository
         self.sketchSessionRepository = sketchSessionRepository
         self.uploadRepository = uploadRepository
@@ -85,6 +88,7 @@ final class AppDependencies {
     static var live: AppDependencies {
         let environment = AppEnvironment.current
         let repository = MeRepository(baseURL: environment.apiBaseURL)
+        let profileRepository = ProfileRepository(baseURL: environment.apiBaseURL)
         let promptRepository = PromptRepository(baseURL: environment.apiBaseURL)
         let sketchSessionRepository = SketchSessionRepository(baseURL: environment.apiBaseURL)
         let uploadRepository = UploadRepository(baseURL: environment.apiBaseURL)
@@ -111,6 +115,7 @@ final class AppDependencies {
                 descopeAuthService: nil,
                 preferencesService: repository,
                 profileUpdater: repository,
+                profileRepository: profileRepository,
                 promptRepository: promptRepository,
                 sketchSessionRepository: sketchSessionRepository,
                 uploadRepository: uploadRepository,
@@ -137,6 +142,7 @@ final class AppDependencies {
             descopeAuthService: descope,
             preferencesService: repository,
             profileUpdater: repository,
+            profileRepository: profileRepository,
             promptRepository: promptRepository,
             sketchSessionRepository: sketchSessionRepository,
             uploadRepository: uploadRepository,

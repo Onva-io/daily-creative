@@ -8,6 +8,9 @@ struct SubmissionDetailView: View {
     @State private var showsPlaceholderAction = false
     @State private var placeholderActionMessage = ""
     @State private var reflectionPendingDelete: ReflectionModel?
+    @State private var shareItems: [Any] = []
+    @State private var showsShareSheet = false
+    @State private var isPreparingShare = false
 
     init(model: SubmissionDetailViewModel) {
         self.model = model
@@ -114,6 +117,9 @@ struct SubmissionDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showsShareSheet) {
+            ActivityShareSheet(activityItems: shareItems)
+        }
         .task {
             await model.load()
         }
@@ -123,10 +129,11 @@ struct SubmissionDetailView: View {
     private var overflowMenu: some View {
         Menu {
             Button {
-                presentPlaceholder("Native share arrives in a later phase.")
+                Task { await prepareShare() }
             } label: {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
+            .disabled(isPreparingShare)
 
             if model.isOwner {
                 Button(role: .destructive) {
@@ -275,11 +282,28 @@ struct SubmissionDetailView: View {
                 kind: .share,
                 usesLabel: true,
                 action: {
-                    presentPlaceholder("Native share arrives in a later phase.")
+                    Task { await prepareShare() }
                 }
             )
             Spacer()
         }
+    }
+
+    private func prepareShare() async {
+        guard case .loaded(let submission) = model.state, !isPreparingShare else { return }
+        isPreparingShare = true
+        defer { isPreparingShare = false }
+
+        let image = await SubmissionImageDownloader.downloadImage(from: submission.imageURL)
+        let payload = SubmissionSharePayload.make(
+            promptWords: submission.promptWords,
+            displayName: submission.displayName,
+            username: submission.username,
+            image: image,
+            publicLink: nil
+        )
+        shareItems = payload.activityItems
+        showsShareSheet = true
     }
 
     @ViewBuilder

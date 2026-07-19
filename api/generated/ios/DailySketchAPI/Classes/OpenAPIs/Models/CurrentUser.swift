@@ -20,14 +20,17 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
     /** True when profile_completed_at is set. */
     public var profileCompleted: Bool
     public var status: UserStatus
+    /** Signed avatar display URL when an avatar is set; otherwise null. */
+    public var avatarUrl: String?
     public var preferences: PreferencesSummary
 
-    public init(id: UUID, username: String?, displayName: String, profileCompleted: Bool, status: UserStatus, preferences: PreferencesSummary) {
+    public init(id: UUID, username: String?, displayName: String, profileCompleted: Bool, status: UserStatus, avatarUrl: String?, preferences: PreferencesSummary) {
         self.id = id
         self.username = username
         self.displayName = displayName
         self.profileCompleted = profileCompleted
         self.status = status
+        self.avatarUrl = avatarUrl
         self.preferences = preferences
     }
 
@@ -37,6 +40,7 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
         case displayName = "display_name"
         case profileCompleted = "profile_completed"
         case status
+        case avatarUrl = "avatar_url"
         case preferences
     }
 
@@ -49,6 +53,7 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
         try container.encode(displayName, forKey: .displayName)
         try container.encode(profileCompleted, forKey: .profileCompleted)
         try container.encode(status, forKey: .status)
+        try container.encode(avatarUrl, forKey: .avatarUrl)
         try container.encode(preferences, forKey: .preferences)
     }
 }

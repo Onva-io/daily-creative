@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.daily_prompt import DailyPrompt
@@ -116,6 +116,75 @@ class SubmissionRepository:
             Submission.id.desc(),
         ).limit(limit)
 
+        return await self._map_feed_rows(statement)
+
+    async def list_user_published(
+        self,
+        *,
+        user_id: uuid.UUID,
+        limit: int,
+        cursor_published_at: datetime | None = None,
+        cursor_id: uuid.UUID | None = None,
+        viewer_id: uuid.UUID | None = None,
+    ) -> list[FeedRow]:
+        """Return published Submissions for one user in reverse-chronological order."""
+        statement = self._base_feed_select().where(Submission.user_id == user_id)
+
+        # Phase 11 will filter blocked relationships.
+        _ = viewer_id
+
+        if cursor_published_at is not None and cursor_id is not None:
+            statement = statement.where(
+                or_(
+                    Submission.published_at < cursor_published_at,
+                    and_(
+                        Submission.published_at == cursor_published_at,
+                        Submission.id < cursor_id,
+                    ),
+                )
+            )
+
+        statement = statement.order_by(
+            Submission.published_at.desc(),
+            Submission.id.desc(),
+        ).limit(limit)
+
+        return await self._map_feed_rows(statement)
+
+    async def count_user_published(self, user_id: uuid.UUID) -> int:
+        """Return the count of published, non-deleted public Submissions for a user."""
+        result = await self._session.execute(
+            select(func.count())
+            .select_from(Submission)
+            .where(
+                Submission.user_id == user_id,
+                Submission.status == SubmissionStatus.published,
+                Submission.deleted_at.is_(None),
+                Submission.visibility == SubmissionVisibility.public,
+            )
+        )
+        return int(result.scalar_one())
+
+    async def published_prompt_dates(self, user_id: uuid.UUID) -> list[date]:
+        """Return distinct Prompt Dates with at least one published Submission."""
+        result = await self._session.execute(
+            select(DailyPrompt.prompt_date)
+            .join(Submission, Submission.prompt_id == DailyPrompt.id)
+            .where(
+                Submission.user_id == user_id,
+                Submission.status == SubmissionStatus.published,
+                Submission.deleted_at.is_(None),
+                Submission.visibility == SubmissionVisibility.public,
+            )
+            .distinct()
+            .order_by(DailyPrompt.prompt_date.desc())
+        )
+        return list(result.scalars().all())
+
+    async def _map_feed_rows(
+        self,
+        statement: Select[tuple[Submission, User, DailyPrompt, SketchSession, Upload]],
+    ) -> list[FeedRow]:
         result = await self._session.execute(statement)
         rows: list[FeedRow] = []
         for submission, user, prompt, sketch_session, upload in result.all():

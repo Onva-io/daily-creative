@@ -10,7 +10,7 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Partial profile update. Omitted fields are left unchanged. */
+/** Partial profile update. Omitted fields are left unchanged. When &#x60;avatar_upload_id&#x60; is supplied, the upload must be owned by the caller, have &#x60;purpose: avatar&#x60;, and be in &#x60;ready&#x60; status (or already the caller&#39;s current avatar for idempotent retries). It is consumed on success. Errors include &#x60;upload_not_found&#x60;, &#x60;upload_not_ready&#x60;, &#x60;upload_already_consumed&#x60;, and &#x60;avatar_upload_invalid&#x60;.  */
 public struct UpdateMeRequest: Codable, JSONEncodable, Hashable {
 
     public static let usernameRule = StringRule(minLength: 3, maxLength: 30, pattern: nil)
@@ -21,17 +21,21 @@ public struct UpdateMeRequest: Codable, JSONEncodable, Hashable {
     public var displayName: String?
     /** Optional short bio. Null clears an existing bio. */
     public var bio: String?
+    /** Ready avatar upload to attach as the current avatar. */
+    public var avatarUploadId: UUID?
 
-    public init(username: String? = nil, displayName: String? = nil, bio: String? = nil) {
+    public init(username: String? = nil, displayName: String? = nil, bio: String? = nil, avatarUploadId: UUID? = nil) {
         self.username = username
         self.displayName = displayName
         self.bio = bio
+        self.avatarUploadId = avatarUploadId
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case username
         case displayName = "display_name"
         case bio
+        case avatarUploadId = "avatar_upload_id"
     }
 
     // Encodable protocol methods
@@ -41,6 +45,7 @@ public struct UpdateMeRequest: Codable, JSONEncodable, Hashable {
         try container.encodeIfPresent(username, forKey: .username)
         try container.encodeIfPresent(displayName, forKey: .displayName)
         try container.encodeIfPresent(bio, forKey: .bio)
+        try container.encodeIfPresent(avatarUploadId, forKey: .avatarUploadId)
     }
 }
 

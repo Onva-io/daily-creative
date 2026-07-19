@@ -237,6 +237,7 @@ final class ReviewSubmissionViewModel {
                 accessToken: token,
                 contentType: "image/jpeg",
                 byteSize: imageData.count,
+                purpose: .submission,
                 idempotencyKey: "upload-\(draft.id.uuidString)"
             )
             draft.uploadId = slot.id

@@ -10,7 +10,8 @@ protocol ProfileUpdating: Sendable {
         accessToken: String,
         username: String?,
         displayName: String?,
-        bio: String?
+        bio: String?,
+        avatarUploadId: UUID?
     ) async throws -> CurrentUserProfile
 }
 
@@ -39,11 +40,17 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing {
         accessToken: String,
         username: String?,
         displayName: String?,
-        bio: String?
+        bio: String?,
+        avatarUploadId: UUID?
     ) async throws -> CurrentUserProfile {
         configureClient(accessToken: accessToken)
         do {
-            let request = UpdateMeRequest(username: username, displayName: displayName, bio: bio)
+            let request = UpdateMeRequest(
+                username: username,
+                displayName: displayName,
+                bio: bio,
+                avatarUploadId: avatarUploadId
+            )
             let user = try await MeAPI.updateMe(updateMeRequest: request)
             return mapProfile(user)
         } catch {
@@ -101,7 +108,8 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing {
             username: user.username,
             displayName: user.displayName,
             profileCompleted: user.profileCompleted,
-            status: user.status.rawValue
+            status: user.status.rawValue,
+            avatarURL: user.avatarUrl.flatMap(URL.init(string:))
         )
     }
 
@@ -179,7 +187,8 @@ final class RecordingMeFetcher: MeFetching, ProfileUpdating, PreferencesServing,
         accessToken: String,
         username: String?,
         displayName: String?,
-        bio: String?
+        bio: String?,
+        avatarUploadId: UUID?
     ) async throws -> CurrentUserProfile {
         lastAccessToken = accessToken
         if let updateError {
@@ -189,8 +198,9 @@ final class RecordingMeFetcher: MeFetching, ProfileUpdating, PreferencesServing,
             id: profile.id,
             username: username ?? profile.username,
             displayName: displayName ?? profile.displayName,
-            profileCompleted: username != nil,
-            status: username != nil ? "active" : profile.status
+            profileCompleted: username != nil || profile.profileCompleted,
+            status: username != nil ? "active" : profile.status,
+            avatarURL: profile.avatarURL
         )
         return profile
     }

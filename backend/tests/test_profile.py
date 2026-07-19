@@ -221,10 +221,17 @@ async def test_public_profile_safe_fields_only(client: AsyncClient) -> None:
     assert body["display_name"] == "Matt"
     assert body["bio"] == "Public bio"
     assert body["avatar_url"] is None
+    assert body["submission_count"] == 0
+    assert body["current_streak"] == 0
+    assert body["is_self"] is False
     assert "preferences" not in body
     assert "descope_subject" not in body
     assert "status" not in body
     assert "email" not in body
+
+    owned = await client.get("/api/v1/users/Public_Matt", headers=headers)
+    assert owned.status_code == 200
+    assert owned.json()["is_self"] is True
 
 
 @requires_postgres

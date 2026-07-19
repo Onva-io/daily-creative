@@ -29,7 +29,7 @@ from app.models.submission import Submission  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User, UserStatus
 from app.models.user_preferences import UserPreferences  # noqa: F401
-from app.services.feed import caption_preview
+from app.services.feed_items import caption_preview
 from app.storage.base import get_storage_adapter
 from fake_storage import InMemoryStorageAdapter
 from jwt_helpers import StaticTokenVerifier, generate_rsa_keypair, mint_token

@@ -26,7 +26,7 @@ open class UsersAPI {
     /**
      Public profile by username
      - GET /api/v1/users/{username}
-     - Returns a public-safe projection of an active user with a completed profile. Does not require authentication. Excludes email, Descope subject, preferences, moderation internals, Drafts, and private session analytics. 
+     - Returns a public-safe projection of an active user with a completed profile. Available to guests and authenticated users. When authenticated, `is_self` is true when the viewer is the profile owner. Excludes email, Descope subject, preferences, moderation internals, Drafts, and private session analytics. Incomplete, suspended, and deleted profiles return 404. 
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter username: (path) Public username (case-insensitive lookup). 
      - returns: RequestBuilder<PublicUser> 
@@ -48,6 +48,54 @@ open class UsersAPI {
         let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
 
         let localVariableRequestBuilder: RequestBuilder<PublicUser>.Type = DailySketchAPIAPI.requestBuilderFactory.getBuilder()
+
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
+    }
+
+    /**
+     Public profile submission history
+     
+     - parameter username: (path) Public username (case-insensitive lookup). 
+     - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
+     - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
+     - returns: RecentFeed
+     */
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+    open class func getUserSubmissions(username: String, cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
+        return try await getUserSubmissionsWithRequestBuilder(username: username, cursor: cursor, limit: limit).execute().body
+    }
+
+    /**
+     Public profile submission history
+     - GET /api/v1/users/{username}/submissions
+     - Returns a reverse-chronological page of published Submissions for the given public username, ordered by `published_at DESC, id DESC`. Soft-deleted, hidden, removed, and non-public content is excluded. Available to guests and authenticated users. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. Incomplete, suspended, and deleted profiles return 404. Pass an opaque `cursor` from a previous page to continue keyset pagination without duplicates or skips under concurrent inserts. 
+     - responseHeaders: [X-Request-ID(UUID)]
+     - parameter username: (path) Public username (case-insensitive lookup). 
+     - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
+     - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
+     - returns: RequestBuilder<RecentFeed> 
+     */
+    open class func getUserSubmissionsWithRequestBuilder(username: String, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
+        var localVariablePath = "/api/v1/users/{username}/submissions"
+        let usernamePreEscape = "\(APIHelper.mapValueToPathItem(username))"
+        let usernamePostEscape = usernamePreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+        localVariablePath = localVariablePath.replacingOccurrences(of: "{username}", with: usernamePostEscape, options: .literal, range: nil)
+        let localVariableURLString = DailySketchAPIAPI.basePath + localVariablePath
+        let localVariableParameters: [String: Any]? = nil
+
+        var localVariableUrlComponents = URLComponents(string: localVariableURLString)
+        localVariableUrlComponents?.queryItems = APIHelper.mapValuesToQueryItems([
+            "cursor": (wrappedValue: cursor?.encodeToJSON(), isExplode: true),
+            "limit": (wrappedValue: limit?.encodeToJSON(), isExplode: true),
+        ])
+
+        let localVariableNillableHeaders: [String: Any?] = [
+            :
+        ]
+
+        let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
+
+        let localVariableRequestBuilder: RequestBuilder<RecentFeed>.Type = DailySketchAPIAPI.requestBuilderFactory.getBuilder()
 
         return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
     }

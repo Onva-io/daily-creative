@@ -13,6 +13,8 @@ import AnyCodable
 /** Public-safe user projection. Excludes private and moderation fields. */
 public struct PublicUser: Codable, JSONEncodable, Hashable {
 
+    public static let submissionCountRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: nil, exclusiveMaximum: false, multipleOf: nil)
+    public static let currentStreakRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: nil, exclusiveMaximum: false, multipleOf: nil)
     /** Canonical UUID string identifier. */
     public var id: UUID
     public var username: String
@@ -20,13 +22,22 @@ public struct PublicUser: Codable, JSONEncodable, Hashable {
     public var bio: String?
     /** Signed or CDN avatar URL when available; null until avatar upload exists. */
     public var avatarUrl: String?
+    /** Count of published, non-deleted Submissions on this profile. */
+    public var submissionCount: Int
+    /** Consecutive Prompt Dates (UTC) with at least one published Submission, ending today or yesterday. Multiple Submissions on the same date count once.  */
+    public var currentStreak: Int
+    /** True when the authenticated viewer is this profile owner. */
+    public var isSelf: Bool
 
-    public init(id: UUID, username: String, displayName: String, bio: String?, avatarUrl: String?) {
+    public init(id: UUID, username: String, displayName: String, bio: String?, avatarUrl: String?, submissionCount: Int, currentStreak: Int, isSelf: Bool) {
         self.id = id
         self.username = username
         self.displayName = displayName
         self.bio = bio
         self.avatarUrl = avatarUrl
+        self.submissionCount = submissionCount
+        self.currentStreak = currentStreak
+        self.isSelf = isSelf
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -35,6 +46,9 @@ public struct PublicUser: Codable, JSONEncodable, Hashable {
         case displayName = "display_name"
         case bio
         case avatarUrl = "avatar_url"
+        case submissionCount = "submission_count"
+        case currentStreak = "current_streak"
+        case isSelf = "is_self"
     }
 
     // Encodable protocol methods
@@ -46,6 +60,9 @@ public struct PublicUser: Codable, JSONEncodable, Hashable {
         try container.encode(displayName, forKey: .displayName)
         try container.encode(bio, forKey: .bio)
         try container.encode(avatarUrl, forKey: .avatarUrl)
+        try container.encode(submissionCount, forKey: .submissionCount)
+        try container.encode(currentStreak, forKey: .currentStreak)
+        try container.encode(isSelf, forKey: .isSelf)
     }
 }
 

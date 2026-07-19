@@ -3,22 +3,21 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import Clock
 from app.core.pagination import decode_cursor, encode_cursor
 from app.core.settings import Settings, get_settings
-from app.models.enums import TimerMode
 from app.models.user import User
 from app.repositories.likes import LikeRepository
-from app.repositories.submissions import FeedRow, SubmissionRepository
-from app.schemas.feed import FeedItem, FeedPromptSummary, FeedUserSummary, RecentFeedResponse
-from app.schemas.me import TimerModeSchema
+from app.repositories.submissions import SubmissionRepository
+from app.repositories.uploads import UploadRepository
+from app.schemas.feed import FeedItem, RecentFeedResponse
+from app.services.feed_items import build_feed_item
+from app.services.media_urls import resolve_avatar_urls
 from app.storage.base import StorageAdapter
-
-CAPTION_PREVIEW_MAX_LENGTH = 140
 
 
 class FeedService:
@@ -33,6 +32,7 @@ class FeedService:
     ) -> None:
         self._submissions = SubmissionRepository(session)
         self._likes = LikeRepository(session)
+        self._uploads = UploadRepository(session)
         self._clock = clock
         self._storage = storage
         self._settings = settings or get_settings()
@@ -76,83 +76,31 @@ class FeedService:
         expires_at = self._clock.now() + timedelta(
             seconds=self._settings.signed_read_expiry_seconds
         )
+        avatar_upload_ids = [row.user.avatar_upload_id for row in page_rows]
+        uploads_by_id = await self._uploads.get_by_ids(
+            [upload_id for upload_id in avatar_upload_ids if upload_id is not None]
+        )
+        avatars_by_upload_id = await resolve_avatar_urls(
+            storage=self._storage,
+            uploads_by_id=uploads_by_id,
+            avatar_upload_ids=avatar_upload_ids,
+            expires_at=expires_at,
+        )
+
         items: list[FeedItem] = []
         for row in page_rows:
+            avatar_url = None
+            if row.user.avatar_upload_id is not None:
+                avatar_url = avatars_by_upload_id.get(row.user.avatar_upload_id)
             items.append(
-                await self._to_feed_item(
+                await build_feed_item(
                     row=row,
                     viewer=viewer,
+                    storage=self._storage,
                     expires_at=expires_at,
                     viewer_has_liked=row.submission.id in liked_ids,
+                    avatar_url=avatar_url,
                 )
             )
 
         return RecentFeedResponse(items=items, next_cursor=next_cursor)
-
-    async def _to_feed_item(
-        self,
-        *,
-        row: FeedRow,
-        viewer: User | None,
-        expires_at: datetime,
-        viewer_has_liked: bool,
-    ) -> FeedItem:
-        display_key = self._storage.derivative_key(
-            original_key=row.upload.storage_key,
-            kind="display",
-        )
-        thumbnail_key = self._storage.derivative_key(
-            original_key=row.upload.storage_key,
-            kind="thumbnail",
-        )
-        image_url = await self._storage.read_url(key=display_key, expires_at=expires_at)
-        thumbnail_url = await self._storage.read_url(
-            key=thumbnail_key,
-            expires_at=expires_at,
-        )
-
-        timer_mode = TimerModeSchema(row.sketch_session.timer_mode.value)
-        if row.sketch_session.timer_mode == TimerMode.no_timer:
-            timer_seconds = None
-        else:
-            timer_seconds = row.sketch_session.selected_timer_seconds
-
-        is_owner = viewer is not None and viewer.id == row.submission.user_id
-        return FeedItem(
-            id=row.submission.id,
-            image_url=image_url,
-            thumbnail_url=thumbnail_url,
-            user=FeedUserSummary(
-                id=row.user.id,
-                username=row.user.username or "",
-                display_name=row.user.display_name,
-                avatar_url=None,
-            ),
-            prompt=FeedPromptSummary(
-                id=row.prompt.id,
-                prompt_date=row.prompt.prompt_date,
-                word_1=row.prompt.word_1,
-                word_2=row.prompt.word_2,
-                word_3=row.prompt.word_3,
-            ),
-            timer_mode=timer_mode,
-            timer_seconds=timer_seconds,
-            caption_preview=caption_preview(row.submission.caption),
-            like_count=row.submission.like_count,
-            reflection_count=row.submission.reflection_count,
-            viewer_has_liked=viewer_has_liked,
-            is_owner=is_owner,
-            published_at=row.submission.published_at,
-        )
-
-
-def caption_preview(caption: str | None) -> str | None:
-    """Truncate a caption for feed display."""
-    if caption is None:
-        return None
-    stripped = caption.strip()
-    if not stripped:
-        return None
-    if len(stripped) <= CAPTION_PREVIEW_MAX_LENGTH:
-        return stripped
-    return f"{stripped[: CAPTION_PREVIEW_MAX_LENGTH - 1]}…"

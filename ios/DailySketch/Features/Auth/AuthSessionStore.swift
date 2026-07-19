@@ -86,7 +86,8 @@ final class AuthSessionStore {
             accessToken: token,
             username: username,
             displayName: displayName,
-            bio: nil
+            bio: nil,
+            avatarUploadId: nil
         )
         currentUser = profile
     }

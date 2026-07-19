@@ -2,7 +2,7 @@
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
-This repository is a monorepo. Phase 9 delivers Likes and Reflections on top of Phase 8’s community feed and Submission Detail.
+This repository is a monorepo. Phase 10 delivers public profiles, streaks, avatar upload, and native sharing on top of Phase 9’s Likes and Reflections.
 
 ## Prerequisites
 
@@ -49,6 +49,17 @@ make ios-build
 | `ios/` | SwiftUI app (`DailySketch`) |
 | `spec/` | Product, design, architecture, implementation, infrastructure |
 
+## Phase 10 — Public Profiles, Streaks, and Native Sharing
+
+- **Contract:**
+  - `GET /api/v1/users/{username}` — public profile with `avatar_url`, `submission_count`, `current_streak`, and `is_self` (optional auth). Incomplete/suspended/deleted profiles → `404`.
+  - `GET /api/v1/users/{username}/submissions` — reverse-chronological cursor page reusing `RecentFeed` / `FeedItem`.
+  - `PATCH /api/v1/me` accepts optional `avatar_upload_id`; `CurrentUser` includes `avatar_url`. Avatar consumption errors: `upload_not_found`, `upload_not_ready`, `upload_already_consumed`, `avatar_upload_invalid`.
+  - `POST /api/v1/uploads` accepts `purpose: avatar` (processed like submission images).
+- **Backend:** Migration `0009_avatar_upload_fk` adds FK + index on `users.avatar_upload_id`. Streak = consecutive UTC Prompt Dates with ≥1 published Submission ending today or yesterday (multiple per day count once). Avatar display URLs populate profile, me, feed, detail, and reflection authors.
+- **iOS:** Own + other Profile screens with journal gallery cards, pagination, empty states, Edit Profile (username/bio + Change Photo avatar flow), settings gear on own profile. Submission Detail uses the system share sheet with a downloaded image + prompt/attribution/branding text — never a signed storage URL.
+- **Out of Phase 10:** Reporting, blocking, account deletion (Phase 11); activity inbox UI; public deep-link infrastructure.
+
 ## Phase 9 — Likes and Reflections
 
 - **Contract:**
@@ -58,16 +69,15 @@ make ios-build
   - `DELETE /api/v1/reflections/{reflection_id}` — author-only soft-delete (`204`).
 - **Backend:** Migration `0008_likes_reflections_activity` (`submission_likes`, `reflections`, `activity_events`). Conflict-safe counter updates; activity events for non-self actions only. Feed/detail `viewer_has_liked` is real (batch lookup on feed).
 - **iOS:** Optimistic Like on feed cards and detail (rollback on failure); Reflection thread + composer on detail; guest writes present the auth sheet and resume on success.
-- **Out of Phase 9:** Activity inbox UI, native share payload, public profiles/streaks (Phase 10), reporting/blocking (Phase 11).
-
+- **Out of Phase 9:** Activity inbox UI (later); reporting/blocking (Phase 11). Public profiles, streaks, and native share landed in Phase 10.
 ## Phase 8 — Community Feed and Submission Detail
 
 - **Contract (guests + optional auth):**
   - `GET /api/v1/feed/recent` — reverse-chronological cursor-paginated feed (`published_at DESC, id DESC`) with full `FeedItem` projections (image URLs, user/prompt summaries, timer metadata, caption preview, Like/Reflection counts, `viewer_has_liked`, `is_owner`).
   - `GET /api/v1/submissions/{submission_id}` — community detail; excludes soft-deleted/hidden/removed content and suspended/deleted authors.
 - **Backend:** Keyset cursor pagination (`invalid_cursor` → 422), single joined query (no N+1), published + active-author filtering, Phase 11 block-filter seam. Counts come from denormalised columns; Like state is Phase 9.
-- **iOS:** Home renders `SubmissionCard` list with pull-to-refresh and infinite scroll; artwork opens Detail; owner opens a Phase 10 public-profile placeholder. Detail shows owner row, prompt chips, date/timer, caption, social row, and owner delete with confirmation. Shared `URLCache` backs image loading.
-- **Out of Phase 8:** Real Likes/Reflections (Phase 9), full public profiles/streaks/native share payload (Phase 10), reporting/blocking (Phase 11).
+- **iOS:** Home renders `SubmissionCard` list with pull-to-refresh and infinite scroll; artwork opens Detail; owner opens public Profile. Detail shows owner row, prompt chips, date/timer, caption, social row, and owner delete with confirmation. Shared `URLCache` backs image loading.
+- **Out of Phase 8:** Real Likes/Reflections (Phase 9), full public profiles/streaks/native share (Phase 10), reporting/blocking (Phase 11).
 
 ## Phase 7 — Direct Upload and Submission Publication
 

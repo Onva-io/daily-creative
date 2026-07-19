@@ -19,6 +19,7 @@ from app.schemas.social import (
     ReflectionResponse,
 )
 from app.services.social import SocialService
+from app.storage.base import StorageAdapter, get_storage_adapter
 
 router = APIRouter(tags=["submissions"])
 reflections_router = APIRouter(tags=["reflections"])
@@ -31,8 +32,9 @@ async def like_submission(
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
+    storage: StorageAdapter = Depends(get_storage_adapter),
 ) -> LikeState:
-    return await SocialService(session, clock, settings).like(
+    return await SocialService(session, clock, settings, storage).like(
         user=user,
         submission_id=submission_id,
     )
@@ -45,8 +47,9 @@ async def unlike_submission(
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
+    storage: StorageAdapter = Depends(get_storage_adapter),
 ) -> LikeState:
-    return await SocialService(session, clock, settings).unlike(
+    return await SocialService(session, clock, settings, storage).unlike(
         user=user,
         submission_id=submission_id,
     )
@@ -64,8 +67,9 @@ async def list_reflections(
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
+    storage: StorageAdapter = Depends(get_storage_adapter),
 ) -> ReflectionListResponse:
-    return await SocialService(session, clock, settings).list_reflections(
+    return await SocialService(session, clock, settings, storage).list_reflections(
         submission_id=submission_id,
         cursor=cursor,
         limit=limit,
@@ -86,9 +90,10 @@ async def create_reflection(
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
+    storage: StorageAdapter = Depends(get_storage_adapter),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ReflectionResponse:
-    body, status_code = await SocialService(session, clock, settings).create_reflection(
+    body, status_code = await SocialService(session, clock, settings, storage).create_reflection(
         user=user,
         submission_id=submission_id,
         payload=payload,
@@ -105,8 +110,9 @@ async def delete_reflection(
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
+    storage: StorageAdapter = Depends(get_storage_adapter),
 ) -> Response:
-    await SocialService(session, clock, settings).delete_reflection(
+    await SocialService(session, clock, settings, storage).delete_reflection(
         user=user,
         reflection_id=reflection_id,
     )

@@ -72,6 +72,7 @@ class SubmissionResponse(BaseModel):
         thumbnail_url: str,
         is_owner: bool,
         viewer_has_liked: bool = False,
+        avatar_url: str | None = None,
     ) -> SubmissionResponse:
         timer_mode = TimerModeSchema(sketch_session.timer_mode.value)
         if sketch_session.timer_mode == TimerMode.no_timer:
@@ -95,7 +96,7 @@ class SubmissionResponse(BaseModel):
                 id=user.id,
                 username=user.username or "",
                 display_name=user.display_name,
-                avatar_url=None,
+                avatar_url=avatar_url,
             ),
             prompt=FeedPromptSummary(
                 id=prompt.id,

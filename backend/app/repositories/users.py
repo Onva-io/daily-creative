@@ -66,6 +66,7 @@ class UserRepository:
         username_normalized: str | None = None,
         display_name: str | None = None,
         bio: str | None | object = ...,
+        avatar_upload_id: uuid.UUID | None | object = ...,
         status: UserStatus | None = None,
         profile_completed_at: datetime | None | object = ...,
     ) -> User:
@@ -77,6 +78,8 @@ class UserRepository:
             user.display_name = display_name
         if bio is not ...:
             user.bio = bio  # type: ignore[assignment]
+        if avatar_upload_id is not ...:
+            user.avatar_upload_id = avatar_upload_id  # type: ignore[assignment]
         if status is not None:
             user.status = status
         if profile_completed_at is not ...:

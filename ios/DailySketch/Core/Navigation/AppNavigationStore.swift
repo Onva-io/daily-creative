@@ -7,6 +7,7 @@ enum AppRoute: Hashable {
     case profileCompletion
     case submissionDetail(UUID)
     case publicProfile(username: String)
+    case editProfile
 }
 
 @Observable
