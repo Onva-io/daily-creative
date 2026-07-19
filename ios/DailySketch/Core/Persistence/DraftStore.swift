@@ -18,6 +18,9 @@ struct LocalDraft: Codable, Equatable, Sendable, Identifiable {
     var updatedAt: Date
     var pendingAuthentication: Bool
     var pendingPublication: Bool
+    /// Stable Idempotency-Key for duplicate-safe Submission create retries.
+    var publicationIdempotencyKey: String? = nil
+    var uploadId: UUID? = nil
 
     var isRecoverable: Bool {
         !imageFileName.isEmpty

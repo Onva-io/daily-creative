@@ -50,10 +50,14 @@ final class HomeViewModelTests: XCTestCase {
         )
     }
 
-    private func makeModel(fetcher: RecordingPromptFetcher) -> HomeViewModel {
+    private func makeModel(
+        fetcher: RecordingPromptFetcher,
+        publishedStore: any PublishedSubmissionStoring = InMemoryPublishedSubmissionStore()
+    ) -> HomeViewModel {
         HomeViewModel(
             promptFetcher: fetcher,
             feedFetcher: fetcher,
+            publishedStore: publishedStore,
             sketchFlow: makeSketchFlow()
         )
     }
@@ -163,5 +167,55 @@ final class HomeViewModelTests: XCTestCase {
         }
         XCTAssertEqual(prompt.word1, "Chocolate")
         XCTAssertNotNil(model.cachedPrompt)
+    }
+
+    func testHomeCompletionStateAfterLocalPublication() async throws {
+        let fetcher = RecordingPromptFetcher()
+        let prompt = samplePrompt()
+        fetcher.prompt = prompt
+        let publishedStore = InMemoryPublishedSubmissionStore()
+        try publishedStore.save(
+            PublishedLocalSubmission(
+                id: UUID(),
+                promptId: prompt.id,
+                promptDate: prompt.promptDate,
+                timerMode: "countdown",
+                selectedTimerSeconds: 300,
+                caption: "done",
+                publishedAt: Date()
+            )
+        )
+        let model = makeModel(fetcher: fetcher, publishedStore: publishedStore)
+
+        await model.load()
+
+        XCTAssertTrue(model.hasSketchedToday)
+        XCTAssertEqual(model.primarySketchButtonTitle, "Create Another Sketch")
+        XCTAssertEqual(model.viewMySketchTitle, "View My Sketch")
+        XCTAssertEqual(model.todaysPublished.count, 1)
+        XCTAssertTrue(model.canStartSketch)
+    }
+
+    func testHomeCompletionPluralizesViewTitle() async throws {
+        let fetcher = RecordingPromptFetcher()
+        let prompt = samplePrompt()
+        fetcher.prompt = prompt
+        let publishedStore = InMemoryPublishedSubmissionStore()
+        for _ in 0..<2 {
+            try publishedStore.save(
+                PublishedLocalSubmission(
+                    id: UUID(),
+                    promptId: prompt.id,
+                    promptDate: prompt.promptDate,
+                    timerMode: "no_timer",
+                    selectedTimerSeconds: nil,
+                    caption: nil,
+                    publishedAt: Date()
+                )
+            )
+        }
+        let model = makeModel(fetcher: fetcher, publishedStore: publishedStore)
+        await model.load()
+        XCTAssertEqual(model.viewMySketchTitle, "View My Sketches")
     }
 }

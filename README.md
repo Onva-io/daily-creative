@@ -2,7 +2,7 @@
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
-This repository is a monorepo. Phase 6 delivers camera capture, local Drafts, and Review Submission on top of Phase 5’s Sketch Sessions.
+This repository is a monorepo. Phase 7 delivers direct upload and Submission publication on top of Phase 6’s camera, Drafts, and Review flow.
 
 ## Prerequisites
 
@@ -49,14 +49,30 @@ make ios-build
 | `ios/` | SwiftUI app (`DailySketch`) |
 | `spec/` | Product, design, architecture, implementation, infrastructure |
 
+## Phase 7 — Direct Upload and Submission Publication
+
+- **Contract (authenticated unless noted):**
+  - `POST /api/v1/uploads` — create a pending upload slot with a signed `PUT` URL (`Idempotency-Key` optional).
+  - `GET /api/v1/uploads/{upload_id}` — fetch owned upload status.
+  - `POST /api/v1/uploads/{upload_id}/complete` — verify object, process image, mark `ready`.
+  - `POST /api/v1/submissions` — atomically publish (`Idempotency-Key` required semantics + 7-day TTL).
+  - `GET /api/v1/submissions/{submission_id}` — public detail with optional auth (`is_owner` / `viewer_has_liked`).
+  - `DELETE /api/v1/submissions/{submission_id}` — owner soft-delete (`204`; subsequent `GET` → `404`).
+- **Storage:** MinIO/S3 via boto3 (`MinioStorageAdapter`). Server uses `STORAGE_ENDPOINT`; signed URLs handed to clients use `STORAGE_PUBLIC_ENDPOINT` when set (e.g. `http://localhost:9000`).
+- **Image processing:** Synchronous Pillow on complete — decode/validate, strip EXIF, normalise orientation, write display + thumbnail derivatives (see `spec/decisions/0006-s3-direct-uploads.md`, `0007-synchronous-image-processing.md`).
+- **Database:** `uploads` + `submissions` (migration `0007_uploads_submissions`) with counters, unique session/upload FKs, and feed-oriented indexes.
+- **iOS:** Review → create upload → signed PUT (progress) → complete → create submission; Draft deleted only after confirmed publication; local `PublishedSubmissionStore` drives Home “You sketched today” / View My Sketch / Create Another; minimal Submission Detail fetches `GET /submissions/{id}`. Profile-incomplete publishing routes to profile completion. Duplicate-safe retry reuses a persisted Idempotency-Key on the Draft.
+- **Tests:** Backend contract/integration tests use an in-memory fake storage adapter (CI does not require live MinIO for the default suite). Optional MinIO adapter tests run with `STORAGE_TEST=1`.
+- **Out of Phase 7:** Community feed cards/pagination, likes, reflections, full social Submission Detail, avatars, notifications, queues/Redis.
+
 ## Phase 6 — Camera, Local Drafts, and Review Submission
 
-- **Local only:** No OpenAPI or backend changes. Server upload and Submission publication remain Phase 7.
+- **Local only (at delivery):** Camera capture, Drafts, and Review UI. Server upload and Submission publication arrive in Phase 7 (above).
 - **Capture:** After Finish / Take Photo, a focused “Add your sketch” screen offers **Take Photo** (native camera) and **Choose from Library** (`PhotosUI`). Camera permission denial still allows library selection and deep-links to Settings.
-- **Review Submission:** Mandatory **Ready to share?** screen with image preview, prompt + timer metadata, optional caption (client limit 280 pending Phase 7 contract), **Replace/Retake**, **Submit to Community**, and **Save to Drafts**.
+- **Review Submission:** Mandatory **Ready to share?** screen with image preview, prompt + timer metadata, optional caption (280 chars), **Replace/Retake**, **Submit to Community**, and **Save to Drafts**.
 - **Drafts:** Metadata in Application Support JSON (`DraftStore`); JPEG files under `Application Support/DailySketch/Drafts/` with complete file protection (`DraftImageStore`). Never UserDefaults for image bytes. Retention purge defaults to 30 days on Home load.
 - **Guest checkpoint:** **Save Your Creativity** preserves the Draft through Create Account / Sign In and returns to Review; **Continue Later** saves and returns Home.
-- **Home recovery:** Draft card (**Ready when you are**) with Continue / Discard. Authenticated Submit in Phase 6 marks `pendingPublication` and shows a restrained “publishing arrives next” placeholder — no upload yet.
+- **Home recovery:** Draft card (**Ready when you are**) with Continue / Discard.
 - **Permissions:** `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in `Info.plist`.
 
 ## Phase 5 — Sketch Sessions and Timer Flow

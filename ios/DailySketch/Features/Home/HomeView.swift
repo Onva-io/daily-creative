@@ -21,6 +21,7 @@ struct HomeView: View {
                 let model = HomeViewModel(
                     promptFetcher: dependencies.promptRepository,
                     feedFetcher: dependencies.promptRepository,
+                    publishedStore: dependencies.publishedSubmissionStore,
                     sketchFlow: dependencies.makeSketchFlowViewModel()
                 )
                 viewModel = model
@@ -63,14 +64,24 @@ struct HomeView: View {
 
                 promptSection(model)
 
+                if model.hasSketchedToday {
+                    sketchedTodaySection(model)
+                }
+
                 if model.sketchFlow.isCreatingSession {
                     LoadingView(message: "Starting your sketch…")
                 }
 
                 PrimaryButton(
-                    title: "Start Sketch",
+                    title: model.primarySketchButtonTitle,
                     action: { model.startSketch() },
-                    isDisabled: !model.canStartSketch || model.sketchFlow.isCreatingSession
+                    isDisabled: !model.canStartSketch || model.sketchFlow.isCreatingSession,
+                    systemImage: model.hasSketchedToday ? "plus" : nil
+                )
+                .accessibilityHint(
+                    model.hasSketchedToday
+                        ? "Starts another sketch for today’s prompt"
+                        : "Starts today’s timed sketch session"
                 )
 
                 if let draft = model.sketchFlow.recoverableDraft {
@@ -205,6 +216,16 @@ struct HomeView: View {
                     }
             }
         }
+        .onChange(of: model.sketchFlow.needsProfileCompletionPresentation) { _, needsPresentation in
+            guard needsPresentation else { return }
+            if !dependencies.navigation.profilePath.contains(.profileCompletion) {
+                dependencies.navigation.profilePath.append(.profileCompletion)
+            }
+            model.sketchFlow.acknowledgeProfileCompletionPresentation()
+        }
+        .onChange(of: model.sketchFlow.lastPublishedSubmissionId) { _, _ in
+            model.refreshPublishedToday()
+        }
         .confirmationDialog(
             "Discard this draft?",
             isPresented: $showsDiscardDraftConfirmation,
@@ -217,6 +238,35 @@ struct HomeView: View {
         } message: {
             Text("This removes the local sketch image from this device.")
         }
+    }
+
+    private func sketchedTodaySection(_ model: HomeViewModel) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
+            HStack(spacing: AppSpacing.sm) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(AppColors.success)
+                    .accessibilityHidden(true)
+                Text("You sketched today")
+                    .font(AppTypography.headline)
+                    .foregroundStyle(AppColors.textPrimary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("You sketched today")
+
+            SecondaryButton(
+                title: model.viewMySketchTitle,
+                action: {
+                    if let first = model.todaysPublished.first {
+                        dependencies.navigation.homePath.append(.submissionDetail(first.id))
+                    }
+                }
+            )
+            .accessibilityHint("Opens your published sketch for today")
+        }
+        .padding(AppSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColors.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadii.large, style: .continuous))
     }
 
     private func recoveryBanner(_ model: HomeViewModel) -> some View {

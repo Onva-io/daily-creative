@@ -25,10 +25,41 @@ struct ReviewSubmissionView: View {
 
                     captionSection
 
+                    if model.isPublishing {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            ProgressView(value: model.uploadProgress)
+                                .tint(AppColors.primary)
+                                .accessibilityLabel(model.uploadProgressLabel)
+                                .accessibilityValue("\(Int((model.uploadProgress * 100).rounded())) percent")
+                            Text(model.uploadProgressLabel)
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                        }
+                    }
+
                     if let validationErrorMessage = model.validationErrorMessage {
                         Text(validationErrorMessage)
                             .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.danger)
+                    }
+
+                    if let publishErrorMessage = model.publishErrorMessage {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text(publishErrorMessage)
+                                .font(AppTypography.bodySmall)
+                                .foregroundStyle(AppColors.danger)
+                                .accessibilityLabel("Publish failed. \(publishErrorMessage)")
+                            PrimaryButton(
+                                title: "Retry Publish",
+                                action: { model.retryPublish() },
+                                isDisabled: model.isPublishing || model.isSaving
+                            )
+                            TertiaryTextButton(
+                                title: "Save to Drafts",
+                                action: { model.saveToDrafts() },
+                                isDisabled: model.isPublishing || model.isSaving
+                            )
+                        }
                     }
 
                     if let bannerMessage = model.bannerMessage {
@@ -37,17 +68,20 @@ struct ReviewSubmissionView: View {
                             .foregroundStyle(AppColors.success)
                     }
 
-                    PrimaryButton(
-                        title: "Submit to Community",
-                        action: { model.submitToCommunity() },
-                        isDisabled: model.isSaving
-                    )
+                    if model.publishErrorMessage == nil {
+                        PrimaryButton(
+                            title: model.isPublishing ? "Publishing…" : "Submit to Community",
+                            action: { model.submitToCommunity() },
+                            isDisabled: model.isSaving || model.isPublishing
+                        )
+                        .accessibilityHint("Uploads your sketch and publishes it to the community")
 
-                    TertiaryTextButton(
-                        title: "Save to Drafts",
-                        action: { model.saveToDrafts() },
-                        isDisabled: model.isSaving
-                    )
+                        TertiaryTextButton(
+                            title: "Save to Drafts",
+                            action: { model.saveToDrafts() },
+                            isDisabled: model.isSaving || model.isPublishing
+                        )
+                    }
                 }
                 .padding(.horizontal, AppSpacing.screenHorizontal)
                 .padding(.vertical, AppSpacing.lg)
@@ -56,19 +90,7 @@ struct ReviewSubmissionView: View {
             .background(AppColors.background.ignoresSafeArea())
             .navigationTitle("Review")
             .navigationBarTitleDisplayMode(.inline)
-            .alert(
-                "Publishing arrives next",
-                isPresented: Binding(
-                    get: { model.showsPublicationPlaceholder },
-                    set: { if !$0 { model.acknowledgePublicationPlaceholder() } }
-                )
-            ) {
-                Button("OK") {
-                    model.acknowledgePublicationPlaceholder()
-                }
-            } message: {
-                Text("Your sketch is saved as a Draft. Community upload arrives in the next update.")
-            }
+            .disabled(model.isPublishing)
         }
     }
 
@@ -106,6 +128,7 @@ struct ReviewSubmissionView: View {
             }
             .padding(AppSpacing.md)
             .accessibilityLabel("Replace or retake photo")
+            .disabled(model.isPublishing)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sketch preview")
@@ -140,6 +163,7 @@ struct ReviewSubmissionView: View {
             .background(AppColors.surfaceTertiary)
             .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
             .accessibilityLabel("Optional caption")
+            .disabled(model.isPublishing)
 
             if let characterCountLabel = model.characterCountLabel {
                 Text(characterCountLabel)
@@ -149,4 +173,67 @@ struct ReviewSubmissionView: View {
             }
         }
     }
+}
+
+#Preview("Normal") {
+    ReviewSubmissionView(
+        model: ReviewSubmissionViewModel(
+            draft: LocalDraft(
+                id: UUID(),
+                localSessionId: UUID(),
+                serverSessionId: nil,
+                promptId: UUID(),
+                promptWords: ["Chocolate", "Coffee", "Banana"],
+                promptAccessibilityLabel: "Today’s prompt: Chocolate, Coffee, Banana.",
+                promptDate: Date(),
+                timerMode: "countdown",
+                selectedTimerSeconds: 300,
+                sessionStartedAt: Date(),
+                imageFileName: "preview.jpg",
+                caption: nil,
+                createdAt: Date(),
+                updatedAt: Date(),
+                pendingAuthentication: false,
+                pendingPublication: false
+            ),
+            imageData: Data(),
+            draftStore: InMemoryDraftStore(),
+            imageStore: InMemoryDraftImageStore(),
+            isAuthenticated: { true },
+            onFinished: { _ in },
+            onReplaceRequested: {}
+        )
+    )
+}
+
+#Preview("Dark") {
+    ReviewSubmissionView(
+        model: ReviewSubmissionViewModel(
+            draft: LocalDraft(
+                id: UUID(),
+                localSessionId: UUID(),
+                serverSessionId: nil,
+                promptId: UUID(),
+                promptWords: ["Chocolate", "Coffee", "Banana"],
+                promptAccessibilityLabel: "Today’s prompt: Chocolate, Coffee, Banana.",
+                promptDate: Date(),
+                timerMode: "countdown",
+                selectedTimerSeconds: 300,
+                sessionStartedAt: Date(),
+                imageFileName: "preview.jpg",
+                caption: "A quiet still life.",
+                createdAt: Date(),
+                updatedAt: Date(),
+                pendingAuthentication: false,
+                pendingPublication: false
+            ),
+            imageData: Data(),
+            draftStore: InMemoryDraftStore(),
+            imageStore: InMemoryDraftImageStore(),
+            isAuthenticated: { true },
+            onFinished: { _ in },
+            onReplaceRequested: {}
+        )
+    )
+    .preferredColorScheme(.dark)
 }

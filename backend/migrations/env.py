@@ -12,7 +12,16 @@ from app.core.settings import get_settings
 from app.db.session import Base
 
 # Import models so Alembic metadata includes them.
-from app.models import DailyPrompt, User, UserPreferences  # noqa: F401
+from app.models import (  # noqa: F401
+    DailyPrompt,
+    IdempotencyKey,
+    SketchSession,
+    SketchSessionEvent,
+    Submission,
+    Upload,
+    User,
+    UserPreferences,
+)
 
 config = context.config
 

@@ -1,8 +1,4 @@
-"""Object-storage adapter interface.
-
-Phase 1 defines the contract only. Signed upload/read implementations arrive
-in Phase 7. The default adapter raises if invoked so missing wiring is obvious.
-"""
+"""Object-storage adapter interface for signed uploads and media operations."""
 
 from __future__ import annotations
 
@@ -10,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 from uuid import UUID
+
+from app.core.settings import get_settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +59,20 @@ class StorageAdapter(Protocol):
         """Delete a single object."""
         ...
 
+    async def download_object(self, *, key: str) -> bytes:
+        """Download object bytes."""
+        ...
+
+    async def put_object(
+        self,
+        *,
+        key: str,
+        body: bytes,
+        content_type: str,
+    ) -> ObjectMetadata:
+        """Write bytes to an object key."""
+        ...
+
     def derivative_key(self, *, original_key: str, kind: str) -> str:
         """Derive a stable object key for a display or thumbnail derivative."""
         ...
@@ -77,21 +89,35 @@ class NotConfiguredStorageAdapter:
         max_bytes: int,
         expires_at: datetime,
     ) -> SignedUpload:
-        raise NotImplementedError("Storage adapter is not configured in Phase 1.")
+        raise NotImplementedError("Storage adapter is not configured.")
 
     async def verify_object(self, *, key: str) -> ObjectMetadata:
-        raise NotImplementedError("Storage adapter is not configured in Phase 1.")
+        raise NotImplementedError("Storage adapter is not configured.")
 
     async def read_url(self, *, key: str, expires_at: datetime) -> str:
-        raise NotImplementedError("Storage adapter is not configured in Phase 1.")
+        raise NotImplementedError("Storage adapter is not configured.")
 
     async def delete_object(self, *, key: str) -> None:
-        raise NotImplementedError("Storage adapter is not configured in Phase 1.")
+        raise NotImplementedError("Storage adapter is not configured.")
+
+    async def download_object(self, *, key: str) -> bytes:
+        raise NotImplementedError("Storage adapter is not configured.")
+
+    async def put_object(
+        self,
+        *,
+        key: str,
+        body: bytes,
+        content_type: str,
+    ) -> ObjectMetadata:
+        raise NotImplementedError("Storage adapter is not configured.")
 
     def derivative_key(self, *, original_key: str, kind: str) -> str:
-        raise NotImplementedError("Storage adapter is not configured in Phase 1.")
+        raise NotImplementedError("Storage adapter is not configured.")
 
 
 def get_storage_adapter() -> StorageAdapter:
-    """FastAPI dependency returning the Phase 1 stub adapter."""
-    return NotConfiguredStorageAdapter()
+    """FastAPI dependency returning the configured S3-compatible adapter."""
+    from app.storage.minio import MinioStorageAdapter
+
+    return MinioStorageAdapter(get_settings())

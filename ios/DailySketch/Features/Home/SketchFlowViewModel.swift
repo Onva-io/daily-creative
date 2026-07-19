@@ -20,6 +20,8 @@ final class SketchFlowViewModel {
     var syncBannerMessage: String?
     var captureValidationMessage: String?
     var draftSavedBanner: String?
+    var needsProfileCompletionPresentation = false
+    var lastPublishedSubmissionId: UUID?
 
     private(set) var sessionViewModel: SketchSessionViewModel?
     private(set) var reviewViewModel: ReviewSubmissionViewModel?
@@ -35,7 +37,12 @@ final class SketchFlowViewModel {
     private let draftStore: any DraftStoring
     private let imageStore: any DraftImageStoring
     private let cameraAuthorizer: any CameraAuthorizing
+    private let uploadService: (any UploadServing)?
+    private let submissionService: (any SubmissionServing)?
+    private let directUploader: (any DirectUploadTransporting)?
+    private let publishedStore: (any PublishedSubmissionStoring)?
     private let dateProvider: any DateProviding
+    private let onPublishedToday: (() -> Void)?
     private var cachedAuthenticatedPreference: TimerPreferenceOption?
     private var replacingImageInReview = false
 
@@ -50,7 +57,12 @@ final class SketchFlowViewModel {
         draftStore: any DraftStoring,
         imageStore: any DraftImageStoring,
         cameraAuthorizer: any CameraAuthorizing,
-        dateProvider: any DateProviding = SystemDateProvider()
+        uploadService: (any UploadServing)? = nil,
+        submissionService: (any SubmissionServing)? = nil,
+        directUploader: (any DirectUploadTransporting)? = nil,
+        publishedStore: (any PublishedSubmissionStoring)? = nil,
+        dateProvider: any DateProviding = SystemDateProvider(),
+        onPublishedToday: (() -> Void)? = nil
     ) {
         self.auth = auth
         self.preferencesService = preferencesService
@@ -60,7 +72,12 @@ final class SketchFlowViewModel {
         self.draftStore = draftStore
         self.imageStore = imageStore
         self.cameraAuthorizer = cameraAuthorizer
+        self.uploadService = uploadService
+        self.submissionService = submissionService
+        self.directUploader = directUploader
+        self.publishedStore = publishedStore
         self.dateProvider = dateProvider
+        self.onPublishedToday = onPublishedToday
     }
 
     func prepareOnAppear() {
@@ -221,10 +238,8 @@ final class SketchFlowViewModel {
 
     func handleReviewOutcome(_ outcome: ReviewSubmissionOutcome) {
         switch outcome {
-        case .savedToDrafts, .continueLater, .awaitingPublication:
-            draftSavedBanner = outcome == .awaitingPublication
-                ? "Saved as a Draft. Publishing arrives next."
-                : "Draft saved."
+        case .savedToDrafts, .continueLater:
+            draftSavedBanner = "Draft saved."
             showsReviewSubmission = false
             showsSaveYourCreativity = false
             showsAuthSheet = false
@@ -232,7 +247,27 @@ final class SketchFlowViewModel {
             refreshDraftState()
         case .needsAuthentication:
             showsSaveYourCreativity = true
+        case .needsProfileCompletion:
+            needsProfileCompletionPresentation = true
+            showsReviewSubmission = true
+        case .published(let submission):
+            let draftId = reviewViewModel?.draft.id
+            if let draftId {
+                deleteDraftAfterPublication(id: draftId)
+            }
+            lastPublishedSubmissionId = submission.id
+            draftSavedBanner = "Published to the community."
+            showsReviewSubmission = false
+            showsSaveYourCreativity = false
+            showsAuthSheet = false
+            reviewViewModel = nil
+            refreshDraftState()
+            onPublishedToday?()
         }
+    }
+
+    func acknowledgeProfileCompletionPresentation() {
+        needsProfileCompletionPresentation = false
     }
 
     func continueLaterFromCreativity() {
@@ -273,6 +308,13 @@ final class SketchFlowViewModel {
         showsSaveYourCreativity = false
         reviewViewModel?.markAuthenticated()
         showsReviewSubmission = true
+        if auth.needsProfileCompletion {
+            needsProfileCompletionPresentation = true
+            return
+        }
+        if reviewViewModel?.draft.pendingPublication == true {
+            reviewViewModel?.retryPublish()
+        }
     }
 
     func reopenDraft(_ draft: LocalDraft? = nil) {
@@ -281,6 +323,9 @@ final class SketchFlowViewModel {
         do {
             let data = try imageStore.readData(fileName: target.imageFileName)
             presentReview(for: target, imageData: data)
+            if target.pendingPublication, auth.isAuthenticated, !auth.needsProfileCompletion {
+                reviewViewModel?.retryPublish()
+            }
         } catch {
             syncBannerMessage = "Couldn’t open that Draft."
         }
@@ -316,7 +361,17 @@ final class SketchFlowViewModel {
             imageData: imageData,
             draftStore: draftStore,
             imageStore: imageStore,
+            uploadService: uploadService,
+            submissionService: submissionService,
+            sessionService: sessionService,
+            directUploader: directUploader,
+            publishedStore: publishedStore,
+            accessTokenProvider: { [weak self] in self?.auth.accessToken },
             isAuthenticated: { [weak self] in self?.auth.isAuthenticated ?? false },
+            canPublish: { [weak self] in
+                guard let self else { return false }
+                return self.auth.requireCompleteProfileForPublishing()
+            },
             dateProvider: dateProvider,
             onFinished: { [weak self] outcome in
                 self?.handleReviewOutcome(outcome)

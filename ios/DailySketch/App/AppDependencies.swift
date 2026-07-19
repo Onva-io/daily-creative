@@ -11,10 +11,14 @@ final class AppDependencies {
     let profileUpdater: any ProfileUpdating
     let promptRepository: PromptRepository
     let sketchSessionRepository: any SketchSessionServing
+    let uploadRepository: any UploadServing
+    let submissionRepository: any SubmissionServing
+    let directUploader: any DirectUploadTransporting
     let activeSessionStore: any ActiveSessionStoring
     let guestTimerPreferenceStore: any GuestTimerPreferenceStoring
     let draftStore: any DraftStoring
     let draftImageStore: any DraftImageStoring
+    let publishedSubmissionStore: any PublishedSubmissionStoring
     let cameraAuthorizer: any CameraAuthorizing
 
     init(
@@ -26,10 +30,14 @@ final class AppDependencies {
         profileUpdater: any ProfileUpdating,
         promptRepository: PromptRepository,
         sketchSessionRepository: any SketchSessionServing,
+        uploadRepository: any UploadServing,
+        submissionRepository: any SubmissionServing,
+        directUploader: any DirectUploadTransporting = URLSessionDirectUploader(),
         activeSessionStore: any ActiveSessionStoring,
         guestTimerPreferenceStore: any GuestTimerPreferenceStoring,
         draftStore: any DraftStoring,
         draftImageStore: any DraftImageStoring,
+        publishedSubmissionStore: any PublishedSubmissionStoring,
         cameraAuthorizer: any CameraAuthorizing
     ) {
         self.environment = environment
@@ -40,15 +48,19 @@ final class AppDependencies {
         self.profileUpdater = profileUpdater
         self.promptRepository = promptRepository
         self.sketchSessionRepository = sketchSessionRepository
+        self.uploadRepository = uploadRepository
+        self.submissionRepository = submissionRepository
+        self.directUploader = directUploader
         self.activeSessionStore = activeSessionStore
         self.guestTimerPreferenceStore = guestTimerPreferenceStore
         self.draftStore = draftStore
         self.draftImageStore = draftImageStore
+        self.publishedSubmissionStore = publishedSubmissionStore
         self.cameraAuthorizer = cameraAuthorizer
     }
 
     @MainActor
-    func makeSketchFlowViewModel() -> SketchFlowViewModel {
+    func makeSketchFlowViewModel(onPublishedToday: (() -> Void)? = nil) -> SketchFlowViewModel {
         SketchFlowViewModel(
             auth: auth,
             preferencesService: preferencesService,
@@ -57,7 +69,12 @@ final class AppDependencies {
             sessionService: sketchSessionRepository,
             draftStore: draftStore,
             imageStore: draftImageStore,
-            cameraAuthorizer: cameraAuthorizer
+            cameraAuthorizer: cameraAuthorizer,
+            uploadService: uploadRepository,
+            submissionService: submissionRepository,
+            directUploader: directUploader,
+            publishedStore: publishedSubmissionStore,
+            onPublishedToday: onPublishedToday
         )
     }
 
@@ -67,10 +84,13 @@ final class AppDependencies {
         let repository = MeRepository(baseURL: environment.apiBaseURL)
         let promptRepository = PromptRepository(baseURL: environment.apiBaseURL)
         let sketchSessionRepository = SketchSessionRepository(baseURL: environment.apiBaseURL)
+        let uploadRepository = UploadRepository(baseURL: environment.apiBaseURL)
+        let submissionRepository = SubmissionRepository(baseURL: environment.apiBaseURL)
         let activeSessionStore = ActiveSessionStore()
         let guestTimerPreferenceStore = GuestTimerPreferenceStore()
         let draftStore = DraftStore()
         let draftImageStore = DraftImageStore()
+        let publishedSubmissionStore = PublishedSubmissionStore()
         let cameraAuthorizer = SystemCameraAuthorizer()
         let projectID = environment.descopeProjectID
 
@@ -89,10 +109,13 @@ final class AppDependencies {
                 profileUpdater: repository,
                 promptRepository: promptRepository,
                 sketchSessionRepository: sketchSessionRepository,
+                uploadRepository: uploadRepository,
+                submissionRepository: submissionRepository,
                 activeSessionStore: activeSessionStore,
                 guestTimerPreferenceStore: guestTimerPreferenceStore,
                 draftStore: draftStore,
                 draftImageStore: draftImageStore,
+                publishedSubmissionStore: publishedSubmissionStore,
                 cameraAuthorizer: cameraAuthorizer
             )
         }
@@ -111,10 +134,13 @@ final class AppDependencies {
             profileUpdater: repository,
             promptRepository: promptRepository,
             sketchSessionRepository: sketchSessionRepository,
+            uploadRepository: uploadRepository,
+            submissionRepository: submissionRepository,
             activeSessionStore: activeSessionStore,
             guestTimerPreferenceStore: guestTimerPreferenceStore,
             draftStore: draftStore,
             draftImageStore: draftImageStore,
+            publishedSubmissionStore: publishedSubmissionStore,
             cameraAuthorizer: cameraAuthorizer
         )
     }

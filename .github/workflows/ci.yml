@@ -58,8 +58,37 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch
+      STORAGE_ENDPOINT: http://localhost:9000
+      STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+      STORAGE_REGION: us-east-1
+      STORAGE_BUCKET: dailysketch-ci-media
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      STORAGE_USE_SSL: "false"
     steps:
       - uses: actions/checkout@v7
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MinIO failed to become healthy" >&2
+          docker logs minio || true
+          exit 1
+      - name: Create MinIO bucket
+        run: |
+          docker run --rm --network host \
+            -e MC_HOST_local=http://minioadmin:minioadmin@localhost:9000 \
+            minio/mc:RELEASE.2025-08-13T08-35-41Z \
+            mb --ignore-existing local/dailysketch-ci-media
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"

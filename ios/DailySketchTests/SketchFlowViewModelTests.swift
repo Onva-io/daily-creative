@@ -191,6 +191,61 @@ final class SketchFlowViewModelTests: XCTestCase {
         XCTAssertFalse(flow.cameraAuthorizerForCapture.isCameraAvailable)
     }
 
+    func testPublishedOutcomeDeletesDraftAndRecordsSubmissionId() throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let fileName = try imageStore.write(makeTestJPEGData())
+        let draft = LocalDraft(
+            id: UUID(),
+            localSessionId: UUID(),
+            serverSessionId: UUID(),
+            promptId: prompt.id,
+            promptWords: prompt.words,
+            promptAccessibilityLabel: prompt.accessibilityLabel,
+            promptDate: prompt.promptDate,
+            timerMode: "countdown",
+            selectedTimerSeconds: 180,
+            sessionStartedAt: Date(),
+            imageFileName: fileName,
+            caption: "shipped",
+            createdAt: Date(),
+            updatedAt: Date(),
+            pendingAuthentication: false,
+            pendingPublication: true
+        )
+        try draftStore.save(draft)
+        let flow = makeFlow(draftStore: draftStore, imageStore: imageStore)
+        flow.reopenDraft(draft)
+        XCTAssertTrue(flow.showsReviewSubmission)
+
+        let submission = SubmissionModel(
+            id: UUID(),
+            caption: "shipped",
+            status: "published",
+            timerMode: "countdown",
+            timerSeconds: 180,
+            likeCount: 0,
+            reflectionCount: 0,
+            viewerHasLiked: false,
+            isOwner: true,
+            imageURL: URL(string: "https://example.test/display")!,
+            thumbnailURL: URL(string: "https://example.test/thumb")!,
+            username: "sketchy",
+            displayName: "Sketcher",
+            promptWords: prompt.words,
+            promptDate: prompt.promptDate,
+            sketchSessionId: draft.serverSessionId!,
+            publishedAt: Date()
+        )
+        flow.handleReviewOutcome(.published(submission))
+
+        XCTAssertTrue(try draftStore.list().isEmpty)
+        XCTAssertFalse(imageStore.contains(fileName))
+        XCTAssertFalse(flow.showsReviewSubmission)
+        XCTAssertEqual(flow.lastPublishedSubmissionId, submission.id)
+        XCTAssertNil(flow.reviewViewModel)
+    }
+
     private func makeTestJPEGData() -> Data {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
         let image = renderer.image { context in

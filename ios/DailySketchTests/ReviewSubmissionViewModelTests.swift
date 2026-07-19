@@ -4,13 +4,19 @@ import XCTest
 
 @MainActor
 final class ReviewSubmissionViewModelTests: XCTestCase {
-    private func makeDraft(imageStore: InMemoryDraftImageStore, caption: String? = "hello") throws -> (LocalDraft, Data) {
+    private func makeDraft(
+        imageStore: InMemoryDraftImageStore,
+        caption: String? = "hello",
+        serverSessionId: UUID? = UUID(),
+        pendingPublication: Bool = false,
+        publicationIdempotencyKey: String? = nil
+    ) throws -> (LocalDraft, Data) {
         let data = makeJPEG()
         let fileName = try imageStore.write(data)
         let draft = LocalDraft(
             id: UUID(),
             localSessionId: UUID(),
-            serverSessionId: nil,
+            serverSessionId: serverSessionId,
             promptId: UUID(),
             promptWords: ["Chocolate", "Coffee", "Banana"],
             promptAccessibilityLabel: "Today’s prompt: Chocolate, Coffee, Banana.",
@@ -23,9 +29,17 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             createdAt: Date(),
             updatedAt: Date(),
             pendingAuthentication: true,
-            pendingPublication: false
+            pendingPublication: pendingPublication,
+            publicationIdempotencyKey: publicationIdempotencyKey
         )
         return (draft, data)
+    }
+
+    private func waitUntil(_ condition: @autoclosure () -> Bool, timeout: TimeInterval = 2) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            await Task.yield()
+        }
     }
 
     func testCaptionSurvivesImageReplacement() throws {
@@ -71,22 +85,100 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
         )
         model.caption = "guest caption"
         model.submitToCommunity()
-
-        let deadline = Date().addingTimeInterval(1)
-        while outcome == nil, Date() < deadline {
-            await Task.yield()
-        }
+        await waitUntil(outcome != nil)
 
         XCTAssertEqual(outcome, .needsAuthentication)
         let saved = try draftStore.list().first
         XCTAssertEqual(saved?.caption, "guest caption")
         XCTAssertEqual(saved?.pendingAuthentication, true)
+        XCTAssertEqual(saved?.pendingPublication, true)
     }
 
-    func testAuthenticatedSubmitMarksPendingPublication() async throws {
+    func testPublishHappyPathDeletesViaOutcomeAndRecordsPublished() async throws {
         let draftStore = InMemoryDraftStore()
         let imageStore = InMemoryDraftImageStore()
-        let (draft, data) = try makeDraft(imageStore: imageStore, caption: nil)
+        let publishedStore = InMemoryPublishedSubmissionStore()
+        let uploads = RecordingUploadRepository()
+        let submissions = RecordingSubmissionRepository()
+        let uploader = RecordingDirectUploader()
+        let (draft, data) = try makeDraft(imageStore: imageStore, caption: "ship it")
+        try draftStore.save(draft)
+
+        var outcome: ReviewSubmissionOutcome?
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            uploadService: uploads,
+            submissionService: submissions,
+            sessionService: RecordingSketchSessionRepository(),
+            directUploader: uploader,
+            publishedStore: publishedStore,
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { true },
+            onFinished: { outcome = $0 },
+            onReplaceRequested: {}
+        )
+        model.caption = "ship it"
+        model.submitToCommunity()
+        await waitUntil(outcome != nil)
+
+        guard case .published(let submission) = outcome else {
+            return XCTFail("Expected published outcome, got \(String(describing: outcome))")
+        }
+        XCTAssertEqual(uploads.createCallCount, 1)
+        XCTAssertEqual(uploads.completeCallCount, 1)
+        XCTAssertEqual(uploader.uploadCallCount, 1)
+        XCTAssertEqual(submissions.createCallCount, 1)
+        XCTAssertEqual(try publishedStore.list().map(\.id), [submission.id])
+        XCTAssertNotNil(try draftStore.list().first?.publicationIdempotencyKey)
+    }
+
+    func testPublishFailurePreservesDraftAndCaption() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let uploads = RecordingUploadRepository()
+        uploads.createError = PublicationAPIError.underlying("network down")
+        let (draft, data) = try makeDraft(imageStore: imageStore, caption: "keep me")
+        try draftStore.save(draft)
+
+        var outcome: ReviewSubmissionOutcome?
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            uploadService: uploads,
+            submissionService: RecordingSubmissionRepository(),
+            directUploader: RecordingDirectUploader(),
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { true },
+            onFinished: { outcome = $0 },
+            onReplaceRequested: {}
+        )
+        model.caption = "keep me"
+        model.submitToCommunity()
+        await waitUntil(model.publishErrorMessage != nil)
+
+        XCTAssertNil(outcome)
+        XCTAssertEqual(model.publishErrorMessage, "network down")
+        let saved = try draftStore.list().first
+        XCTAssertEqual(saved?.caption, "keep me")
+        XCTAssertEqual(saved?.pendingPublication, true)
+    }
+
+    func testDuplicateSafeRetryReusesIdempotencyKey() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let submissions = RecordingSubmissionRepository()
+        submissions.createError = PublicationAPIError.underlying("temporary")
+        let (draft, data) = try makeDraft(
+            imageStore: imageStore,
+            publicationIdempotencyKey: "fixed-key"
+        )
         try draftStore.save(draft)
 
         let model = ReviewSubmissionViewModel(
@@ -94,18 +186,48 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageData: data,
             draftStore: draftStore,
             imageStore: imageStore,
+            uploadService: RecordingUploadRepository(),
+            submissionService: submissions,
+            directUploader: RecordingDirectUploader(),
+            accessTokenProvider: { "token" },
             isAuthenticated: { true },
+            canPublish: { true },
             onFinished: { _ in },
             onReplaceRequested: {}
         )
         model.submitToCommunity()
+        await waitUntil(model.publishErrorMessage != nil)
 
-        let deadline = Date().addingTimeInterval(1)
-        while !model.showsPublicationPlaceholder, Date() < deadline {
-            await Task.yield()
-        }
+        submissions.createError = nil
+        model.retryPublish()
+        await waitUntil(submissions.createCallCount >= 2)
 
-        XCTAssertTrue(model.showsPublicationPlaceholder)
+        XCTAssertEqual(submissions.lastIdempotencyKey, "fixed-key")
+        XCTAssertEqual(try draftStore.list().first?.publicationIdempotencyKey, "fixed-key")
+    }
+
+    func testProfileIncompleteRoutesToCompletion() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let (draft, data) = try makeDraft(imageStore: imageStore)
+        try draftStore.save(draft)
+
+        var outcome: ReviewSubmissionOutcome?
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { false },
+            onFinished: { outcome = $0 },
+            onReplaceRequested: {}
+        )
+        model.submitToCommunity()
+        await waitUntil(outcome != nil)
+
+        XCTAssertEqual(outcome, .needsProfileCompletion)
         XCTAssertEqual(try draftStore.list().first?.pendingPublication, true)
     }
 

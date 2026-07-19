@@ -30,9 +30,13 @@ struct RootTabView: View {
         .tint(AppColors.primary)
         .onChange(of: dependencies.auth.needsProfileCompletion) { _, needsCompletion in
             guard needsCompletion else { return }
-            if !dependencies.navigation.profilePath.contains(.profileCompletion) {
-                dependencies.navigation.profilePath.append(.profileCompletion)
-            }
+            presentProfileCompletion()
+        }
+    }
+
+    private func presentProfileCompletion() {
+        if !dependencies.navigation.profilePath.contains(.profileCompletion) {
+            dependencies.navigation.profilePath.append(.profileCompletion)
         }
     }
 
@@ -45,6 +49,14 @@ struct RootTabView: View {
             AuthenticationView(mode: mode)
         case .profileCompletion:
             ProfileCompletionView()
+        case .submissionDetail(let submissionId):
+            SubmissionDetailView(
+                model: SubmissionDetailViewModel(
+                    submissionId: submissionId,
+                    submissionService: dependencies.submissionRepository,
+                    accessTokenProvider: { dependencies.auth.accessToken }
+                )
+            )
         }
     }
 }

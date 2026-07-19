@@ -98,7 +98,15 @@ class SketchSessionRepository:
         )
         return result.scalar_one_or_none()
 
-    async def save(self, sketch_session: SketchSession) -> SketchSession:
-        await self._session.commit()
-        await self._session.refresh(sketch_session)
+    async def save(
+        self,
+        sketch_session: SketchSession,
+        *,
+        commit: bool = True,
+    ) -> SketchSession:
+        if commit:
+            await self._session.commit()
+            await self._session.refresh(sketch_session)
+        else:
+            await self._session.flush()
         return sketch_session

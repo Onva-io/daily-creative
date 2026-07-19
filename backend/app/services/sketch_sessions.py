@@ -30,8 +30,8 @@ from app.services.preferences import ALLOWED_TIMER_SECONDS
 
 CREATE_ENDPOINT = "POST /api/v1/sketch-sessions"
 
-# Phase 5 clients may post these event types. Later upload/submission
-# events remain in the contract for forward-compat but are rejected here.
+# Phase 5 clients may post these event types. Phase 7 also accepts
+# upload lifecycle events from the publication flow.
 PHASE_5_CLIENT_EVENTS = frozenset(
     {
         SketchSessionEventType.paused,
@@ -40,6 +40,8 @@ PHASE_5_CLIENT_EVENTS = frozenset(
         SketchSessionEventType.finished_early,
         SketchSessionEventType.photo_step_reached,
         SketchSessionEventType.abandoned,
+        SketchSessionEventType.upload_started,
+        SketchSessionEventType.upload_completed,
     }
 )
 
@@ -250,6 +252,13 @@ class SketchSessionService:
                 allowed = sketch_session.timer_mode == TimerMode.countdown
         elif status == SketchSessionStatus.paused:
             allowed = event_type == SketchSessionEventType.resumed
+        elif status == SketchSessionStatus.ready_for_photo:
+            allowed = event_type in {
+                SketchSessionEventType.upload_started,
+                SketchSessionEventType.photo_step_reached,
+            }
+        elif status == SketchSessionStatus.uploading:
+            allowed = event_type == SketchSessionEventType.upload_completed
 
         if not allowed:
             raise AppError(
@@ -294,6 +303,16 @@ class SketchSessionService:
         if event_type == SketchSessionEventType.photo_step_reached:
             sketch_session.photo_step_reached_at = now
             sketch_session.status = SketchSessionStatus.ready_for_photo
+            return
+
+        if event_type == SketchSessionEventType.upload_started:
+            sketch_session.upload_started_at = now
+            sketch_session.status = SketchSessionStatus.uploading
+            return
+
+        if event_type == SketchSessionEventType.upload_completed:
+            sketch_session.upload_completed_at = now
+            sketch_session.status = SketchSessionStatus.uploading
 
 
 def validate_timer_selection(mode: TimerMode, seconds: int | None) -> None:

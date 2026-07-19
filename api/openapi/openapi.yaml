@@ -657,6 +657,344 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/uploads:
+    post:
+      operationId: createUpload
+      tags:
+        - uploads
+      summary: Create a direct-upload slot
+      description: |
+        Creates a pending Upload row and returns short-lived signed upload
+        details for a single private object key. The client uploads bytes
+        directly to object storage, then calls upload-complete.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUploadRequest"
+            example:
+              purpose: submission
+              content_type: image/jpeg
+              byte_size: 245760
+      responses:
+        "201":
+          description: Upload slot created
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+              example:
+                id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                purpose: submission
+                status: pending
+                content_type: image/jpeg
+                byte_size: null
+                width: null
+                height: null
+                created_at: "2026-07-18T20:10:00Z"
+                uploaded_at: null
+                verified_at: null
+                consumed_at: null
+                expires_at: "2026-07-18T20:25:00Z"
+                signed_upload:
+                  url: https://storage.example/upload-slot
+                  method: PUT
+                  headers:
+                    Content-Type: image/jpeg
+                  expires_at: "2026-07-18T20:25:00Z"
+                  max_bytes: 10485760
+                  content_type: image/jpeg
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/uploads/{upload_id}:
+    get:
+      operationId: getUpload
+      tags:
+        - uploads
+      summary: Get an Upload
+      description: |
+        Returns an Upload owned by the authenticated user.
+        Non-owner and missing uploads both return `upload_not_found`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: c3d4e5f6-a7b8-9012-cdef-123456789012
+      responses:
+        "200":
+          description: Upload
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+              example:
+                id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                purpose: submission
+                status: ready
+                content_type: image/jpeg
+                byte_size: 198432
+                width: 1600
+                height: 1200
+                created_at: "2026-07-18T20:10:00Z"
+                uploaded_at: "2026-07-18T20:10:30Z"
+                verified_at: "2026-07-18T20:10:31Z"
+                consumed_at: null
+                expires_at: "2026-07-18T20:25:00Z"
+                signed_upload: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/uploads/{upload_id}/complete:
+    post:
+      operationId: completeUpload
+      tags:
+        - uploads
+      summary: Complete and verify an Upload
+      description: |
+        Verifies the object exists in private storage, validates the image,
+        strips unnecessary EXIF metadata, generates display and thumbnail
+        derivatives, and marks the Upload ready for Submission consumption.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: c3d4e5f6-a7b8-9012-cdef-123456789012
+      responses:
+        "200":
+          description: Upload verified and ready
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+              example:
+                id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                purpose: submission
+                status: ready
+                content_type: image/jpeg
+                byte_size: 198432
+                width: 1600
+                height: 1200
+                created_at: "2026-07-18T20:10:00Z"
+                uploaded_at: "2026-07-18T20:10:30Z"
+                verified_at: "2026-07-18T20:10:31Z"
+                consumed_at: null
+                expires_at: "2026-07-18T20:25:00Z"
+                signed_upload: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/submissions:
+    post:
+      operationId: createSubmission
+      tags:
+        - submissions
+      summary: Publish a Submission
+      description: |
+        Atomically creates a public Submission from a ready Upload and owned
+        Sketch Session. Requires a completed profile. Pass an `Idempotency-Key`
+        header to safely retry without duplicating Submissions.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubmissionRequest"
+            example:
+              sketch_session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+              upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
+              caption: A quiet coffee and banana sketch.
+      responses:
+        "201":
+          description: Submission published
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+              example:
+                id: d4e5f6a7-b8c9-0123-def0-234567890123
+                caption: A quiet coffee and banana sketch.
+                visibility: public
+                status: published
+                timer_mode: countdown
+                timer_seconds: 300
+                like_count: 0
+                reflection_count: 0
+                viewer_has_liked: false
+                is_owner: true
+                image_url: https://storage.example/display-signed
+                thumbnail_url: https://storage.example/thumb-signed
+                user:
+                  id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                  username: sketchy_matt
+                  display_name: Matt
+                  avatar_url: null
+                prompt:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  prompt_date: "2026-07-18"
+                  word_1: Chocolate
+                  word_2: Coffee
+                  word_3: Banana
+                sketch_session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+                upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                published_at: "2026-07-18T20:12:00Z"
+                created_at: "2026-07-18T20:12:00Z"
+                updated_at: "2026-07-18T20:12:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/submissions/{submission_id}:
+    get:
+      operationId: getSubmission
+      tags:
+        - submissions
+      summary: Get a Submission
+      description: |
+        Returns a published Submission. Available to guests and authenticated
+        users. Soft-deleted, hidden, and removed Submissions are not returned.
+        When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer.
+      parameters:
+        - name: submission_id
+          in: path
+          required: true
+          description: Submission UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: d4e5f6a7-b8c9-0123-def0-234567890123
+      responses:
+        "200":
+          description: Submission
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+              example:
+                id: d4e5f6a7-b8c9-0123-def0-234567890123
+                caption: A quiet coffee and banana sketch.
+                visibility: public
+                status: published
+                timer_mode: countdown
+                timer_seconds: 300
+                like_count: 0
+                reflection_count: 0
+                viewer_has_liked: false
+                is_owner: false
+                image_url: https://storage.example/display-signed
+                thumbnail_url: https://storage.example/thumb-signed
+                user:
+                  id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                  username: sketchy_matt
+                  display_name: Matt
+                  avatar_url: null
+                prompt:
+                  id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  prompt_date: "2026-07-18"
+                  word_1: Chocolate
+                  word_2: Coffee
+                  word_3: Banana
+                sketch_session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+                upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                published_at: "2026-07-18T20:12:00Z"
+                created_at: "2026-07-18T20:12:00Z"
+                updated_at: "2026-07-18T20:12:00Z"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: deleteSubmission
+      tags:
+        - submissions
+      summary: Delete own Submission
+      description: |
+        Soft-deletes a Submission owned by the authenticated user. The
+        Submission is hidden from public GET, feed, and profile queries.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: submission_id
+          in: path
+          required: true
+          description: Submission UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: d4e5f6a7-b8c9-0123-def0-234567890123
+      responses:
+        "204":
+          description: Submission deleted
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   securitySchemes:
     bearerAuth:
@@ -767,6 +1105,22 @@ components:
                   message: This idempotency key was already used with a different request.
                   details: {}
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            upload_already_consumed:
+              summary: Upload already consumed
+              value:
+                error:
+                  code: upload_already_consumed
+                  message: This upload has already been used.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            session_already_submitted:
+              summary: Sketch Session already has a Submission
+              value:
+                error:
+                  code: session_already_submitted
+                  message: This sketch session already has a published submission.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     NotFound:
       description: Requested resource was not found
       headers:
@@ -799,6 +1153,22 @@ components:
                 error:
                   code: session_not_found
                   message: The requested sketch session could not be found.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            upload_not_found:
+              summary: Upload not found
+              value:
+                error:
+                  code: upload_not_found
+                  message: The requested upload could not be found.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            submission_not_found:
+              summary: Submission not found
+              value:
+                error:
+                  code: submission_not_found
+                  message: The requested sketch could not be found.
                   details: {}
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     ValidationError:
@@ -849,6 +1219,46 @@ components:
                 error:
                   code: invalid_session_transition
                   message: That lifecycle event is not valid for the current session state.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            upload_not_ready:
+              summary: Upload not ready for consumption
+              value:
+                error:
+                  code: upload_not_ready
+                  message: This upload is not ready to publish yet.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            invalid_image:
+              summary: Image could not be decoded or validated
+              value:
+                error:
+                  code: invalid_image
+                  message: The uploaded file is not a valid image.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            image_too_large:
+              summary: Image exceeds size limit
+              value:
+                error:
+                  code: image_too_large
+                  message: That image is too large to upload.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            unsupported_media_type:
+              summary: Unsupported image content type
+              value:
+                error:
+                  code: unsupported_media_type
+                  message: That image type is not supported.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            object_missing:
+              summary: Storage object missing after direct upload
+              value:
+                error:
+                  code: object_missing
+                  message: The uploaded image could not be found. Please try again.
                   details: {}
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
             validation_error:
@@ -1462,6 +1872,259 @@ components:
           additionalProperties: true
           description: Optional structured metadata for the event.
           default: {}
+    UploadPurpose:
+      type: string
+      description: Intended use of an Upload.
+      enum:
+        - submission
+        - avatar
+    UploadStatus:
+      type: string
+      description: Upload lifecycle status.
+      enum:
+        - pending
+        - uploaded
+        - verified
+        - processing
+        - ready
+        - consumed
+        - failed
+        - expired
+        - deleted
+    CreateUploadRequest:
+      type: object
+      description: |
+        Request a direct-upload slot. `content_type` must be an allowed image MIME
+        type such as `image/jpeg` or `image/png`. `byte_size` is the client's
+        expected size and must not exceed the configured maximum.
+      additionalProperties: false
+      required:
+        - purpose
+        - content_type
+        - byte_size
+      properties:
+        purpose:
+          $ref: "#/components/schemas/UploadPurpose"
+        content_type:
+          type: string
+          example: image/jpeg
+        byte_size:
+          type: integer
+          minimum: 1
+          example: 245760
+    SignedUpload:
+      type: object
+      description: Short-lived details for a direct client-to-storage upload.
+      required:
+        - url
+        - method
+        - headers
+        - expires_at
+        - max_bytes
+        - content_type
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Signed upload URL. Clients must not log or permanently store this value.
+        method:
+          type: string
+          enum:
+            - PUT
+          example: PUT
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Required request headers for the signed upload.
+          example:
+            Content-Type: image/jpeg
+        expires_at:
+          $ref: "#/components/schemas/Timestamp"
+        max_bytes:
+          type: integer
+          minimum: 1
+          example: 10485760
+        content_type:
+          type: string
+          example: image/jpeg
+    Upload:
+      type: object
+      description: Upload slot and verification state. Storage keys are never exposed.
+      required:
+        - id
+        - purpose
+        - status
+        - content_type
+        - byte_size
+        - width
+        - height
+        - created_at
+        - uploaded_at
+        - verified_at
+        - consumed_at
+        - expires_at
+        - signed_upload
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        purpose:
+          $ref: "#/components/schemas/UploadPurpose"
+        status:
+          $ref: "#/components/schemas/UploadStatus"
+        content_type:
+          type: string
+          example: image/jpeg
+        byte_size:
+          type:
+            - integer
+            - "null"
+          example: 198432
+        width:
+          type:
+            - integer
+            - "null"
+          example: 1600
+        height:
+          type:
+            - integer
+            - "null"
+          example: 1200
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+        uploaded_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        verified_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        consumed_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        expires_at:
+          $ref: "#/components/schemas/Timestamp"
+        signed_upload:
+          oneOf:
+            - $ref: "#/components/schemas/SignedUpload"
+            - type: "null"
+          description: Present when status is pending and a signed upload is available.
+    SubmissionVisibility:
+      type: string
+      description: Submission visibility. Version one supports public only.
+      enum:
+        - public
+    SubmissionStatus:
+      type: string
+      description: Submission lifecycle status.
+      enum:
+        - processing
+        - published
+        - hidden
+        - removed
+        - deleted
+    CreateSubmissionRequest:
+      type: object
+      description: |
+        Publish a reviewed sketch. The backend derives owner, Prompt, and timer
+        metadata from the Sketch Session and Upload.
+      additionalProperties: false
+      required:
+        - sketch_session_id
+        - upload_id
+      properties:
+        sketch_session_id:
+          $ref: "#/components/schemas/UUID"
+        upload_id:
+          $ref: "#/components/schemas/UUID"
+        caption:
+          type:
+            - string
+            - "null"
+          description: Optional plain-text caption.
+          maxLength: 280
+          example: A quiet coffee and banana sketch.
+    Submission:
+      type: object
+      description: Public Submission projection with signed media URLs.
+      required:
+        - id
+        - caption
+        - visibility
+        - status
+        - timer_mode
+        - timer_seconds
+        - like_count
+        - reflection_count
+        - viewer_has_liked
+        - is_owner
+        - image_url
+        - thumbnail_url
+        - user
+        - prompt
+        - sketch_session_id
+        - upload_id
+        - published_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        caption:
+          type:
+            - string
+            - "null"
+          example: A quiet coffee and banana sketch.
+        visibility:
+          $ref: "#/components/schemas/SubmissionVisibility"
+        status:
+          $ref: "#/components/schemas/SubmissionStatus"
+        timer_mode:
+          $ref: "#/components/schemas/TimerMode"
+        timer_seconds:
+          type:
+            - integer
+            - "null"
+          description: Selected countdown seconds, or null for no_timer.
+          example: 300
+        like_count:
+          type: integer
+          minimum: 0
+          example: 0
+        reflection_count:
+          type: integer
+          minimum: 0
+          example: 0
+        viewer_has_liked:
+          type: boolean
+          example: false
+        is_owner:
+          type: boolean
+          example: true
+        image_url:
+          type: string
+          format: uri
+          description: Short-lived signed display image URL.
+        thumbnail_url:
+          type: string
+          format: uri
+          description: Short-lived signed thumbnail URL.
+        user:
+          $ref: "#/components/schemas/FeedUserSummary"
+        prompt:
+          $ref: "#/components/schemas/FeedPromptSummary"
+        sketch_session_id:
+          $ref: "#/components/schemas/UUID"
+        upload_id:
+          $ref: "#/components/schemas/UUID"
+        published_at:
+          $ref: "#/components/schemas/Timestamp"
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+        updated_at:
+          $ref: "#/components/schemas/Timestamp"
 tags:
   - name: health
     description: Process health probes
@@ -1475,3 +2138,7 @@ tags:
     description: Community feed endpoints
   - name: sketch-sessions
     description: Authenticated Sketch Session and timer lifecycle endpoints
+  - name: uploads
+    description: Direct signed upload orchestration endpoints
+  - name: submissions
+    description: Submission publication and ownership endpoints

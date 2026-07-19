@@ -5,6 +5,7 @@ enum AppRoute: Hashable {
     case settings
     case authentication(AuthenticationView.Mode)
     case profileCompletion
+    case submissionDetail(UUID)
 }
 
 @Observable

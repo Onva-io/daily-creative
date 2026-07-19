@@ -35,3 +35,19 @@ async def get_current_user(
     ) or get_token_verifier(settings)
     verified = verifier.verify(credentials.credentials)
     return await UserService(session).resolve_or_provision(verified)
+
+
+async def get_optional_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> User | None:
+    """Return the authenticated user when a bearer token is present, else None."""
+    if credentials is None or credentials.scheme.lower() != "bearer" or not credentials.credentials:
+        return None
+    verifier: TokenVerifier = getattr(
+        request.app.state, "token_verifier", None
+    ) or get_token_verifier(settings)
+    verified = verifier.verify(credentials.credentials)
+    return await UserService(session).resolve_or_provision(verified)
