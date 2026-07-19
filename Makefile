@@ -15,7 +15,7 @@ help:
 	@echo "  repo-checks / docker-build / ios-generate / ios-build / ios-test / test"
 
 up:
-	$(COMPOSE) up -d postgres minio minio-init backend
+	$(COMPOSE) up postgres minio minio-init backend
 
 down:
 	$(COMPOSE) down
