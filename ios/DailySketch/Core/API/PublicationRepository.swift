@@ -29,6 +29,50 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
     let promptDate: Date
     let sketchSessionId: UUID
     let publishedAt: Date
+
+    func withLikeState(liked: Bool, likeCount: Int) -> SubmissionModel {
+        SubmissionModel(
+            id: id,
+            caption: caption,
+            status: status,
+            timerMode: timerMode,
+            timerSeconds: timerSeconds,
+            likeCount: likeCount,
+            reflectionCount: reflectionCount,
+            viewerHasLiked: liked,
+            isOwner: isOwner,
+            imageURL: imageURL,
+            thumbnailURL: thumbnailURL,
+            username: username,
+            displayName: displayName,
+            promptWords: promptWords,
+            promptDate: promptDate,
+            sketchSessionId: sketchSessionId,
+            publishedAt: publishedAt
+        )
+    }
+
+    func withReflectionCount(_ count: Int) -> SubmissionModel {
+        SubmissionModel(
+            id: id,
+            caption: caption,
+            status: status,
+            timerMode: timerMode,
+            timerSeconds: timerSeconds,
+            likeCount: likeCount,
+            reflectionCount: count,
+            viewerHasLiked: viewerHasLiked,
+            isOwner: isOwner,
+            imageURL: imageURL,
+            thumbnailURL: thumbnailURL,
+            username: username,
+            displayName: displayName,
+            promptWords: promptWords,
+            promptDate: promptDate,
+            sketchSessionId: sketchSessionId,
+            publishedAt: publishedAt
+        )
+    }
 }
 
 enum PublicationAPIError: LocalizedError, Equatable {

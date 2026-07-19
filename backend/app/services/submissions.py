@@ -18,6 +18,7 @@ from app.models.submission import SubmissionStatus
 from app.models.upload import UploadStatus
 from app.models.user import User, UserStatus
 from app.repositories.idempotency import IdempotencyRepository
+from app.repositories.likes import LikeRepository
 from app.repositories.prompts import PromptRepository
 from app.repositories.sketch_sessions import SketchSessionRepository
 from app.repositories.submissions import SubmissionRepository
@@ -44,6 +45,7 @@ class SubmissionService:
         self._sessions = SketchSessionRepository(session)
         self._prompts = PromptRepository(session)
         self._users = UserRepository(session)
+        self._likes = LikeRepository(session)
         self._idempotency = IdempotencyRepository(session)
         self._clock = clock
         self._storage = storage
@@ -279,6 +281,12 @@ class SubmissionService:
             expires_at=expires_at,
         )
         is_owner = viewer is not None and viewer.id == submission.user_id
+        viewer_has_liked = False
+        if viewer is not None:
+            viewer_has_liked = await self._likes.exists(
+                submission_id=submission.id,
+                user_id=viewer.id,
+            )
         return SubmissionResponse.from_parts(
             submission=submission,
             user=user,
@@ -287,7 +295,7 @@ class SubmissionService:
             image_url=image_url,
             thumbnail_url=thumbnail_url,
             is_owner=is_owner,
-            viewer_has_liked=False,
+            viewer_has_liked=viewer_has_liked,
         )
 
 

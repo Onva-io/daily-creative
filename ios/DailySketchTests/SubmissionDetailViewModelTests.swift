@@ -3,16 +3,21 @@ import XCTest
 
 @MainActor
 final class SubmissionDetailViewModelTests: XCTestCase {
-    private func sampleSubmission(isOwner: Bool = true) -> SubmissionModel {
+    private func sampleSubmission(
+        isOwner: Bool = true,
+        liked: Bool = false,
+        likeCount: Int = 2,
+        reflectionCount: Int = 1
+    ) -> SubmissionModel {
         SubmissionModel(
             id: UUID(),
             caption: "Quiet botanical lines for the page title check.",
             status: "published",
             timerMode: "countdown",
             timerSeconds: 600,
-            likeCount: 2,
-            reflectionCount: 1,
-            viewerHasLiked: false,
+            likeCount: likeCount,
+            reflectionCount: reflectionCount,
+            viewerHasLiked: liked,
             isOwner: isOwner,
             imageURL: URL(string: "https://example.test/display")!,
             thumbnailURL: URL(string: "https://example.test/thumb")!,
@@ -25,15 +30,28 @@ final class SubmissionDetailViewModelTests: XCTestCase {
         )
     }
 
-    func testLoadSuccessUsesCaptionDerivedTitle() async {
-        let repo = RecordingSubmissionRepository()
-        let submission = sampleSubmission()
-        repo.nextSubmission = submission
-        let model = SubmissionDetailViewModel(
+    private func makeModel(
+        submission: SubmissionModel,
+        submissionService: RecordingSubmissionRepository = RecordingSubmissionRepository(),
+        socialService: RecordingSocialRepository = RecordingSocialRepository(),
+        isAuthenticated: @escaping () -> Bool = { true },
+        accessTokenProvider: @escaping () -> String? = { "token" },
+        onDeleted: (() -> Void)? = nil
+    ) -> SubmissionDetailViewModel {
+        submissionService.nextSubmission = submission
+        return SubmissionDetailViewModel(
             submissionId: submission.id,
-            submissionService: repo,
-            accessTokenProvider: { "token" }
+            submissionService: submissionService,
+            socialService: socialService,
+            isAuthenticated: isAuthenticated,
+            accessTokenProvider: accessTokenProvider,
+            onDeleted: onDeleted
         )
+    }
+
+    func testLoadSuccessUsesCaptionDerivedTitle() async {
+        let submission = sampleSubmission()
+        let model = makeModel(submission: submission)
 
         await model.load()
 
@@ -48,14 +66,12 @@ final class SubmissionDetailViewModelTests: XCTestCase {
     }
 
     func testDeleteSubmissionSucceedsAndInvokesCallback() async {
-        let repo = RecordingSubmissionRepository()
         let submission = sampleSubmission(isOwner: true)
-        repo.nextSubmission = submission
+        let repo = RecordingSubmissionRepository()
         var deleted = false
-        let model = SubmissionDetailViewModel(
-            submissionId: submission.id,
+        let model = makeModel(
+            submission: submission,
             submissionService: repo,
-            accessTokenProvider: { "token" },
             onDeleted: { deleted = true }
         )
         await model.load()
@@ -68,11 +84,10 @@ final class SubmissionDetailViewModelTests: XCTestCase {
     }
 
     func testDeleteWithoutTokenSurfacesError() async {
-        let repo = RecordingSubmissionRepository()
         let submission = sampleSubmission()
-        repo.nextSubmission = submission
-        let model = SubmissionDetailViewModel(
-            submissionId: submission.id,
+        let repo = RecordingSubmissionRepository()
+        let model = makeModel(
+            submission: submission,
             submissionService: repo,
             accessTokenProvider: { nil }
         )
@@ -87,14 +102,12 @@ final class SubmissionDetailViewModelTests: XCTestCase {
     }
 
     func testDeleteFailurePreservesSubmission() async {
-        let repo = RecordingSubmissionRepository()
         let submission = sampleSubmission()
-        repo.nextSubmission = submission
+        let repo = RecordingSubmissionRepository()
         repo.deleteError = PublicationAPIError.underlying("network")
-        let model = SubmissionDetailViewModel(
-            submissionId: submission.id,
-            submissionService: repo,
-            accessTokenProvider: { "token" }
+        let model = makeModel(
+            submission: submission,
+            submissionService: repo
         )
         await model.load()
         await model.deleteSubmission()
@@ -104,5 +117,118 @@ final class SubmissionDetailViewModelTests: XCTestCase {
         guard case .loaded = model.state else {
             return XCTFail("Submission should remain loaded after failed delete")
         }
+    }
+
+    func testOptimisticLikeAndRollbackOnFailure() async {
+        let submission = sampleSubmission(liked: false, likeCount: 2)
+        let social = RecordingSocialRepository()
+        social.likeError = SocialAPIError.underlying("network")
+        let model = makeModel(submission: submission, socialService: social)
+        await model.load()
+
+        await model.toggleLike()
+
+        XCTAssertEqual(social.likeCallCount, 1)
+        guard case .loaded(let loaded) = model.state else {
+            return XCTFail("Expected loaded after rollback")
+        }
+        XCTAssertFalse(loaded.viewerHasLiked)
+        XCTAssertEqual(loaded.likeCount, 2)
+        XCTAssertEqual(model.likeErrorMessage, "network")
+    }
+
+    func testOptimisticLikeConfirmsServerState() async {
+        let submission = sampleSubmission(liked: false, likeCount: 2)
+        let social = RecordingSocialRepository()
+        social.nextLikeState = LikeStateModel(liked: true, likeCount: 3)
+        let model = makeModel(submission: submission, socialService: social)
+        await model.load()
+
+        await model.toggleLike()
+
+        guard case .loaded(let loaded) = model.state else {
+            return XCTFail("Expected loaded")
+        }
+        XCTAssertTrue(loaded.viewerHasLiked)
+        XCTAssertEqual(loaded.likeCount, 3)
+        XCTAssertNil(model.likeErrorMessage)
+    }
+
+    func testGuestLikeTriggersAuthCheckpointThenResumes() async {
+        let submission = sampleSubmission()
+        let social = RecordingSocialRepository()
+        social.nextLikeState = LikeStateModel(liked: true, likeCount: 3)
+        var authenticated = false
+        let model = makeModel(
+            submission: submission,
+            socialService: social,
+            isAuthenticated: { authenticated },
+            accessTokenProvider: { authenticated ? "token" : nil }
+        )
+        await model.load()
+
+        await model.toggleLike()
+        XCTAssertEqual(social.likeCallCount, 0)
+        XCTAssertEqual(model.pendingSocialAction, .like)
+        XCTAssertTrue(model.showsAuthSheet)
+
+        authenticated = true
+        await model.handleAuthenticationCompleted()
+
+        XCTAssertEqual(social.likeCallCount, 1)
+        XCTAssertNil(model.pendingSocialAction)
+        XCTAssertFalse(model.showsAuthSheet)
+        guard case .loaded(let loaded) = model.state else {
+            return XCTFail("Expected liked submission")
+        }
+        XCTAssertTrue(loaded.viewerHasLiked)
+    }
+
+    func testReflectionPostPreservesTextOnFailure() async {
+        let submission = sampleSubmission(reflectionCount: 0)
+        let social = RecordingSocialRepository()
+        social.createError = SocialAPIError.underlying("offline")
+        let model = makeModel(submission: submission, socialService: social)
+        await model.load()
+        model.composerText = "Keeping this reflection draft"
+
+        await model.postReflection()
+
+        XCTAssertEqual(social.createCallCount, 1)
+        XCTAssertEqual(model.composerText, "Keeping this reflection draft")
+        XCTAssertEqual(model.reflectionErrorMessage, "offline")
+        guard case .loaded(let loaded) = model.state else {
+            return XCTFail("Expected loaded")
+        }
+        XCTAssertEqual(loaded.reflectionCount, 0)
+    }
+
+    func testAuthorDeleteRemovesReflectionAndDecrementsCount() async {
+        let submission = sampleSubmission(reflectionCount: 1)
+        let social = RecordingSocialRepository()
+        let reflection = ReflectionModel(
+            id: UUID(),
+            submissionId: submission.id,
+            userId: UUID(),
+            username: "alexdraws",
+            displayName: "Alex Rivers",
+            avatarURL: nil,
+            body: "Nice work",
+            createdAt: Date(),
+            isAuthor: true
+        )
+        social.nextPage = ReflectionPage(items: [reflection], nextCursor: nil)
+        let model = makeModel(submission: submission, socialService: social)
+        await model.load()
+        XCTAssertEqual(model.reflections.count, 1)
+
+        await model.deleteReflection(reflection)
+
+        XCTAssertEqual(social.deleteCallCount, 1)
+        XCTAssertTrue(model.reflections.isEmpty)
+        guard case .loaded(let loaded) = model.state else {
+            return XCTFail("Expected loaded")
+        }
+        XCTAssertEqual(loaded.reflectionCount, 0)
     }
 }

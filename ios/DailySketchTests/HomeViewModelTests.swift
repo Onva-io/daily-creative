@@ -52,13 +52,19 @@ final class HomeViewModelTests: XCTestCase {
 
     private func makeModel(
         fetcher: RecordingPromptFetcher,
-        publishedStore: any PublishedSubmissionStoring = InMemoryPublishedSubmissionStore()
+        publishedStore: any PublishedSubmissionStoring = InMemoryPublishedSubmissionStore(),
+        socialService: any SocialServing = RecordingSocialRepository(),
+        isAuthenticated: @escaping () -> Bool = { false },
+        accessTokenProvider: @escaping () -> String? = { nil }
     ) -> HomeViewModel {
         HomeViewModel(
             promptFetcher: fetcher,
             feedFetcher: fetcher,
+            socialService: socialService,
             publishedStore: publishedStore,
-            sketchFlow: makeSketchFlow()
+            sketchFlow: makeSketchFlow(),
+            isAuthenticated: isAuthenticated,
+            accessTokenProvider: accessTokenProvider
         )
     }
 
@@ -325,6 +331,59 @@ final class HomeViewModelTests: XCTestCase {
 
         XCTAssertEqual(model.feedState, .empty)
         XCTAssertTrue(model.feedItems.isEmpty)
+    }
+
+    func testOptimisticFeedLikeRollsBackOnFailure() async {
+        let fetcher = RecordingPromptFetcher()
+        fetcher.prompt = samplePrompt()
+        let item = FeedItemModel.preview
+        fetcher.feed = RecentFeedPage(items: [item], nextCursor: nil)
+        let social = RecordingSocialRepository()
+        social.likeError = SocialAPIError.underlying("network")
+        let model = makeModel(
+            fetcher: fetcher,
+            socialService: social,
+            isAuthenticated: { true },
+            accessTokenProvider: { "token" }
+        )
+        await model.load()
+
+        await model.toggleLike(itemId: item.id)
+
+        XCTAssertEqual(social.likeCallCount, 1)
+        XCTAssertEqual(model.feedItems.first?.viewerHasLiked, false)
+        XCTAssertEqual(model.feedItems.first?.likeCount, item.likeCount)
+        XCTAssertEqual(model.likeErrorMessage, "network")
+    }
+
+    func testGuestFeedLikeTriggersAuthThenResumes() async {
+        let fetcher = RecordingPromptFetcher()
+        fetcher.prompt = samplePrompt()
+        let item = FeedItemModel.preview
+        fetcher.feed = RecentFeedPage(items: [item], nextCursor: nil)
+        let social = RecordingSocialRepository()
+        social.nextLikeState = LikeStateModel(liked: true, likeCount: 1)
+        var authenticated = false
+        let model = makeModel(
+            fetcher: fetcher,
+            socialService: social,
+            isAuthenticated: { authenticated },
+            accessTokenProvider: { authenticated ? "token" : nil }
+        )
+        await model.load()
+
+        await model.toggleLike(itemId: item.id)
+        XCTAssertEqual(social.likeCallCount, 0)
+        XCTAssertEqual(model.pendingLikeSubmissionId, item.id)
+        XCTAssertTrue(model.showsAuthSheet)
+
+        authenticated = true
+        await model.handleAuthenticationCompleted()
+
+        XCTAssertEqual(social.likeCallCount, 1)
+        XCTAssertTrue(model.feedItems.first?.viewerHasLiked == true)
+        XCTAssertEqual(model.feedItems.first?.likeCount, 1)
+        XCTAssertNil(model.pendingLikeSubmissionId)
     }
 
     func testRelativeTimestampFormatter() {

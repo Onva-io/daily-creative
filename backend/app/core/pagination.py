@@ -36,3 +36,29 @@ def decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
             status_code=422,
         ) from exc
     return published_at, submission_id
+
+
+def encode_reflection_cursor(*, created_at: datetime, reflection_id: uuid.UUID) -> str:
+    """Encode a Reflection list cursor from created_at and reflection id."""
+    if created_at.tzinfo is None:
+        raise ValueError("created_at must be timezone-aware")
+    payload = f"{created_at.isoformat()}{_CURSOR_SEP}{reflection_id}"
+    return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii")
+
+
+def decode_reflection_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
+    """Decode an opaque Reflection cursor into (created_at, reflection_id)."""
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8")
+        created_at_raw, reflection_id_raw = raw.split(_CURSOR_SEP, maxsplit=1)
+        created_at = datetime.fromisoformat(created_at_raw)
+        if created_at.tzinfo is None:
+            raise ValueError("created_at must be timezone-aware")
+        reflection_id = uuid.UUID(reflection_id_raw)
+    except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
+        raise AppError(
+            code="invalid_cursor",
+            message="The reflection cursor is invalid.",
+            status_code=422,
+        ) from exc
+    return created_at, reflection_id

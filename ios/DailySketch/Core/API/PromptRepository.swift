@@ -6,14 +6,14 @@ protocol PromptFetching: Sendable {
 }
 
 protocol FeedFetching: Sendable {
-    func fetchRecentFeed(cursor: String?, limit: Int) async throws -> RecentFeedPage
+    func fetchRecentFeed(accessToken: String?, cursor: String?, limit: Int) async throws -> RecentFeedPage
 }
 
 struct PromptRepository: PromptFetching, FeedFetching {
     let baseURL: URL
 
     func fetchTodaysPrompt() async throws -> DailyPromptModel {
-        configureClient()
+        configureClient(accessToken: nil)
         do {
             let prompt = try await PromptsAPI.getTodaysPrompt()
             return mapPrompt(prompt)
@@ -22,8 +22,8 @@ struct PromptRepository: PromptFetching, FeedFetching {
         }
     }
 
-    func fetchRecentFeed(cursor: String?, limit: Int) async throws -> RecentFeedPage {
-        configureClient()
+    func fetchRecentFeed(accessToken: String?, cursor: String?, limit: Int) async throws -> RecentFeedPage {
+        configureClient(accessToken: accessToken)
         do {
             let feed = try await FeedAPI.getRecentFeed(cursor: cursor, limit: limit)
             return RecentFeedPage(
@@ -35,12 +35,18 @@ struct PromptRepository: PromptFetching, FeedFetching {
         }
     }
 
-    private func configureClient() {
+    private func configureClient(accessToken: String?) {
         var base = baseURL.absoluteString
         if base.hasSuffix("/") {
             base.removeLast()
         }
         DailySketchAPIAPI.basePath = base
+        if let accessToken {
+            DailySketchAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
+            DailySketchAPITokenBridge.setBearerToken(accessToken)
+        } else {
+            DailySketchAPIAPI.customHeaders.removeValue(forKey: "Authorization")
+        }
     }
 
     private func mapPrompt(_ prompt: DailyPrompt) -> DailyPromptModel {
@@ -135,6 +141,10 @@ final class RecordingPromptFetcher: PromptFetching, FeedFetching, @unchecked Sen
     }
 
     func fetchRecentFeed(cursor: String?, limit: Int) async throws -> RecentFeedPage {
+        try await fetchRecentFeed(accessToken: nil, cursor: cursor, limit: limit)
+    }
+
+    func fetchRecentFeed(accessToken: String?, cursor: String?, limit: Int) async throws -> RecentFeedPage {
         lastFeedCursor = cursor
         lastFeedLimit = limit
         recentFeedCallCount += 1

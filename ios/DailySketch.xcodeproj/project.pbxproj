@@ -55,6 +55,7 @@
 		9A96DC36B20FE5DDD3A968FC /* ProfilePlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9EC73A30098DE7AB90F3D9 /* ProfilePlaceholderView.swift */; };
 		9BA2899CC49663830AD370E0 /* MeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C1138D7614F7B17F850551 /* MeRepository.swift */; };
 		9D5E51505DC4772C05CA6100 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A191CB82168A1734F55EFDDD /* AvatarView.swift */; };
+		A61030C739BCA94ADA58564B /* ReflectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78BEA1BCD71675D4834B1D /* ReflectionRow.swift */; };
 		ABBD9F32B3EC5DFE463E0767 /* AppTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828C037810262EBCE8D88625 /* AppTypography.swift */; };
 		AFE3CFF5C8DFBAF456C81554 /* DateProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D244FC5E35AD9F1E5EF44D /* DateProviding.swift */; };
 		B00328B9D07775D638D4B3B6 /* SketchSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6822E9C3AB485E9A66340879 /* SketchSessionView.swift */; };
@@ -62,6 +63,7 @@
 		B3D02A4B467F010F81DD0928 /* DescopeAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5821C8D7B32E0471B25847D4 /* DescopeAuthService.swift */; };
 		B3F86E87C26B7AB28E194E33 /* AppColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B7069CD18B88896463A424 /* AppColors.swift */; };
 		B55DFB85AAE2ABBCFB4732FC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35FE3D7D676A96A7B6EB8D6 /* SettingsView.swift */; };
+		B63803944F1867B7934F819A /* SocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD09C0FEEDB55B3DC089C0A8 /* SocialRepository.swift */; };
 		B72FCDD2E9CF18C9D31D52BC /* AppShadows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23123284866904F14F499443 /* AppShadows.swift */; };
 		B7C1D616F71D7DAB76EFAF98 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA55A0FA9B893BB589508425 /* LoadingView.swift */; };
 		C00223D6697ED8C2583F625A /* DescopeKit in Frameworks */ = {isa = PBXBuildFile; productRef = E17A9A6C38FCAB22350FAA0C /* DescopeKit */; };
@@ -126,6 +128,7 @@
 		3AA8C163D281ACDBCFB04EA4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3B426007F5F14A107193A666 /* SubmissionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionDetailView.swift; sourceTree = "<group>"; };
 		3BC5BF20FFB5E326C09F9CD6 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		3C78BEA1BCD71675D4834B1D /* ReflectionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReflectionRow.swift; sourceTree = "<group>"; };
 		42A444EB0248FBBA33AE9D69 /* PromptChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptChip.swift; sourceTree = "<group>"; };
 		4C12E3504F971DF8E2CDB019 /* CaptureSourceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSourceView.swift; sourceTree = "<group>"; };
 		5097E7E1021ECD475053BC19 /* DailySketch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DailySketch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -179,6 +182,7 @@
 		D5F48E55158CFB78938E4926 /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
 		D8AD1639466207799CC43CC4 /* SubmissionDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionDetailViewModel.swift; sourceTree = "<group>"; };
 		DBF36E89D4D83DADA097740B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		DD09C0FEEDB55B3DC089C0A8 /* SocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialRepository.swift; sourceTree = "<group>"; };
 		DE8083568FA940B2E4DF15FF /* GuestTimerPreferenceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestTimerPreferenceStore.swift; sourceTree = "<group>"; };
 		DF6F8FC74C78D965155A4568 /* SecondaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondaryButton.swift; sourceTree = "<group>"; };
 		E282F50B36CB444D898C6ABF /* PublishedSubmissionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublishedSubmissionStore.swift; sourceTree = "<group>"; };
@@ -226,6 +230,7 @@
 				7D42E81D3CBFE36098620801 /* PromptRepository.swift */,
 				F4D7E0711C25F528FA218063 /* PublicationRepository.swift */,
 				90A5C0A7EABC55D0398BDCE7 /* SketchSessionRepository.swift */,
+				DD09C0FEEDB55B3DC089C0A8 /* SocialRepository.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -514,6 +519,7 @@
 				42A444EB0248FBBA33AE9D69 /* PromptChip.swift */,
 				1B25BE9CA92C4BACCA3C8A8B /* PromptGroup.swift */,
 				F2BDBF06E200EAEC778EC5F7 /* PromptWordCard.swift */,
+				3C78BEA1BCD71675D4834B1D /* ReflectionRow.swift */,
 				DF6F8FC74C78D965155A4568 /* SecondaryButton.swift */,
 				2976FD9FF4356E32C14524DB /* SocialActionButton.swift */,
 				9126F8EEA57AB8B5D92D8F76 /* SubmissionCard.swift */,
@@ -685,6 +691,7 @@
 				404F2043C8E2A55FD3D1A4DA /* PublicProfilePlaceholderView.swift in Sources */,
 				76784AFE6ECE6ED99674C0F8 /* PublicationRepository.swift in Sources */,
 				2E9976188BD167D60637FE81 /* PublishedSubmissionStore.swift in Sources */,
+				A61030C739BCA94ADA58564B /* ReflectionRow.swift in Sources */,
 				8CFEE8E7E15FB22E0B82F79D /* ReviewSubmissionView.swift in Sources */,
 				6B1305415ECDFE0832E5322D /* ReviewSubmissionViewModel.swift in Sources */,
 				0071746F1AC7D4BE59315072 /* RootTabView.swift in Sources */,
@@ -697,6 +704,7 @@
 				B00328B9D07775D638D4B3B6 /* SketchSessionView.swift in Sources */,
 				843835E3E46F5DB19CA744A7 /* SketchSessionViewModel.swift in Sources */,
 				E319769023183045C69792EC /* SocialActionButton.swift in Sources */,
+				B63803944F1867B7934F819A /* SocialRepository.swift in Sources */,
 				5D7F73D7371AFACA6C40CE9D /* SubmissionCard.swift in Sources */,
 				352DC4D8BB0DE6E1FACD632E /* SubmissionDetailView.swift in Sources */,
 				6D8C87B48EBDEF9F6DB09C2E /* SubmissionDetailViewModel.swift in Sources */,

@@ -377,8 +377,7 @@ paths:
         ordered by `published_at DESC, id DESC`. Soft-deleted, hidden,
         removed, and suspended/deleted-author content is excluded.
         Available to guests and authenticated users. When authenticated,
-        `is_owner` and `viewer_has_liked` reflect the viewer
-        (`viewer_has_liked` remains false until Likes land in Phase 9).
+        `is_owner` and `viewer_has_liked` reflect the viewer.
         Pass an opaque `cursor` from a previous page to continue
         keyset pagination without duplicates or skips under concurrent
         inserts.
@@ -950,8 +949,7 @@ paths:
         Returns a published Submission. Available to guests and authenticated
         users. Soft-deleted, hidden, removed, and suspended/deleted-author
         Submissions are not returned. When authenticated, `is_owner` and
-        `viewer_has_liked` reflect the viewer (`viewer_has_liked` remains
-        false until Likes land in Phase 9).
+        `viewer_has_liked` reflect the viewer.
       parameters:
         - name: submission_id
           in: path
@@ -1024,6 +1022,249 @@ paths:
       responses:
         "204":
           description: Submission deleted
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/submissions/{submission_id}/like:
+    put:
+      operationId: likeSubmission
+      tags:
+        - submissions
+      summary: Like a Submission
+      description: |
+        Idempotently likes a published Submission. Returns the updated Like
+        state and count. Self-likes are allowed. Authenticated users may
+        like without a completed profile.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: submission_id
+          in: path
+          required: true
+          description: Submission UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: d4e5f6a7-b8c9-0123-def0-234567890123
+      responses:
+        "200":
+          description: Like state after the request
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeState"
+              example:
+                liked: true
+                like_count: 1
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: unlikeSubmission
+      tags:
+        - submissions
+      summary: Unlike a Submission
+      description: |
+        Idempotently removes the authenticated user's Like from a Submission.
+        Unlike when no Like exists is safe and returns the current state.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: submission_id
+          in: path
+          required: true
+          description: Submission UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: d4e5f6a7-b8c9-0123-def0-234567890123
+      responses:
+        "200":
+          description: Like state after the request
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeState"
+              example:
+                liked: false
+                like_count: 0
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/submissions/{submission_id}/reflections:
+    get:
+      operationId: listReflections
+      tags:
+        - submissions
+      summary: List Reflections on a Submission
+      description: |
+        Returns published Reflections for a visible Submission in
+        oldest-to-newest order. Available to guests and authenticated users.
+        Pass an opaque `cursor` from a previous page to continue keyset
+        pagination.
+      parameters:
+        - name: submission_id
+          in: path
+          required: true
+          description: Submission UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: d4e5f6a7-b8c9-0123-def0-234567890123
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor from a previous page, or omit for the first page.
+          schema:
+            type:
+              - string
+              - "null"
+          example: null
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of items to return (1–50). Defaults to 20.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          example: 20
+      responses:
+        "200":
+          description: Reflection page
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReflectionList"
+              example:
+                items:
+                  - id: e5f6a7b8-c9d0-1234-ef01-345678901234
+                    submission_id: d4e5f6a7-b8c9-0123-def0-234567890123
+                    user:
+                      id: a0b1c2d3-e4f5-6789-abcd-ef0123456789
+                      username: calm_sketcher
+                      display_name: Casey
+                      avatar_url: null
+                    body: Such a warm interpretation of today's words.
+                    created_at: "2026-07-18T21:00:00Z"
+                    is_author: false
+                next_cursor: null
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: createReflection
+      tags:
+        - submissions
+      summary: Post a Reflection
+      description: |
+        Creates a published Reflection on a visible Submission. Requires a
+        completed profile. Pass an `Idempotency-Key` header to safely retry
+        without duplicating Reflections. Empty or whitespace-only bodies are
+        rejected.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: submission_id
+          in: path
+          required: true
+          description: Submission UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: d4e5f6a7-b8c9-0123-def0-234567890123
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReflectionRequest"
+            example:
+              body: Such a warm interpretation of today's words.
+      responses:
+        "201":
+          description: Reflection created
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reflection"
+              example:
+                id: e5f6a7b8-c9d0-1234-ef01-345678901234
+                submission_id: d4e5f6a7-b8c9-0123-def0-234567890123
+                user:
+                  id: a0b1c2d3-e4f5-6789-abcd-ef0123456789
+                  username: calm_sketcher
+                  display_name: Casey
+                  avatar_url: null
+                body: Such a warm interpretation of today's words.
+                created_at: "2026-07-18T21:00:00Z"
+                is_author: true
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/reflections/{reflection_id}:
+    delete:
+      operationId: deleteReflection
+      tags:
+        - reflections
+      summary: Delete own Reflection
+      description: |
+        Soft-deletes a Reflection authored by the authenticated user. The
+        Reflection is hidden from list queries and the Submission Reflection
+        count is decremented.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reflection_id
+          in: path
+          required: true
+          description: Reflection UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: e5f6a7b8-c9d0-1234-ef01-345678901234
+      responses:
+        "204":
+          description: Reflection deleted
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
@@ -1119,6 +1360,14 @@ components:
                   message: Complete your profile before publishing.
                   details: {}
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            reflection_forbidden:
+              summary: Not the Reflection author
+              value:
+                error:
+                  code: reflection_forbidden
+                  message: You can only delete your own reflection.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     Conflict:
       description: Request conflicts with existing state
       headers:
@@ -1209,6 +1458,14 @@ components:
                 error:
                   code: submission_not_found
                   message: The requested sketch could not be found.
+                  details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            reflection_not_found:
+              summary: Reflection not found
+              value:
+                error:
+                  code: reflection_not_found
+                  message: The requested reflection could not be found.
                   details: {}
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     ValidationError:
@@ -1308,6 +1565,24 @@ components:
                   code: validation_error
                   message: The request could not be validated.
                   details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            reflection_body_empty:
+              summary: Empty or whitespace-only Reflection
+              value:
+                error:
+                  code: validation_error
+                  message: The request could not be validated.
+                  details:
+                    body: empty
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            reflection_body_too_long:
+              summary: Reflection exceeds character limit
+              value:
+                error:
+                  code: validation_error
+                  message: The request could not be validated.
+                  details:
+                    body: too_long
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     InternalError:
       description: Unexpected server error
@@ -2166,6 +2441,80 @@ components:
           $ref: "#/components/schemas/Timestamp"
         updated_at:
           $ref: "#/components/schemas/Timestamp"
+    LikeState:
+      type: object
+      description: Idempotent Like/Unlike response with the updated count.
+      required:
+        - liked
+        - like_count
+      properties:
+        liked:
+          type: boolean
+          description: Whether the authenticated viewer currently likes the Submission.
+          example: true
+        like_count:
+          type: integer
+          minimum: 0
+          description: Denormalised active Like count on the Submission.
+          example: 1
+    CreateReflectionRequest:
+      type: object
+      description: Payload for posting a Reflection on a Submission.
+      additionalProperties: false
+      required:
+        - body
+      properties:
+        body:
+          type: string
+          description: Plain-text Reflection body. Empty or whitespace-only values are rejected.
+          minLength: 1
+          maxLength: 500
+          example: Such a warm interpretation of today's words.
+    Reflection:
+      type: object
+      description: Public Reflection projection embedded in list and create responses.
+      required:
+        - id
+        - submission_id
+        - user
+        - body
+        - created_at
+        - is_author
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        submission_id:
+          $ref: "#/components/schemas/UUID"
+        user:
+          $ref: "#/components/schemas/FeedUserSummary"
+        body:
+          type: string
+          description: Plain-text Reflection body.
+          maxLength: 500
+          example: Such a warm interpretation of today's words.
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+        is_author:
+          type: boolean
+          description: True when the authenticated viewer authored this Reflection.
+          example: false
+    ReflectionList:
+      type: object
+      description: Cursor-paginated Reflection thread page (oldest to newest).
+      required:
+        - items
+        - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reflection"
+        next_cursor:
+          type:
+            - string
+            - "null"
+          description: Opaque cursor for the next page, or null when no further pages exist.
+          example: null
 tags:
   - name: health
     description: Process health probes
@@ -2182,4 +2531,6 @@ tags:
   - name: uploads
     description: Direct signed upload orchestration endpoints
   - name: submissions
-    description: Submission publication and ownership endpoints
+    description: Submission publication, ownership, Likes, and Reflections
+  - name: reflections
+    description: Reflection ownership endpoints

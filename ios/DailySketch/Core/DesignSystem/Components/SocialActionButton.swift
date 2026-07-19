@@ -64,11 +64,11 @@ struct SocialActionButton: View {
     private var accessibilityLabel: String {
         switch kind {
         case .like:
-            let selection = isActive ? "selected" : "not selected"
+            let selection = isActive ? "Unlike, selected" : "Like, not selected"
             if let count {
-                return "\(kind.accessibilityNoun), \(selection), \(count)"
+                return "\(selection), \(count)"
             }
-            return "\(kind.accessibilityNoun), \(selection)"
+            return selection
         case .reflection:
             if let count {
                 return "\(kind.accessibilityNoun), \(count)"

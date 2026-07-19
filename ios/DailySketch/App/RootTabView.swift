@@ -54,8 +54,15 @@ struct RootTabView: View {
                 model: SubmissionDetailViewModel(
                     submissionId: submissionId,
                     submissionService: dependencies.submissionRepository,
+                    socialService: dependencies.socialRepository,
+                    isAuthenticated: { dependencies.auth.isAuthenticated },
                     accessTokenProvider: { dependencies.auth.accessToken },
                     onDeleted: {
+                        dependencies.navigation.feedNeedsRefresh = true
+                    },
+                    onLikeChanged: { id, liked, count in
+                        // Feed refresh on return covers sync when Home reloads.
+                        _ = (id, liked, count)
                         dependencies.navigation.feedNeedsRefresh = true
                     }
                 )

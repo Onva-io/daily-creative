@@ -54,6 +54,7 @@ class Settings(BaseSettings):
         alias="SIGNED_READ_EXPIRY_SECONDS",
     )
     caption_max_length: int = Field(default=280, alias="CAPTION_MAX_LENGTH")
+    reflection_max_length: int = Field(default=500, alias="REFLECTION_MAX_LENGTH")
 
     descope_project_id: str = Field(default="replace-me", alias="DESCOPE_PROJECT_ID")
     descope_issuer: str = Field(
@@ -96,6 +97,13 @@ class Settings(BaseSettings):
     def validate_caption_max_length(cls, value: int) -> int:
         if value < 1:
             raise ValueError("CAPTION_MAX_LENGTH must be at least 1")
+        return value
+
+    @field_validator("reflection_max_length")
+    @classmethod
+    def validate_reflection_max_length(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("REFLECTION_MAX_LENGTH must be at least 1")
         return value
 
     @field_validator("prompt_date_timezone")

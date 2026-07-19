@@ -3,13 +3,14 @@ import SwiftUI
 struct SubmissionDetailView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
-    @State private var model: SubmissionDetailViewModel
+    @Bindable private var model: SubmissionDetailViewModel
     @State private var showsDeleteConfirmation = false
     @State private var showsPlaceholderAction = false
     @State private var placeholderActionMessage = ""
+    @State private var reflectionPendingDelete: ReflectionModel?
 
     init(model: SubmissionDetailViewModel) {
-        _model = State(initialValue: model)
+        self.model = model
     }
 
     var body: some View {
@@ -61,10 +62,57 @@ struct SubmissionDetailView: View {
         } message: {
             Text("This removes your sketch from the community feed and your profile.")
         }
+        .confirmationDialog(
+            "Delete this reflection?",
+            isPresented: Binding(
+                get: { reflectionPendingDelete != nil },
+                set: { if !$0 { reflectionPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Reflection", role: .destructive) {
+                if let reflection = reflectionPendingDelete {
+                    Task { await model.deleteReflection(reflection) }
+                }
+                reflectionPendingDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                reflectionPendingDelete = nil
+            }
+        }
         .alert("Coming soon", isPresented: $showsPlaceholderAction) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(placeholderActionMessage)
+        }
+        .alert(
+            "Couldn’t update Like",
+            isPresented: Binding(
+                get: { model.likeErrorMessage != nil },
+                set: { if !$0 { model.clearLikeError() } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.likeErrorMessage ?? "")
+        }
+        .sheet(isPresented: $model.showsAuthSheet) {
+            NavigationStack {
+                AuthenticationView(mode: model.authSheetMode)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") {
+                                model.showsAuthSheet = false
+                            }
+                        }
+                    }
+            }
+            .environment(dependencies)
+            .onChange(of: dependencies.auth.isAuthenticated) { _, isAuthenticated in
+                if isAuthenticated {
+                    Task { await model.handleAuthenticationCompleted() }
+                }
+            }
         }
         .task {
             await model.load()
@@ -110,9 +158,7 @@ struct SubmissionDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.contentGapLarge) {
                 artwork(submission)
-
                 ownerRow(submission)
-
                 FlowPromptChips(words: submission.promptWords)
 
                 HStack(spacing: AppSpacing.md) {
@@ -136,6 +182,8 @@ struct SubmissionDetailView: View {
                     .overlay(AppColors.divider)
 
                 socialRow(submission)
+
+                reflectionsSection(submission)
 
                 if let deleteErrorMessage = model.deleteErrorMessage {
                     Text(deleteErrorMessage)
@@ -213,16 +261,15 @@ struct SubmissionDetailView: View {
                 kind: .like,
                 count: submission.likeCount,
                 isActive: submission.viewerHasLiked,
+                isDisabled: model.isLikeInFlight,
                 action: {
-                    presentPlaceholder("Likes arrive in Phase 9.")
+                    Task { await model.toggleLike() }
                 }
             )
             SocialActionButton(
                 kind: .reflection,
                 count: submission.reflectionCount,
-                action: {
-                    presentPlaceholder("Reflections arrive in Phase 9.")
-                }
+                action: {}
             )
             SocialActionButton(
                 kind: .share,
@@ -232,6 +279,101 @@ struct SubmissionDetailView: View {
                 }
             )
             Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func reflectionsSection(_ submission: SubmissionModel) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.contentGap) {
+            Text("Reflections")
+                .font(AppTypography.title3)
+                .foregroundStyle(AppColors.textPrimary)
+
+            switch model.reflectionsState {
+            case .loading:
+                LoadingView(message: "Loading reflections…")
+                    .accessibilityLabel("Loading reflections")
+
+            case .failed(let message):
+                ErrorStateView(
+                    title: "Couldn’t load reflections",
+                    message: message,
+                    onRetry: { Task { await model.loadReflections(reset: true) } }
+                )
+
+            case .loaded:
+                if model.reflections.isEmpty {
+                    EmptyStateView(
+                        title: "No reflections yet",
+                        message: "Share a kind thought.",
+                        systemImage: "bubble.left"
+                    )
+                } else {
+                    ForEach(model.reflections) { reflection in
+                        ReflectionRow(reflection: reflection) {
+                            reflectionPendingDelete = reflection
+                        }
+                        .onAppear {
+                            Task { await model.loadMoreReflectionsIfNeeded(currentItem: reflection) }
+                        }
+                    }
+                }
+            }
+
+            composer
+        }
+    }
+
+    private var composer: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            HStack(alignment: .top, spacing: AppSpacing.sm) {
+                AvatarView(
+                    displayName: dependencies.auth.currentUser?.displayName ?? "You",
+                    username: dependencies.auth.currentUser?.username ?? "you",
+                    size: .feed
+                )
+                TextField("Add a reflection…", text: $model.composerText, axis: .vertical)
+                    .lineLimit(1...5)
+                    .textFieldStyle(.plain)
+                    .padding(AppSpacing.sm)
+                    .background(AppColors.surfaceTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
+                    .accessibilityLabel("Add a reflection")
+            }
+
+            HStack {
+                if model.composerText.count > SubmissionDetailViewModel.reflectionMaxLength - 40 {
+                    Text("\(model.remainingReflectionCharacters)")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(
+                            model.remainingReflectionCharacters < 0
+                                ? AppColors.danger
+                                : AppColors.textTertiary
+                        )
+                }
+                Spacer()
+                Button {
+                    Task { await model.postReflection() }
+                } label: {
+                    if model.isPostingReflection {
+                        ProgressView()
+                    } else {
+                        Text("Post")
+                            .font(AppTypography.headline)
+                    }
+                }
+                .disabled(!model.canPostReflection)
+                .foregroundStyle(
+                    model.canPostReflection ? AppColors.primary : AppColors.textTertiary
+                )
+                .accessibilityLabel("Post reflection")
+            }
+
+            if let reflectionErrorMessage = model.reflectionErrorMessage {
+                Text(reflectionErrorMessage)
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(AppColors.danger)
+            }
         }
     }
 
@@ -283,6 +425,7 @@ private struct FlexibleChipRow: View {
             model: SubmissionDetailViewModel(
                 submissionId: UUID(),
                 submissionService: RecordingSubmissionRepository(),
+                socialService: RecordingSocialRepository(),
                 accessTokenProvider: { nil }
             )
         )
@@ -318,6 +461,7 @@ private struct FlexibleChipRow: View {
                     )
                     return repo
                 }(),
+                socialService: RecordingSocialRepository(),
                 accessTokenProvider: { "token" }
             )
         )

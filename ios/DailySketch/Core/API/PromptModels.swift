@@ -61,6 +61,28 @@ struct FeedItemModel: Equatable, Sendable, Identifiable {
         return "Prompt: \(prompt) • \(timerLabel)"
     }
 
+    func withLikeState(liked: Bool, likeCount: Int) -> FeedItemModel {
+        FeedItemModel(
+            id: id,
+            imageURL: imageURL,
+            thumbnailURL: thumbnailURL,
+            userId: userId,
+            username: username,
+            displayName: displayName,
+            avatarURL: avatarURL,
+            promptWords: promptWords,
+            promptDate: promptDate,
+            timerMode: timerMode,
+            timerSeconds: timerSeconds,
+            captionPreview: captionPreview,
+            likeCount: likeCount,
+            reflectionCount: reflectionCount,
+            viewerHasLiked: liked,
+            isOwner: isOwner,
+            publishedAt: publishedAt
+        )
+    }
+
     static var preview: FeedItemModel {
         FeedItemModel(
             id: UUID(uuidString: "d4e5f6a7-b8c9-0123-def0-234567890123")!,

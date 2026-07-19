@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from app.core.pagination import decode_cursor, encode_cursor
 from app.core.settings import Settings, get_settings
 from app.models.enums import TimerMode
 from app.models.user import User
+from app.repositories.likes import LikeRepository
 from app.repositories.submissions import FeedRow, SubmissionRepository
 from app.schemas.feed import FeedItem, FeedPromptSummary, FeedUserSummary, RecentFeedResponse
 from app.schemas.me import TimerModeSchema
@@ -30,6 +32,7 @@ class FeedService:
         settings: Settings | None = None,
     ) -> None:
         self._submissions = SubmissionRepository(session)
+        self._likes = LikeRepository(session)
         self._clock = clock
         self._storage = storage
         self._settings = settings or get_settings()
@@ -63,12 +66,26 @@ class FeedService:
                 submission_id=last.id,
             )
 
+        liked_ids: set[uuid.UUID] = set()
+        if viewer is not None and page_rows:
+            liked_ids = await self._likes.liked_submission_ids(
+                user_id=viewer.id,
+                submission_ids=[row.submission.id for row in page_rows],
+            )
+
         expires_at = self._clock.now() + timedelta(
             seconds=self._settings.signed_read_expiry_seconds
         )
         items: list[FeedItem] = []
         for row in page_rows:
-            items.append(await self._to_feed_item(row=row, viewer=viewer, expires_at=expires_at))
+            items.append(
+                await self._to_feed_item(
+                    row=row,
+                    viewer=viewer,
+                    expires_at=expires_at,
+                    viewer_has_liked=row.submission.id in liked_ids,
+                )
+            )
 
         return RecentFeedResponse(items=items, next_cursor=next_cursor)
 
@@ -78,6 +95,7 @@ class FeedService:
         row: FeedRow,
         viewer: User | None,
         expires_at: datetime,
+        viewer_has_liked: bool,
     ) -> FeedItem:
         display_key = self._storage.derivative_key(
             original_key=row.upload.storage_key,
@@ -122,7 +140,7 @@ class FeedService:
             caption_preview=caption_preview(row.submission.caption),
             like_count=row.submission.like_count,
             reflection_count=row.submission.reflection_count,
-            viewer_has_liked=False,  # Phase 9 adds real Like state.
+            viewer_has_liked=viewer_has_liked,
             is_owner=is_owner,
             published_at=row.submission.published_at,
         )

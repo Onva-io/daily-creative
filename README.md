@@ -2,7 +2,7 @@
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
-This repository is a monorepo. Phase 8 delivers the community feed and community Submission Detail on top of Phase 7’s publication flow.
+This repository is a monorepo. Phase 9 delivers Likes and Reflections on top of Phase 8’s community feed and Submission Detail.
 
 ## Prerequisites
 
@@ -49,13 +49,24 @@ make ios-build
 | `ios/` | SwiftUI app (`DailySketch`) |
 | `spec/` | Product, design, architecture, implementation, infrastructure |
 
+## Phase 9 — Likes and Reflections
+
+- **Contract:**
+  - `PUT /api/v1/submissions/{submission_id}/like` / `DELETE .../like` — authenticated Like/Unlike; returns `LikeState` (`liked`, `like_count`). Idempotent; self-Like allowed.
+  - `GET /api/v1/submissions/{submission_id}/reflections` — guest-readable, oldest→newest cursor page (`ReflectionList`).
+  - `POST /api/v1/submissions/{submission_id}/reflections` — authenticated + complete profile + `Idempotency-Key`; body max length from `REFLECTION_MAX_LENGTH` (default 500).
+  - `DELETE /api/v1/reflections/{reflection_id}` — author-only soft-delete (`204`).
+- **Backend:** Migration `0008_likes_reflections_activity` (`submission_likes`, `reflections`, `activity_events`). Conflict-safe counter updates; activity events for non-self actions only. Feed/detail `viewer_has_liked` is real (batch lookup on feed).
+- **iOS:** Optimistic Like on feed cards and detail (rollback on failure); Reflection thread + composer on detail; guest writes present the auth sheet and resume on success.
+- **Out of Phase 9:** Activity inbox UI, native share payload, public profiles/streaks (Phase 10), reporting/blocking (Phase 11).
+
 ## Phase 8 — Community Feed and Submission Detail
 
 - **Contract (guests + optional auth):**
   - `GET /api/v1/feed/recent` — reverse-chronological cursor-paginated feed (`published_at DESC, id DESC`) with full `FeedItem` projections (image URLs, user/prompt summaries, timer metadata, caption preview, Like/Reflection counts, `viewer_has_liked`, `is_owner`).
   - `GET /api/v1/submissions/{submission_id}` — community detail; excludes soft-deleted/hidden/removed content and suspended/deleted authors.
-- **Backend:** Keyset cursor pagination (`invalid_cursor` → 422), single joined query (no N+1), published + active-author filtering, Phase 11 block-filter seam. `viewer_has_liked` remains `false` until Phase 9; counts come from denormalised columns.
-- **iOS:** Home renders `SubmissionCard` list with pull-to-refresh and infinite scroll; artwork opens Detail; owner opens a Phase 10 public-profile placeholder. Detail shows owner row, prompt chips, date/timer, caption, placeholder social row (Like/Reflection/Share), and owner delete with confirmation. Shared `URLCache` backs image loading.
+- **Backend:** Keyset cursor pagination (`invalid_cursor` → 422), single joined query (no N+1), published + active-author filtering, Phase 11 block-filter seam. Counts come from denormalised columns; Like state is Phase 9.
+- **iOS:** Home renders `SubmissionCard` list with pull-to-refresh and infinite scroll; artwork opens Detail; owner opens a Phase 10 public-profile placeholder. Detail shows owner row, prompt chips, date/timer, caption, social row, and owner delete with confirmation. Shared `URLCache` backs image loading.
 - **Out of Phase 8:** Real Likes/Reflections (Phase 9), full public profiles/streaks/native share payload (Phase 10), reporting/blocking (Phase 11).
 
 ## Phase 7 — Direct Upload and Submission Publication

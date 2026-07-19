@@ -21,8 +21,11 @@ struct HomeView: View {
                 let model = HomeViewModel(
                     promptFetcher: dependencies.promptRepository,
                     feedFetcher: dependencies.promptRepository,
+                    socialService: dependencies.socialRepository,
                     publishedStore: dependencies.publishedSubmissionStore,
-                    sketchFlow: dependencies.makeSketchFlowViewModel()
+                    sketchFlow: dependencies.makeSketchFlowViewModel(),
+                    isAuthenticated: { dependencies.auth.isAuthenticated },
+                    accessTokenProvider: { dependencies.auth.accessToken }
                 )
                 viewModel = model
                 await model.load()
@@ -235,6 +238,40 @@ struct HomeView: View {
             dependencies.navigation.feedNeedsRefresh = false
             Task { await model.retryFeed() }
         }
+        .sheet(
+            isPresented: Binding(
+                get: { model.showsAuthSheet },
+                set: { model.showsAuthSheet = $0 }
+            )
+        ) {
+            NavigationStack {
+                AuthenticationView(mode: model.authSheetMode)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") {
+                                model.showsAuthSheet = false
+                            }
+                        }
+                    }
+            }
+            .environment(dependencies)
+            .onChange(of: dependencies.auth.isAuthenticated) { _, isAuthenticated in
+                if isAuthenticated {
+                    Task { await model.handleAuthenticationCompleted() }
+                }
+            }
+        }
+        .alert(
+            "Couldn’t update Like",
+            isPresented: Binding(
+                get: { model.likeErrorMessage != nil },
+                set: { if !$0 { model.clearLikeError() } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.likeErrorMessage ?? "")
+        }
         .confirmationDialog(
             "Discard this draft?",
             isPresented: $showsDiscardDraftConfirmation,
@@ -380,8 +417,12 @@ struct HomeView: View {
                         onTapOwner: {
                             dependencies.navigation.homePath.append(.publicProfile(username: item.username))
                         },
-                        onTapLike: nil,
-                        onTapReflection: nil
+                        onTapLike: {
+                            Task { await model.toggleLike(itemId: item.id) }
+                        },
+                        onTapReflection: {
+                            dependencies.navigation.homePath.append(.submissionDetail(item.id))
+                        }
                     )
                     .onAppear {
                         Task { await model.loadMoreFeedIfNeeded(currentItem: item) }

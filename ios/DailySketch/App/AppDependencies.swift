@@ -13,6 +13,7 @@ final class AppDependencies {
     let sketchSessionRepository: any SketchSessionServing
     let uploadRepository: any UploadServing
     let submissionRepository: any SubmissionServing
+    let socialRepository: any SocialServing
     let directUploader: any DirectUploadTransporting
     let activeSessionStore: any ActiveSessionStoring
     let guestTimerPreferenceStore: any GuestTimerPreferenceStoring
@@ -32,6 +33,7 @@ final class AppDependencies {
         sketchSessionRepository: any SketchSessionServing,
         uploadRepository: any UploadServing,
         submissionRepository: any SubmissionServing,
+        socialRepository: any SocialServing,
         directUploader: any DirectUploadTransporting = URLSessionDirectUploader(),
         activeSessionStore: any ActiveSessionStoring,
         guestTimerPreferenceStore: any GuestTimerPreferenceStoring,
@@ -50,6 +52,7 @@ final class AppDependencies {
         self.sketchSessionRepository = sketchSessionRepository
         self.uploadRepository = uploadRepository
         self.submissionRepository = submissionRepository
+        self.socialRepository = socialRepository
         self.directUploader = directUploader
         self.activeSessionStore = activeSessionStore
         self.guestTimerPreferenceStore = guestTimerPreferenceStore
@@ -86,6 +89,7 @@ final class AppDependencies {
         let sketchSessionRepository = SketchSessionRepository(baseURL: environment.apiBaseURL)
         let uploadRepository = UploadRepository(baseURL: environment.apiBaseURL)
         let submissionRepository = SubmissionRepository(baseURL: environment.apiBaseURL)
+        let socialRepository = SocialRepository(baseURL: environment.apiBaseURL)
         let activeSessionStore = ActiveSessionStore()
         let guestTimerPreferenceStore = GuestTimerPreferenceStore()
         let draftStore = DraftStore()
@@ -111,6 +115,7 @@ final class AppDependencies {
                 sketchSessionRepository: sketchSessionRepository,
                 uploadRepository: uploadRepository,
                 submissionRepository: submissionRepository,
+                socialRepository: socialRepository,
                 activeSessionStore: activeSessionStore,
                 guestTimerPreferenceStore: guestTimerPreferenceStore,
                 draftStore: draftStore,
@@ -136,6 +141,7 @@ final class AppDependencies {
             sketchSessionRepository: sketchSessionRepository,
             uploadRepository: uploadRepository,
             submissionRepository: submissionRepository,
+            socialRepository: socialRepository,
             activeSessionStore: activeSessionStore,
             guestTimerPreferenceStore: guestTimerPreferenceStore,
             draftStore: draftStore,
