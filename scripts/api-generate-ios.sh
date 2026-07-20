@@ -46,4 +46,10 @@ if [[ -f "${EXTENSIONS}" ]]; then
   perl -i -pe 's/extension String: CodingKey/extension String: \@retroactive CodingKey/g' "${EXTENSIONS}"
 fi
 
+# DateFormatter is @unchecked Sendable; Swift 6 requires subclasses to restate that.
+FORMATTER="${OUT}/DailySketchAPI/Classes/OpenAPIs/OpenISO8601DateFormatter.swift"
+if [[ -f "${FORMATTER}" ]]; then
+  perl -i -pe 's/public class OpenISO8601DateFormatter: DateFormatter \{/public class OpenISO8601DateFormatter: DateFormatter, \@unchecked Sendable \{/g' "${FORMATTER}"
+fi
+
 echo "Generated Swift client at ${OUT}"
