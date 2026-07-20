@@ -39,4 +39,11 @@ if [[ ! -d "${OUT}/DailySketchAPI" ]]; then
   exit 1
 fi
 
+# openapi-generator emits `extension String: CodingKey`, which Swift 6 warns about as a
+# retroactive conformance. Mark it explicitly so builds stay clean across regenerations.
+EXTENSIONS="${OUT}/DailySketchAPI/Classes/OpenAPIs/Extensions.swift"
+if [[ -f "${EXTENSIONS}" ]]; then
+  perl -i -pe 's/extension String: CodingKey/extension String: \@retroactive CodingKey/g' "${EXTENSIONS}"
+fi
+
 echo "Generated Swift client at ${OUT}"
