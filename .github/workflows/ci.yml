@@ -137,7 +137,7 @@ jobs:
             -project ios/DailySketch.xcodeproj \
             -scheme DailySketch \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.1' \
-            -configuration Debug \
+            -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             build
       - name: Unit tests
@@ -146,7 +146,7 @@ jobs:
             -project ios/DailySketch.xcodeproj \
             -scheme DailySketch \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.1' \
-            -configuration Debug \
+            -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             -only-testing:DailySketchTests \
             test

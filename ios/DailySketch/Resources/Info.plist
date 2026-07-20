@@ -28,6 +28,11 @@
 	<string>$(COMMUNITY_GUIDELINES_URL)</string>
 	<key>DESCOPE_PROJECT_ID</key>
 	<string>$(DESCOPE_PROJECT_ID)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Daily Sketch uses the camera so you can photograph your drawing and share it with the community.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

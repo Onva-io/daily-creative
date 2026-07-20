@@ -46,6 +46,8 @@ targets:
         ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
         NSCameraUsageDescription: Daily Sketch uses the camera so you can photograph your drawing and share it with the community.
         NSPhotoLibraryUsageDescription: Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     configFiles:
       Debug-Local: Config/Debug-Local.xcconfig
       Debug-Development: Config/Debug-Development.xcconfig
@@ -64,10 +66,6 @@ targets:
         CODE_SIGNING_ALLOWED: "YES"
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGNING_REQUIRED: "NO"
-    scheme:
-      testTargets:
-        - DailySketchTests
-        - DailySketchUITests
   DailySketchTests:
     type: bundle.unit-test
     platform: iOS
@@ -103,3 +101,37 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.dailysketch.dev.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: DailySketch
+schemes:
+  DailySketch:
+    build:
+      targets:
+        DailySketch: all
+        DailySketchTests: [test]
+        DailySketchUITests: [test]
+    run:
+      config: Debug-Local
+    test:
+      config: Debug-Local
+      targets:
+        - DailySketchTests
+        - DailySketchUITests
+    analyze:
+      config: Debug-Local
+    profile:
+      config: Release-Production
+    archive:
+      config: Release-Production
+  DailySketch Development:
+    build:
+      targets:
+        DailySketch: all
+    run:
+      config: Debug-Development
+    test:
+      config: Debug-Development
+    analyze:
+      config: Debug-Development
+    profile:
+      config: Release-Staging
+    archive:
+      config: Release-Staging
