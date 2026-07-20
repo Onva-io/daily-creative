@@ -1,5 +1,5 @@
 .PHONY: help up down logs backend-install backend-run backend-test backend-lint backend-typecheck \
-	db-migrate db-reset seed api-validate api-generate-ios api-check-generated test clean-local \
+	backend-shell db-migrate db-reset seed api-validate api-generate-ios api-check-generated test clean-local \
 	repo-checks docker-build ios-generate ios-build ios-test account-deletion-finalize \
 	staging-up staging-smoke backup-postgres restore-postgres perf-profile \
 	job-upload-cleanup job-sketch-session-cleanup job-idempotency-cleanup \
@@ -7,13 +7,26 @@
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BACKEND := $(ROOT)/backend
-COMPOSE := docker compose -f $(ROOT)/docker-compose.yml
+# Local stack includes override (hot reload). Staging omits it on purpose.
+COMPOSE := docker compose -f $(ROOT)/docker-compose.yml -f $(ROOT)/docker-compose.override.yml
 STAGING_COMPOSE := docker compose -f $(ROOT)/docker-compose.yml -f $(ROOT)/docker-compose.staging.yml
+PROD_COMPOSE := docker compose -f $(ROOT)/docker-compose.yml
+
+# Prefer host .venv when present (CI / optional native tooling); otherwise use the Compose backend.
+# Usage: $(call run_backend,pytest -q)  — command may include && ; run via bash -c.
+define run_backend
+	@if [ -x "$(BACKEND)/.venv/bin/python" ]; then \
+		cd $(BACKEND) && . .venv/bin/activate && bash -c '$(1)'; \
+	else \
+		$(COMPOSE) exec -T backend bash -c '$(1)'; \
+	fi
+endef
 
 help:
 	@echo "Daily Sketch Make targets:"
 	@echo "  up / down / logs / clean-local / staging-up / staging-smoke"
-	@echo "  backend-install / backend-run / backend-test / backend-lint / backend-typecheck"
+	@echo "  backend-shell / backend-test / backend-lint / backend-typecheck"
+	@echo "  backend-install / backend-run  (optional host venv; CI uses install)"
 	@echo "  db-migrate / db-reset / seed / account-deletion-finalize"
 	@echo "  job-* cleanup targets / jobs-dry-run / perf-profile"
 	@echo "  backup-postgres / restore-postgres BACKUP=path"
@@ -21,7 +34,7 @@ help:
 	@echo "  repo-checks / docker-build / ios-generate / ios-build / ios-test / test"
 
 up:
-	$(COMPOSE) up postgres minio minio-init backend
+	$(COMPOSE) up --build postgres minio minio-init backend
 
 down:
 	$(COMPOSE) down
@@ -30,7 +43,7 @@ logs:
 	$(COMPOSE) logs -f
 
 staging-up:
-	$(STAGING_COMPOSE) up -d postgres minio minio-init backend
+	$(STAGING_COMPOSE) up -d --build postgres minio minio-init backend
 
 staging-smoke:
 	@curl -fsS http://localhost:8080/health/live >/dev/null
@@ -44,56 +57,59 @@ backend-install:
 backend-run:
 	cd $(BACKEND) && . .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
+backend-shell:
+	$(COMPOSE) exec backend bash
+
 backend-test:
-	cd $(BACKEND) && . .venv/bin/activate && pytest -q
+	$(call run_backend,pytest -q)
 
 backend-lint:
-	cd $(BACKEND) && . .venv/bin/activate && ruff check app tests && ruff format --check app tests
+	$(call run_backend,ruff check app tests && ruff format --check app tests)
 
 backend-typecheck:
-	cd $(BACKEND) && . .venv/bin/activate && mypy app
+	$(call run_backend,mypy app)
 
 db-migrate:
-	cd $(BACKEND) && . .venv/bin/activate && alembic upgrade head
+	$(call run_backend,alembic upgrade head)
 
 db-reset:
 	@echo "WARNING: This destroys the local Postgres volume and re-applies migrations."
 	@printf "Type 'yes' to continue: " && read answer && [ "$$answer" = "yes" ]
 	$(COMPOSE) down -v
-	$(COMPOSE) up -d postgres
-	@echo "Waiting for Postgres..."
-	@until $(COMPOSE) exec -T postgres pg_isready -U dailysketch -d dailysketch; do sleep 1; done
-	$(MAKE) db-migrate
+	$(COMPOSE) up -d --build postgres minio minio-init backend
+	@echo "Waiting for backend (migrations run on start)..."
+	@until curl -fsS http://localhost:8000/health/ready >/dev/null 2>&1; do sleep 1; done
+	@echo "Database reset complete."
 
 seed:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.seeds.prompts --days 30
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.seeds.safety
+	$(call run_backend,python -m app.seeds.prompts --days 30)
+	$(call run_backend,python -m app.seeds.safety)
 
 account-deletion-finalize:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.account_deletion
+	$(call run_backend,python -m app.jobs.account_deletion)
 
 job-upload-cleanup:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.upload_cleanup
+	$(call run_backend,python -m app.jobs.upload_cleanup)
 
 job-sketch-session-cleanup:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.sketch_session_cleanup
+	$(call run_backend,python -m app.jobs.sketch_session_cleanup)
 
 job-idempotency-cleanup:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.idempotency_cleanup
+	$(call run_backend,python -m app.jobs.idempotency_cleanup)
 
 job-deleted-media-cleanup:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.deleted_media_cleanup
+	$(call run_backend,python -m app.jobs.deleted_media_cleanup)
 
 job-missing-prompt-check:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.missing_prompt_check
+	$(call run_backend,python -m app.jobs.missing_prompt_check)
 
 jobs-dry-run:
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.upload_cleanup --dry-run
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.sketch_session_cleanup --dry-run
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.idempotency_cleanup --dry-run
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.deleted_media_cleanup --dry-run
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.missing_prompt_check --dry-run
-	cd $(BACKEND) && . .venv/bin/activate && python -m app.jobs.account_deletion --dry-run
+	$(call run_backend,python -m app.jobs.upload_cleanup --dry-run)
+	$(call run_backend,python -m app.jobs.sketch_session_cleanup --dry-run)
+	$(call run_backend,python -m app.jobs.idempotency_cleanup --dry-run)
+	$(call run_backend,python -m app.jobs.deleted_media_cleanup --dry-run)
+	$(call run_backend,python -m app.jobs.missing_prompt_check --dry-run)
+	$(call run_backend,python -m app.jobs.account_deletion --dry-run)
 
 backup-postgres:
 	bash $(ROOT)/scripts/ops/backup-postgres.sh
@@ -103,7 +119,11 @@ restore-postgres:
 	bash $(ROOT)/scripts/ops/restore-postgres.sh "$(BACKUP)"
 
 perf-profile:
-	cd $(BACKEND) && . .venv/bin/activate && python $(ROOT)/scripts/perf/load_profile.py
+	@if [ -x "$(BACKEND)/.venv/bin/python" ]; then \
+		cd $(BACKEND) && . .venv/bin/activate && python $(ROOT)/scripts/perf/load_profile.py; \
+	else \
+		$(COMPOSE) exec -T backend python /scripts/perf/load_profile.py; \
+	fi
 
 api-validate:
 	bash $(ROOT)/scripts/api-validate.sh
@@ -118,7 +138,7 @@ repo-checks:
 	bash $(ROOT)/scripts/repo-checks.sh
 
 docker-build:
-	$(COMPOSE) build backend
+	$(PROD_COMPOSE) build backend
 
 ios-generate:
 	cd $(ROOT)/ios && xcodegen generate

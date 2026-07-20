@@ -764,12 +764,14 @@ Recommended commands:
 make up
 make down
 make logs
+make seed
 make db-migrate
 make db-reset
-make seed
 make test
 make clean-local
 ```
+
+Local `make up` merges `docker-compose.override.yml`: bind-mounted backend sources, dependency sync, migrate-on-start, and uvicorn `--reload`.
 
 Requirements:
 

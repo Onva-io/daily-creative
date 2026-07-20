@@ -15,25 +15,28 @@ This repository is a monorepo. Phase 13 adds production hardening, observability
 
 ## Prerequisites
 
-- Python 3.14
-- [uv](https://github.com/astral-sh/uv)
-- Docker and Docker Compose
+- Docker and Docker Compose (primary local backend workflow)
+- Make
 - Xcode 16+ with an iOS 18 simulator
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 - Node.js / npx (OpenAPI Swift client generation)
-- Make
+
+Optional (CI and host-side OpenAPI tooling):
+
+- Python 3.14
+- [uv](https://github.com/astral-sh/uv)
 
 ## Quick start
 
 ```bash
 cp .env.example .env
-make backend-install
 make up
 curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
-make db-migrate
 make seed
 ```
+
+`make up` builds the local backend image, starts Postgres + MinIO + API, syncs Python deps, applies migrations, and serves with hot reload on bind-mounted `backend/` sources. Edit Python under `backend/app/` and the API reloads automatically.
 
 Generate and open the iOS project:
 
@@ -192,17 +195,17 @@ make ios-build
 
 | Target | Description |
 | --- | --- |
-| `make up` / `down` / `logs` | Local Docker Compose services |
-| `make backend-install` | Create Python 3.14 venv and install deps |
-| `make backend-run` | Run API with reload on `:8000` |
-| `make backend-test` / `lint` / `typecheck` | Backend quality gates |
+| `make up` / `down` / `logs` | Local Docker Compose (hot-reload API, migrate-on-start) |
+| `make seed` | Seed today + future Daily Prompts (and safety samples) |
+| `make backend-shell` | Shell into the running backend container |
+| `make backend-test` / `lint` / `typecheck` | Backend quality gates (Compose, or host `.venv` if present) |
 | `make db-migrate` / `db-reset` | Alembic migrate (reset destroys local volume) |
-| `make seed` | Seed today + future Daily Prompts |
-| `make api-validate` | Validate OpenAPI |
+| `make backend-install` / `backend-run` | Optional host venv (used by CI; not required for local API) |
+| `make api-validate` | Validate OpenAPI (needs host `backend-install` once) |
 | `make api-generate-ios` | Regenerate Swift client |
 | `make api-check-generated` | Fail if generated client is stale |
 | `make repo-checks` | Spec presence, migration names, large-file policy |
-| `make docker-build` | Build backend image |
+| `make docker-build` | Build production backend image |
 | `make ios-generate` / `ios-build` / `ios-test` | XcodeGen + simulator |
 | `make clean-local` | Remove Compose volumes and local caches |
 
@@ -212,7 +215,7 @@ Docker Compose provides:
 
 - PostgreSQL 18 on `localhost:5432`
 - MinIO on `localhost:9000` (console `:9001`)
-- Backend API on `localhost:8000`
+- Backend API on `localhost:8000` (bind-mounted sources + uvicorn reload via `docker-compose.override.yml`)
 
 Credentials are local placeholders only — see `.env.example`. Never commit real Descope, database, or storage secrets.
 

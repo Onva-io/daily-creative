@@ -36,11 +36,20 @@ FastAPI application for Daily Sketch. See the repository root README for local s
 ## Useful commands
 
 ```bash
-make backend-install
-make backend-run
+make up                 # Postgres + MinIO + hot-reload API (migrate-on-start)
+make seed
+make backend-shell
 make backend-test
 make backend-lint
 make backend-typecheck
 make db-migrate
-make seed
+make logs
+make down
+```
+
+Optional host venv (CI and OpenAPI validate without Compose):
+
+```bash
+make backend-install
+make backend-run
 ```

@@ -1,5 +1,6 @@
 # Staging-like compose profile for release rehearsal.
 # Usage: docker compose -f docker-compose.yml -f docker-compose.staging.yml up
+# (Explicit -f list omits docker-compose.override.yml — production image, no bind mounts.)
 
 services:
   minio:

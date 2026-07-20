@@ -1,3 +1,7 @@
+# Base Compose stack. Local `docker compose up` also merges docker-compose.override.yml
+# (bind-mounted backend, hot reload, migrate-on-start). Staging uses explicit -f files
+# and does not load the override — see docker-compose.staging.yml.
+
 services:
   postgres:
     image: postgres:18.4-alpine

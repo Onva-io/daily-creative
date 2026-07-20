@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+# Local development image: editable install, bind-mounted sources, uvicorn --reload.
+
+FROM python:3.14.6-slim-trixie
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_SYSTEM_PYTHON=1 \
+    UV_LINK_MODE=copy \
+    PATH="/root/.local/bin:$PATH"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
+
+COPY pyproject.toml README.md ./
+COPY app ./app
+COPY migrations ./migrations
+COPY alembic.ini ./
+COPY scripts/dev-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
+
+RUN chmod +x /usr/local/bin/dev-entrypoint.sh \
+    && uv pip install --system -e ".[dev]"
+
+EXPOSE 8000
+
+ENTRYPOINT ["dev-entrypoint.sh"]

@@ -1,0 +1,28 @@
+# Local development overrides (auto-merged by `docker compose up`).
+# Staging uses explicit -f files and does not load this file.
+#
+# Provides: Dockerfile.dev, bind-mounted sources, hot reload, migrate-on-start.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/migrations:/app/migrations
+      - ./backend/tests:/app/tests
+      - ./backend/alembic.ini:/app/alembic.ini
+      - ./backend/pyproject.toml:/app/pyproject.toml
+      - ./backend/README.md:/app/README.md
+      - ./scripts:/scripts:ro
+      - backend_uv_cache:/root/.cache/uv
+    environment:
+      # Compose network hosts (override any localhost values from .env)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dailysketch}:${POSTGRES_PASSWORD:-dailysketch}@postgres:5432/${POSTGRES_DB:-dailysketch}
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+    # Entrypoint (Dockerfile.dev) syncs deps, migrates, then uvicorn --reload
+
+volumes:
+  backend_uv_cache:

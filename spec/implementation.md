@@ -247,14 +247,20 @@ Configure:
 Recommended commands:
 
 ```text
-make backend-install
-make backend-run
+make up
+make seed
 make backend-test
 make backend-lint
 make backend-typecheck
 make db-migrate
 make db-reset
-make seed
+```
+
+Optional host tooling (CI):
+
+```text
+make backend-install
+make backend-run
 ```
 
 ## 5.3 iOS setup
