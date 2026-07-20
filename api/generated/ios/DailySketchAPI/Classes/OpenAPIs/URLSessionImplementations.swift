@@ -64,7 +64,7 @@ private var challengeHandlerStore = SynchronizedDictionary<Int, DailySketchAPIAP
 // Store current URLCredential for every URLSessionTask
 private var credentialStore = SynchronizedDictionary<Int, URLCredential>()
 
-open class URLSessionRequestBuilder<T>: RequestBuilder<T> {
+open class URLSessionRequestBuilder<T>: RequestBuilder<T>, @unchecked Sendable {
 
     /**
      May be assigned if you want to control the authentication challenges.
@@ -275,7 +275,7 @@ open class URLSessionRequestBuilder<T>: RequestBuilder<T> {
 
 }
 
-open class URLSessionDecodableRequestBuilder<T: Decodable>: URLSessionRequestBuilder<T> {
+open class URLSessionDecodableRequestBuilder<T: Decodable>: URLSessionRequestBuilder<T>, @unchecked Sendable {
     override fileprivate func processRequestResponse(urlRequest: URLRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping (_ result: Swift.Result<Response<T>, ErrorResponse>) -> Void) {
 
         if let error = error {

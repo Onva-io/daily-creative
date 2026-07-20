@@ -52,4 +52,16 @@ if [[ -f "${FORMATTER}" ]]; then
   perl -i -pe 's/public class OpenISO8601DateFormatter: DateFormatter \{/public class OpenISO8601DateFormatter: DateFormatter, \@unchecked Sendable \{/g' "${FORMATTER}"
 fi
 
+# URLSession dataTask completions are @Sendable; mark request builders so capturing
+# self in those closures is valid under Swift 6 strict concurrency.
+APIS="${OUT}/DailySketchAPI/Classes/OpenAPIs/APIs.swift"
+if [[ -f "${APIS}" ]]; then
+  perl -i -pe 's/open class RequestBuilder<T> \{/open class RequestBuilder<T>: \@unchecked Sendable \{/g' "${APIS}"
+fi
+URLSESSION="${OUT}/DailySketchAPI/Classes/OpenAPIs/URLSessionImplementations.swift"
+if [[ -f "${URLSESSION}" ]]; then
+  perl -i -pe 's/open class URLSessionRequestBuilder<T>: RequestBuilder<T> \{/open class URLSessionRequestBuilder<T>: RequestBuilder<T>, \@unchecked Sendable \{/g' "${URLSESSION}"
+  perl -i -pe 's/open class URLSessionDecodableRequestBuilder<T: Decodable>: URLSessionRequestBuilder<T> \{/open class URLSessionDecodableRequestBuilder<T: Decodable>: URLSessionRequestBuilder<T>, \@unchecked Sendable \{/g' "${URLSESSION}"
+fi
+
 echo "Generated Swift client at ${OUT}"

@@ -16,7 +16,7 @@ open class DailySketchAPIAPI {
     public static var apiResponseQueue: DispatchQueue = .main
 }
 
-open class RequestBuilder<T> {
+open class RequestBuilder<T>: @unchecked Sendable {
     var credential: URLCredential?
     var headers: [String: String]
     public let parameters: [String: Any]?
