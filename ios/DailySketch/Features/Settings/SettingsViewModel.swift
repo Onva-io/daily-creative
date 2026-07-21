@@ -98,6 +98,7 @@ final class SettingsViewModel {
     func setNotificationsEnabled(_ enabled: Bool) async {
         if enabled {
             preferences.notificationsEnabled = true
+            preferences.timezone = TimeZone.current.identifier
             if preferences.notificationTimeLocal == nil {
                 preferences.notificationTimeLocal = "09:00:00"
             }

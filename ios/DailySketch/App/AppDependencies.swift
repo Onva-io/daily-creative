@@ -99,7 +99,15 @@ final class AppDependencies {
     func hydrateUserPreferences() async {
         guard let token = auth.accessToken else { return }
         do {
-            let prefs = try await preferencesService.getPreferences(accessToken: token)
+            var prefs = try await preferencesService.getPreferences(accessToken: token)
+            let currentTimezone = TimeZone.current.identifier
+            if prefs.timezone != currentTimezone {
+                prefs.timezone = currentTimezone
+                prefs = try await preferencesService.updatePreferences(
+                    accessToken: token,
+                    preferences: prefs
+                )
+            }
             appearanceStore.update(from: prefs)
             await reminderSync.sync(preferences: prefs)
         } catch {

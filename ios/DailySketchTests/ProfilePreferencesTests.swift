@@ -135,4 +135,39 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(meFetcher.preferences.rememberedTimerMode, "no_timer")
         XCTAssertNil(meFetcher.preferences.rememberedTimerSeconds)
     }
+
+    func testEnablingNotificationsSyncsCurrentTimezone() async {
+        let meFetcher = RecordingMeFetcher(
+            profile: CurrentUserProfile(
+                id: UUID(),
+                username: "ada",
+                displayName: "Ada",
+                profileCompleted: true,
+                status: "active"
+            )
+        )
+        meFetcher.preferences = .defaults
+
+        let store = AuthSessionStore(
+            authService: MockAuthService(),
+            meFetcher: meFetcher,
+            profileUpdater: meFetcher
+        )
+        await store.signIn(displayName: "Ada")
+
+        let scheduler = InMemoryReminderScheduler()
+        let viewModel = SettingsViewModel(
+            auth: store,
+            preferencesService: meFetcher,
+            reminderSync: ReminderPreferenceSync(scheduler: scheduler),
+            appearanceStore: AppearanceStore(),
+            analytics: InMemoryAnalyticsClient()
+        )
+
+        await viewModel.load()
+        await viewModel.setNotificationsEnabled(true)
+
+        XCTAssertTrue(meFetcher.preferences.notificationsEnabled)
+        XCTAssertEqual(meFetcher.preferences.timezone, TimeZone.current.identifier)
+    }
 }

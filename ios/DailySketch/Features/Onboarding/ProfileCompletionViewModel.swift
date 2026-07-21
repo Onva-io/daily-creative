@@ -58,6 +58,7 @@ final class ProfileCompletionViewModel {
             if enableReminder, let token = auth.accessToken, let preferencesService {
                 var prefs = try await preferencesService.getPreferences(accessToken: token)
                 prefs.notificationsEnabled = true
+                prefs.timezone = TimeZone.current.identifier
                 if prefs.notificationTimeLocal == nil {
                     prefs.notificationTimeLocal = "09:00:00"
                 }
