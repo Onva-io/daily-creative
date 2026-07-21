@@ -48,6 +48,18 @@ targets:
         NSPhotoLibraryUsageDescription: Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     configFiles:
       Debug-Local: Config/Debug-Local.xcconfig
       Debug-Development: Config/Debug-Development.xcconfig
