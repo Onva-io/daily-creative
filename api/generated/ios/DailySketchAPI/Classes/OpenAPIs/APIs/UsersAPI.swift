@@ -59,11 +59,12 @@ open class UsersAPI {
      Public profile by username
      
      - parameter username: (path) Public username (case-insensitive lookup). 
+     - parameter creativeType: (query) Filter by creative type. Defaults to sketch for backward compatibility. (optional)
      - returns: PublicUser
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getPublicUser(username: String) async throws -> PublicUser {
-        return try await getPublicUserWithRequestBuilder(username: username).execute().body
+    open class func getPublicUser(username: String, creativeType: CreativeType? = nil) async throws -> PublicUser {
+        return try await getPublicUserWithRequestBuilder(username: username, creativeType: creativeType).execute().body
     }
 
     /**
@@ -72,9 +73,10 @@ open class UsersAPI {
      - Returns a public-safe projection of an active user with a completed profile. Available to guests and authenticated users. When authenticated, `is_self` is true when the viewer is the profile owner. Excludes email, Descope subject, preferences, moderation internals, Drafts, and private session analytics. Incomplete, suspended, and deleted profiles return 404. When the authenticated viewer has a block relationship with the profile owner in either direction, the profile is unavailable (404). 
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter username: (path) Public username (case-insensitive lookup). 
+     - parameter creativeType: (query) Filter by creative type. Defaults to sketch for backward compatibility. (optional)
      - returns: RequestBuilder<PublicUser> 
      */
-    open class func getPublicUserWithRequestBuilder(username: String) -> RequestBuilder<PublicUser> {
+    open class func getPublicUserWithRequestBuilder(username: String, creativeType: CreativeType? = nil) -> RequestBuilder<PublicUser> {
         var localVariablePath = "/api/v1/users/{username}"
         let usernamePreEscape = "\(APIHelper.mapValueToPathItem(username))"
         let usernamePostEscape = usernamePreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
@@ -82,7 +84,10 @@ open class UsersAPI {
         let localVariableURLString = DailySketchAPIAPI.basePath + localVariablePath
         let localVariableParameters: [String: Any]? = nil
 
-        let localVariableUrlComponents = URLComponents(string: localVariableURLString)
+        var localVariableUrlComponents = URLComponents(string: localVariableURLString)
+        localVariableUrlComponents?.queryItems = APIHelper.mapValuesToQueryItems([
+            "creative_type": (wrappedValue: creativeType?.encodeToJSON(), isExplode: true),
+        ])
 
         let localVariableNillableHeaders: [String: Any?] = [
             :
@@ -101,11 +106,12 @@ open class UsersAPI {
      - parameter username: (path) Public username (case-insensitive lookup). 
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
+     - parameter creativeType: (query) Filter by creative type. Defaults to sketch for backward compatibility. (optional)
      - returns: RecentFeed
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getUserSubmissions(username: String, cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
-        return try await getUserSubmissionsWithRequestBuilder(username: username, cursor: cursor, limit: limit).execute().body
+    open class func getUserSubmissions(username: String, cursor: String? = nil, limit: Int? = nil, creativeType: CreativeType? = nil) async throws -> RecentFeed {
+        return try await getUserSubmissionsWithRequestBuilder(username: username, cursor: cursor, limit: limit, creativeType: creativeType).execute().body
     }
 
     /**
@@ -116,9 +122,10 @@ open class UsersAPI {
      - parameter username: (path) Public username (case-insensitive lookup). 
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
+     - parameter creativeType: (query) Filter by creative type. Defaults to sketch for backward compatibility. (optional)
      - returns: RequestBuilder<RecentFeed> 
      */
-    open class func getUserSubmissionsWithRequestBuilder(username: String, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
+    open class func getUserSubmissionsWithRequestBuilder(username: String, cursor: String? = nil, limit: Int? = nil, creativeType: CreativeType? = nil) -> RequestBuilder<RecentFeed> {
         var localVariablePath = "/api/v1/users/{username}/submissions"
         let usernamePreEscape = "\(APIHelper.mapValueToPathItem(username))"
         let usernamePostEscape = usernamePreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
@@ -130,6 +137,7 @@ open class UsersAPI {
         localVariableUrlComponents?.queryItems = APIHelper.mapValuesToQueryItems([
             "cursor": (wrappedValue: cursor?.encodeToJSON(), isExplode: true),
             "limit": (wrappedValue: limit?.encodeToJSON(), isExplode: true),
+            "creative_type": (wrappedValue: creativeType?.encodeToJSON(), isExplode: true),
         ])
 
         let localVariableNillableHeaders: [String: Any?] = [

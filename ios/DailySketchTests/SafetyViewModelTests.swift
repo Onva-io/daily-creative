@@ -49,6 +49,7 @@ final class BlockSafetyViewModelTests: XCTestCase {
         let authorId = UUID()
         let submission = SubmissionModel(
             id: UUID(),
+            creativeType: "sketch",
             caption: nil,
             status: "published",
             timerMode: "no_timer",
@@ -65,6 +66,8 @@ final class BlockSafetyViewModelTests: XCTestCase {
             promptWords: ["A", "B", "C"],
             promptDate: Date(),
             sketchSessionId: UUID(),
+            storySessionId: nil,
+            body: nil,
             publishedAt: Date()
         )
         submissions.nextSubmission = submission

@@ -14,7 +14,7 @@ struct HomeView: View {
             }
         }
         .background(AppColors.background.ignoresSafeArea())
-        .navigationTitle("Daily Sketch")
+        .navigationTitle(ProductConfig.current.homeTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if viewModel == nil {
@@ -326,7 +326,7 @@ struct HomeView: View {
 
     private func communitySection(_ model: HomeViewModel) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.contentGap) {
-            Text("Community Sketches")
+            Text(ProductConfig.current.communityTitle)
                 .font(AppTypography.title3)
                 .foregroundStyle(AppColors.textPrimary)
 

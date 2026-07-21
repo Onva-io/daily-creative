@@ -8,6 +8,8 @@
 	<string>$(API_BASE_URL)</string>
 	<key>APP_ENVIRONMENT</key>
 	<string>$(APP_ENVIRONMENT)</string>
+	<key>BRAND_NAME</key>
+	<string>$(BRAND_NAME)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>
@@ -26,6 +28,8 @@
 	<string>1</string>
 	<key>COMMUNITY_GUIDELINES_URL</key>
 	<string>$(COMMUNITY_GUIDELINES_URL)</string>
+	<key>CREATIVE_TYPE_ID</key>
+	<string>$(CREATIVE_TYPE_ID)</string>
 	<key>DESCOPE_PROJECT_ID</key>
 	<string>$(DESCOPE_PROJECT_ID)</string>
 	<key>NSAppTransportSecurity</key>

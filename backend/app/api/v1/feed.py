@@ -9,6 +9,7 @@ from app.auth.deps import get_optional_current_user
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
+from app.models.enums import CreativeType
 from app.models.user import User
 from app.schemas.feed import RecentFeedResponse
 from app.services.feed import FeedService
@@ -21,6 +22,7 @@ router = APIRouter(tags=["feed"])
 async def get_recent_feed(
     cursor: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
+    creative_type: CreativeType | None = Query(default=None),
     viewer: User | None = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
@@ -31,4 +33,5 @@ async def get_recent_feed(
         cursor=cursor,
         limit=limit,
         viewer=viewer,
+        creative_type=creative_type,
     )

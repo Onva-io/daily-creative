@@ -17,6 +17,7 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     public static let reflectionCountRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: nil, exclusiveMaximum: false, multipleOf: nil)
     /** Canonical UUID string identifier. */
     public var id: UUID
+    public var creativeType: CreativeType
     public var caption: String?
     public var visibility: SubmissionVisibility
     public var status: SubmissionStatus
@@ -28,15 +29,19 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     public var viewerHasLiked: Bool
     public var isOwner: Bool
     /** Short-lived signed display image URL. */
-    public var imageUrl: String
+    public var imageUrl: String?
     /** Short-lived signed thumbnail URL. */
-    public var thumbnailUrl: String
+    public var thumbnailUrl: String?
     public var user: FeedUserSummary
     public var prompt: FeedPromptSummary
     /** Canonical UUID string identifier. */
-    public var sketchSessionId: UUID
+    public var sketchSessionId: UUID?
     /** Canonical UUID string identifier. */
-    public var uploadId: UUID
+    public var storySessionId: UUID?
+    /** Canonical UUID string identifier. */
+    public var uploadId: UUID?
+    /** Full story body text. Null for non-story submissions. */
+    public var body: String?
     /** RFC 3339 UTC timestamp. */
     public var publishedAt: Date
     /** RFC 3339 UTC timestamp. */
@@ -44,8 +49,9 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     /** RFC 3339 UTC timestamp. */
     public var updatedAt: Date
 
-    public init(id: UUID, caption: String?, visibility: SubmissionVisibility, status: SubmissionStatus, timerMode: TimerMode, timerSeconds: Int?, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, imageUrl: String, thumbnailUrl: String, user: FeedUserSummary, prompt: FeedPromptSummary, sketchSessionId: UUID, uploadId: UUID, publishedAt: Date, createdAt: Date, updatedAt: Date) {
+    public init(id: UUID, creativeType: CreativeType, caption: String?, visibility: SubmissionVisibility, status: SubmissionStatus, timerMode: TimerMode, timerSeconds: Int?, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, imageUrl: String?, thumbnailUrl: String?, user: FeedUserSummary, prompt: FeedPromptSummary, sketchSessionId: UUID?, storySessionId: UUID?, uploadId: UUID?, body: String?, publishedAt: Date, createdAt: Date, updatedAt: Date) {
         self.id = id
+        self.creativeType = creativeType
         self.caption = caption
         self.visibility = visibility
         self.status = status
@@ -60,7 +66,9 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         self.user = user
         self.prompt = prompt
         self.sketchSessionId = sketchSessionId
+        self.storySessionId = storySessionId
         self.uploadId = uploadId
+        self.body = body
         self.publishedAt = publishedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -68,6 +76,7 @@ public struct Submission: Codable, JSONEncodable, Hashable {
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case id
+        case creativeType = "creative_type"
         case caption
         case visibility
         case status
@@ -82,7 +91,9 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         case user
         case prompt
         case sketchSessionId = "sketch_session_id"
+        case storySessionId = "story_session_id"
         case uploadId = "upload_id"
+        case body
         case publishedAt = "published_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -93,6 +104,7 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encode(creativeType, forKey: .creativeType)
         try container.encode(caption, forKey: .caption)
         try container.encode(visibility, forKey: .visibility)
         try container.encode(status, forKey: .status)
@@ -107,7 +119,9 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         try container.encode(user, forKey: .user)
         try container.encode(prompt, forKey: .prompt)
         try container.encode(sketchSessionId, forKey: .sketchSessionId)
+        try container.encode(storySessionId, forKey: .storySessionId)
         try container.encode(uploadId, forKey: .uploadId)
+        try container.encode(body, forKey: .body)
         try container.encode(publishedAt, forKey: .publishedAt)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(updatedAt, forKey: .updatedAt)

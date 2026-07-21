@@ -1,0 +1,17 @@
+#include "../Base.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = com.example.dailystory.staging
+API_BASE_URL = https:/$()/api.staging.dailysketch.example
+APP_ENVIRONMENT = staging
+DESCOPE_PROJECT_ID = replace-me
+ANALYTICS_ENVIRONMENT = staging
+LOGGING_LEVEL = warning
+SHOW_ENVIRONMENT_BADGE = NO
+BRAND_NAME = Daily Story
+CREATIVE_TYPE_ID = story
+
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = PRODUCT_STORY
+SWIFT_COMPILATION_MODE = wholemodule
+SWIFT_OPTIMIZATION_LEVEL = -O
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+GCC_OPTIMIZATION_LEVEL = s

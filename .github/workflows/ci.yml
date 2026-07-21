@@ -131,7 +131,7 @@ jobs:
         run: brew install xcodegen
       - name: Generate project
         run: make ios-generate
-      - name: Build for simulator
+      - name: Build DailySketch for simulator
         run: |
           xcodebuild \
             -project ios/DailySketch.xcodeproj \
@@ -140,7 +140,16 @@ jobs:
             -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             build
-      - name: Unit tests
+      - name: Build DailyStory for simulator
+        run: |
+          xcodebuild \
+            -project ios/DailySketch.xcodeproj \
+            -scheme DailyStory \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.1' \
+            -configuration Debug-Local \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: DailySketch unit tests
         run: |
           xcodebuild \
             -project ios/DailySketch.xcodeproj \

@@ -21,10 +21,25 @@ struct RecentFeedPage: Equatable, Sendable {
     let nextCursor: String?
 }
 
+enum HomePromptState: Equatable {
+    case loading
+    case loaded(DailyPromptModel)
+    case missing
+    case failed(String)
+}
+
+enum HomeFeedState: Equatable {
+    case loading
+    case empty
+    case loaded([FeedItemModel])
+    case failed(String)
+}
+
 struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
     let id: UUID
-    let imageURL: URL
-    let thumbnailURL: URL
+    let creativeType: String
+    let imageURL: URL?
+    let thumbnailURL: URL?
     let userId: UUID
     let username: String
     let displayName: String
@@ -34,11 +49,15 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
     let timerMode: String
     let timerSeconds: Int?
     let captionPreview: String?
+    let bodyPreview: String?
+    let wordCount: Int?
     let likeCount: Int
     let reflectionCount: Int
     let viewerHasLiked: Bool
     let isOwner: Bool
     let publishedAt: Date
+
+    var isStory: Bool { creativeType == "story" }
 
     var relativePublishedAt: String {
         RelativeTimestampFormatter.string(from: publishedAt)
@@ -58,12 +77,17 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
 
     var metadataLine: String {
         let prompt = promptWords.joined(separator: ", ")
+        if isStory, let wordCount {
+            let words = wordCount == 1 ? "1 word" : "\(wordCount) words"
+            return "Prompt: \(prompt) • \(timerLabel) • \(words)"
+        }
         return "Prompt: \(prompt) • \(timerLabel)"
     }
 
     func withLikeState(liked: Bool, likeCount: Int) -> FeedItemModel {
         FeedItemModel(
             id: id,
+            creativeType: creativeType,
             imageURL: imageURL,
             thumbnailURL: thumbnailURL,
             userId: userId,
@@ -75,6 +99,8 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
             timerMode: timerMode,
             timerSeconds: timerSeconds,
             captionPreview: captionPreview,
+            bodyPreview: bodyPreview,
+            wordCount: wordCount,
             likeCount: likeCount,
             reflectionCount: reflectionCount,
             viewerHasLiked: liked,
@@ -86,6 +112,7 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
     static var preview: FeedItemModel {
         FeedItemModel(
             id: UUID(uuidString: "d4e5f6a7-b8c9-0123-def0-234567890123")!,
+            creativeType: "sketch",
             imageURL: URL(string: "https://example.test/display")!,
             thumbnailURL: URL(string: "https://example.test/thumb")!,
             userId: UUID(uuidString: "f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1")!,
@@ -97,6 +124,8 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
             timerMode: "countdown",
             timerSeconds: 300,
             captionPreview: "A quiet coffee and banana sketch.",
+            bodyPreview: nil,
+            wordCount: nil,
             likeCount: 0,
             reflectionCount: 0,
             viewerHasLiked: false,

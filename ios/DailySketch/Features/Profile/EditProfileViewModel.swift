@@ -70,7 +70,8 @@ final class EditProfileViewModel {
         do {
             let profile = try await profileFetcher.fetchPublicProfile(
                 username: usernameValue,
-                accessToken: accessTokenProvider()
+                accessToken: accessTokenProvider(),
+                creativeType: ProductConfig.current.creativeTypeID
             )
             seed(from: profile)
         } catch {

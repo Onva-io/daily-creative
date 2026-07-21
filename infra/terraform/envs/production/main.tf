@@ -68,6 +68,10 @@ locals {
       schedule_expression = "rate(1 hour)"
       module_path         = "app.jobs.sketch_session_cleanup"
     }
+    story_session_cleanup = {
+      schedule_expression = "rate(1 hour)"
+      module_path         = "app.jobs.story_session_cleanup"
+    }
     idempotency_cleanup = {
       schedule_expression = "rate(6 hours)"
       module_path         = "app.jobs.idempotency_cleanup"

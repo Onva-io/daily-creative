@@ -52,11 +52,14 @@ struct SubmissionDetailView: View {
             }
         }
         .confirmationDialog(
-            "Delete this sketch?",
+            "Delete this \(ProductConfig.current.creativeTypeID == "story" ? "story" : "sketch")?",
             isPresented: $showsDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete Sketch", role: .destructive) {
+            Button(
+                ProductConfig.current.creativeTypeID == "story" ? "Delete Story" : "Delete Sketch",
+                role: .destructive
+            ) {
                 Task {
                     await model.deleteSubmission()
                     if case .deleted = model.state {
@@ -66,7 +69,11 @@ struct SubmissionDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes your sketch from the community feed and your profile.")
+            Text(
+                ProductConfig.current.creativeTypeID == "story"
+                    ? "This removes your story from the community feed and your profile."
+                    : "This removes your sketch from the community feed and your profile."
+            )
         }
         .confirmationDialog(
             "Block this user?",
@@ -210,7 +217,11 @@ struct SubmissionDetailView: View {
     private func loadedContent(_ submission: SubmissionModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.contentGapLarge) {
-                artwork(submission)
+                if submission.isStory {
+                    storyBody(submission)
+                } else {
+                    artwork(submission)
+                }
                 ownerRow(submission)
                 FlowPromptChips(words: submission.promptWords)
 
@@ -247,6 +258,17 @@ struct SubmissionDetailView: View {
             .padding(.horizontal, AppSpacing.screenHorizontal)
             .padding(.vertical, AppSpacing.lg)
         }
+    }
+
+    private func storyBody(_ submission: SubmissionModel) -> some View {
+        Text(submission.body ?? "")
+            .font(AppTypography.body)
+            .foregroundStyle(AppColors.textPrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(AppSpacing.md)
+            .background(AppColors.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadii.card, style: .continuous))
+            .accessibilityLabel("Story body")
     }
 
     private func artwork(_ submission: SubmissionModel) -> some View {
@@ -340,12 +362,18 @@ struct SubmissionDetailView: View {
         isPreparingShare = true
         defer { isPreparingShare = false }
 
-        let image = await SubmissionImageDownloader.downloadImage(from: submission.imageURL)
+        let image: UIImage?
+        if let imageURL = submission.imageURL {
+            image = await SubmissionImageDownloader.downloadImage(from: imageURL)
+        } else {
+            image = nil
+        }
         let payload = SubmissionSharePayload.make(
             promptWords: submission.promptWords,
             displayName: submission.displayName,
             username: submission.username,
             image: image,
+            body: submission.body,
             publicLink: nil
         )
         shareItems = payload.activityItems
@@ -580,6 +608,7 @@ private struct FlexibleChipRow: View {
                     let repo = RecordingSubmissionRepository()
                     repo.nextSubmission = SubmissionModel(
                         id: UUID(),
+            creativeType: "sketch",
                         caption: "Quiet lines.",
                         status: "published",
                         timerMode: "countdown",
@@ -596,6 +625,8 @@ private struct FlexibleChipRow: View {
                         promptWords: ["Chocolate", "Coffee", "Banana"],
                         promptDate: Date(),
                         sketchSessionId: UUID(),
+            storySessionId: nil,
+            body: nil,
                         publishedAt: Date()
                     )
                     return repo

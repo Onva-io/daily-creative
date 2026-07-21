@@ -1,20 +1,6 @@
 import Foundation
 import Observation
 
-enum HomePromptState: Equatable {
-    case loading
-    case loaded(DailyPromptModel)
-    case missing
-    case failed(String)
-}
-
-enum HomeFeedState: Equatable {
-    case loading
-    case empty
-    case loaded([FeedItemModel])
-    case failed(String)
-}
-
 @MainActor
 @Observable
 final class HomeViewModel {
@@ -332,7 +318,8 @@ final class HomeViewModel {
             let page = try await feedFetcher.fetchRecentFeed(
                 accessToken: accessTokenProvider(),
                 cursor: cursor,
-                limit: feedPageSize
+                limit: feedPageSize,
+                creativeType: ProductConfig.current.creativeTypeID
             )
             if reset {
                 feedItems = page.items

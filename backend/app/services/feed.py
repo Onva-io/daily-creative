@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.clock import Clock
 from app.core.pagination import decode_cursor, encode_cursor
 from app.core.settings import Settings, get_settings
+from app.models.enums import CreativeType
 from app.models.user import User
 from app.repositories.likes import LikeRepository
 from app.repositories.submissions import SubmissionRepository
@@ -46,6 +47,7 @@ class FeedService:
         cursor: str | None = None,
         limit: int = 20,
         viewer: User | None = None,
+        creative_type: CreativeType | None = None,
     ) -> RecentFeedResponse:
         cursor_published_at = None
         cursor_id = None
@@ -61,6 +63,7 @@ class FeedService:
             cursor_id=cursor_id,
             viewer_id=viewer.id if viewer is not None else None,
             excluded_author_ids=excluded or None,
+            creative_type=creative_type,
         )
 
         page_rows = rows[:limit]

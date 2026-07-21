@@ -11,6 +11,7 @@ final class SubmissionDetailViewModelTests: XCTestCase {
     ) -> SubmissionModel {
         SubmissionModel(
             id: UUID(),
+            creativeType: "sketch",
             caption: "Quiet botanical lines for the page title check.",
             status: "published",
             timerMode: "countdown",
@@ -27,6 +28,8 @@ final class SubmissionDetailViewModelTests: XCTestCase {
             promptWords: ["Leaf", "Green", "Organic"],
             promptDate: Date(timeIntervalSince1970: 1_784_332_800),
             sketchSessionId: UUID(),
+            storySessionId: nil,
+            body: nil,
             publishedAt: Date()
         )
     }

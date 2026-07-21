@@ -8,7 +8,13 @@ struct RootTabView: View {
 
         TabView(selection: $navigation.selectedTab) {
             NavigationStack(path: $navigation.homePath) {
-                HomeView()
+                Group {
+                    #if PRODUCT_STORY
+                    StoryHomeView()
+                    #else
+                    HomeView()
+                    #endif
+                }
                     .navigationDestination(for: AppRoute.self) { route in
                         destination(for: route)
                     }

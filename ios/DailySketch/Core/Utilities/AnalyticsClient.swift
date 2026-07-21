@@ -29,6 +29,10 @@ enum AnalyticsEventName: String, Sendable {
     case profileViewed = "profile_viewed"
     case reminderEnabled = "reminder_enabled"
     case reminderDisabled = "reminder_disabled"
+    case storySessionStarted = "story_session_started"
+    case storyWritingStarted = "story_writing_started"
+    case storyPublished = "story_published"
+    case storyDraftSaved = "story_draft_saved"
 }
 
 struct AnalyticsRecord: Equatable, Sendable {

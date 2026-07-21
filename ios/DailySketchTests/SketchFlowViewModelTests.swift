@@ -220,6 +220,7 @@ final class SketchFlowViewModelTests: XCTestCase {
 
         let submission = SubmissionModel(
             id: UUID(),
+            creativeType: "sketch",
             caption: "shipped",
             status: "published",
             timerMode: "countdown",
@@ -236,6 +237,8 @@ final class SketchFlowViewModelTests: XCTestCase {
             promptWords: prompt.words,
             promptDate: prompt.promptDate,
             sketchSessionId: draft.serverSessionId!,
+            storySessionId: nil,
+            body: nil,
             publishedAt: Date()
         )
         flow.handleReviewOutcome(.published(submission))

@@ -35,33 +35,54 @@ struct ProfileGalleryCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Sketch for \(promptLabel), \(promptDateLabel)")
+        .accessibilityLabel("\(item.isStory ? "Story" : "Sketch") for \(promptLabel), \(promptDateLabel)")
         .accessibilityHint("Opens submission detail")
     }
 
     private var artwork: some View {
-        AsyncImage(url: item.imageURL) { phase in
-            switch phase {
-            case .empty:
-                LoadingSkeleton(height: 240)
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity)
-                    .frame(maxHeight: 420)
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
-            case .failure:
-                RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous)
-                    .fill(AppColors.surfaceTertiary)
-                    .frame(height: 200)
-                    .overlay {
-                        Text("Couldn’t load image")
-                            .font(AppTypography.bodySmall)
+        Group {
+            if item.isStory {
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                    Text(item.bodyPreview ?? "Untitled story")
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
+                        .lineLimit(5)
+                        .multilineTextAlignment(.leading)
+                    if let wordCount = item.wordCount {
+                        Text(wordCount == 1 ? "1 word" : "\(wordCount) words")
+                            .font(AppTypography.caption)
                             .foregroundStyle(AppColors.textTertiary)
                     }
-            @unknown default:
-                EmptyView()
+                }
+                .padding(AppSpacing.md)
+                .frame(maxWidth: .infinity, minHeight: 160, alignment: .leading)
+                .background(AppColors.surfaceTertiary)
+                .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
+            } else {
+                AsyncImage(url: item.imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        LoadingSkeleton(height: 240)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity)
+                            .frame(maxHeight: 420)
+                            .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
+                    case .failure:
+                        RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous)
+                            .fill(AppColors.surfaceTertiary)
+                            .frame(height: 200)
+                            .overlay {
+                                Text("Couldn’t load image")
+                                    .font(AppTypography.bodySmall)
+                                    .foregroundStyle(AppColors.textTertiary)
+                            }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
             }
         }
     }

@@ -11,6 +11,7 @@ from app.api.v1.me import router as me_router
 from app.api.v1.prompts import router as prompts_router
 from app.api.v1.safety import router as safety_router
 from app.api.v1.sketch_sessions import router as sketch_sessions_router
+from app.api.v1.story_sessions import router as story_sessions_router
 from app.api.v1.social import reflections_router, router as social_router
 from app.api.v1.submissions import router as submissions_router
 from app.api.v1.uploads import router as uploads_router
@@ -23,6 +24,8 @@ router.include_router(safety_router)
 router.include_router(prompts_router)
 router.include_router(feed_router)
 router.include_router(sketch_sessions_router)
+router.include_router(story_sessions_router)
+router.include_router(story_sessions_router)
 router.include_router(uploads_router)
 router.include_router(submissions_router)
 router.include_router(social_router)

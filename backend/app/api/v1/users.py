@@ -9,6 +9,7 @@ from app.auth.deps import get_optional_current_user
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
+from app.models.enums import CreativeType
 from app.models.user import User
 from app.schemas.feed import RecentFeedResponse
 from app.schemas.me import PublicUserResponse
@@ -21,6 +22,7 @@ router = APIRouter(tags=["users"])
 @router.get("/users/{username}", response_model=PublicUserResponse)
 async def get_public_user(
     username: str,
+    creative_type: CreativeType | None = Query(default=None),
     viewer: User | None = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
@@ -32,7 +34,7 @@ async def get_public_user(
         clock=clock,
         storage=storage,
         settings=settings,
-    ).get_public_user(username, viewer=viewer)
+    ).get_public_user(username, viewer=viewer, creative_type=creative_type)
 
 
 @router.get("/users/{username}/submissions", response_model=RecentFeedResponse)
@@ -40,6 +42,7 @@ async def get_user_submissions(
     username: str,
     cursor: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
+    creative_type: CreativeType | None = Query(default=None),
     viewer: User | None = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
@@ -56,4 +59,5 @@ async def get_user_submissions(
         cursor=cursor,
         limit=limit,
         viewer=viewer,
+        creative_type=creative_type,
     )

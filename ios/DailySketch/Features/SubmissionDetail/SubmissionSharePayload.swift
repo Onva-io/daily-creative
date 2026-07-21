@@ -20,14 +20,20 @@ struct SubmissionSharePayload: Equatable {
         displayName: String,
         username: String,
         image: UIImage?,
+        body: String? = nil,
         publicLink: URL? = nil
     ) -> SubmissionSharePayload {
         let promptLine = promptWords.joined(separator: " · ")
+        let kind = ProductConfig.current.creativeTypeID == "story" ? "story" : "sketch"
         var lines = [
             promptLine,
-            "A sketch by \(displayName) (@\(username))",
-            "Shared via Daily Sketch",
+            "A \(kind) by \(displayName) (@\(username))",
         ]
+        if let body, !body.isEmpty {
+            let preview = body.count > 280 ? String(body.prefix(277)) + "…" : body
+            lines.append(preview)
+        }
+        lines.append(ProductConfig.current.shareFooter)
         if let publicLink {
             lines.append(publicLink.absoluteString)
         }

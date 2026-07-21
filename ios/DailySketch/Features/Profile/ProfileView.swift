@@ -333,6 +333,7 @@ struct ProfileView: View {
                     .foregroundStyle(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
 
+                #if !PRODUCT_STORY
                 if let draft = try? dependencies.draftStore.mostRecentRecoverable(),
                    let data = try? dependencies.draftImageStore.readData(fileName: draft.imageFileName),
                    let image = UIImage(data: data) {
@@ -348,6 +349,7 @@ struct ProfileView: View {
                         }
                     )
                 }
+                #endif
 
                 PrimaryButton(title: "Create Free Account") {
                     dependencies.navigation.profilePath.append(.authentication(.signUp))

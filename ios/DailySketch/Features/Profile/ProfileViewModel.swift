@@ -84,7 +84,8 @@ final class ProfileViewModel {
             let token = accessTokenProvider()
             let loaded = try await profileFetcher.fetchPublicProfile(
                 username: username,
-                accessToken: token
+                accessToken: token,
+                creativeType: ProductConfig.current.creativeTypeID
             )
             profile = loaded
             isSelf = loaded.isSelf || mode == .own
@@ -92,7 +93,8 @@ final class ProfileViewModel {
                 username: username,
                 accessToken: token,
                 cursor: nil,
-                limit: pageSize
+                limit: pageSize,
+                creativeType: ProductConfig.current.creativeTypeID
             )
             galleryItems = page.items
             nextCursor = page.nextCursor
@@ -124,7 +126,8 @@ final class ProfileViewModel {
                 username: username,
                 accessToken: accessTokenProvider(),
                 cursor: cursor,
-                limit: pageSize
+                limit: pageSize,
+                creativeType: ProductConfig.current.creativeTypeID
             )
             let existingIDs = Set(galleryItems.map(\.id))
             let newItems = page.items.filter { !existingIDs.contains($0.id) }

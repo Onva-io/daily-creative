@@ -17,7 +17,7 @@ struct TimerSelectionView: View {
                 .padding(.top, AppSpacing.md)
                 .padding(.bottom, AppSpacing.sm)
 
-            Text("How long would you like to sketch?")
+            Text("How long would you like?")
                 .font(AppTypography.title3)
                 .foregroundStyle(AppColors.textPrimary)
                 .multilineTextAlignment(.center)

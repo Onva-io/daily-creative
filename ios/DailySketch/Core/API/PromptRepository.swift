@@ -6,7 +6,12 @@ protocol PromptFetching: Sendable {
 }
 
 protocol FeedFetching: Sendable {
-    func fetchRecentFeed(accessToken: String?, cursor: String?, limit: Int) async throws -> RecentFeedPage
+    func fetchRecentFeed(
+        accessToken: String?,
+        cursor: String?,
+        limit: Int,
+        creativeType: String?
+    ) async throws -> RecentFeedPage
 }
 
 struct PromptRepository: PromptFetching, FeedFetching {
@@ -22,12 +27,21 @@ struct PromptRepository: PromptFetching, FeedFetching {
         }
     }
 
-    func fetchRecentFeed(accessToken: String?, cursor: String?, limit: Int) async throws -> RecentFeedPage {
+    func fetchRecentFeed(
+        accessToken: String?,
+        cursor: String?,
+        limit: Int,
+        creativeType: String? = ProductConfig.current.creativeTypeID
+    ) async throws -> RecentFeedPage {
         configureClient(accessToken: accessToken)
         do {
-            let feed = try await FeedAPI.getRecentFeed(cursor: cursor, limit: limit)
+            let feed = try await FeedAPI.getRecentFeed(
+                cursor: cursor,
+                limit: limit,
+                creativeType: FeedMapping.apiCreativeType(from: creativeType ?? ProductConfig.current.creativeTypeID)
+            )
             return RecentFeedPage(
-                items: feed.items.compactMap(mapFeedItem),
+                items: feed.items.compactMap(FeedMapping.mapItem),
                 nextCursor: feed.nextCursor
             )
         } catch {
@@ -58,34 +72,6 @@ struct PromptRepository: PromptFetching, FeedFetching {
             word3: prompt.word3,
             status: prompt.status.rawValue,
             publishedAt: prompt.publishedAt
-        )
-    }
-
-    private func mapFeedItem(_ item: FeedItem) -> FeedItemModel? {
-        guard
-            let imageURL = URL(string: item.imageUrl),
-            let thumbnailURL = URL(string: item.thumbnailUrl)
-        else {
-            return nil
-        }
-        return FeedItemModel(
-            id: item.id,
-            imageURL: imageURL,
-            thumbnailURL: thumbnailURL,
-            userId: item.user.id,
-            username: item.user.username,
-            displayName: item.user.displayName,
-            avatarURL: item.user.avatarUrl.flatMap(URL.init(string:)),
-            promptWords: [item.prompt.word1, item.prompt.word2, item.prompt.word3],
-            promptDate: item.prompt.promptDate,
-            timerMode: item.timerMode.rawValue,
-            timerSeconds: item.timerSeconds,
-            captionPreview: item.captionPreview,
-            likeCount: item.likeCount,
-            reflectionCount: item.reflectionCount,
-            viewerHasLiked: item.viewerHasLiked,
-            isOwner: item.isOwner,
-            publishedAt: item.publishedAt
         )
     }
 
@@ -141,13 +127,19 @@ final class RecordingPromptFetcher: PromptFetching, FeedFetching, @unchecked Sen
     }
 
     func fetchRecentFeed(cursor: String?, limit: Int) async throws -> RecentFeedPage {
-        try await fetchRecentFeed(accessToken: nil, cursor: cursor, limit: limit)
+        try await fetchRecentFeed(accessToken: nil, cursor: cursor, limit: limit, creativeType: nil)
     }
 
-    func fetchRecentFeed(accessToken: String?, cursor: String?, limit: Int) async throws -> RecentFeedPage {
+    func fetchRecentFeed(
+        accessToken: String?,
+        cursor: String?,
+        limit: Int,
+        creativeType: String?
+    ) async throws -> RecentFeedPage {
         lastFeedCursor = cursor
         lastFeedLimit = limit
         recentFeedCallCount += 1
+        _ = creativeType
         if let feedError {
             throw feedError
         }

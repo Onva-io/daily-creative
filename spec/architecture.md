@@ -2190,3 +2190,16 @@ Future additions must preserve:
 - Local daily reminders in version one.
 - One stateless backend service.
 - No queues or microservices until measured need.
+
+## Multi-Creative-Type Architecture
+
+The platform supports multiple creative types (sketch, story, and future types) through:
+
+- **Independent session tables**: Each creative type has its own `*_sessions` and `*_session_events` tables with type-specific status enums and columns. No shared/polymorphic sessions table.
+- **Shared submissions**: The `submissions` table has a `creative_type` discriminator. Each submission links to exactly one session type via nullable FKs (`sketch_session_id`, `story_session_id`) enforced by a check constraint.
+- **Shared social layer**: Likes, reflections, blocks, and reports remain keyed on `submission_id` regardless of creative type.
+- **Type-scoped queries**: Feed, profile, and streak endpoints accept an optional `creative_type` filter parameter.
+- **Per-type iOS targets**: DailySketch and DailyStory are separate app targets sharing code from DailyCore (auth, profile, design system, social). Each target has its own session flow, branding, and build configuration.
+- **ProductConfig**: Info.plist-driven branding (`BRAND_NAME`, `CREATIVE_TYPE_ID`) allows each app target to customize UI without code changes.
+
+To add a new creative type, see the "Adding a Future Creative Type" section in the [plan](../plans/daily_creative_platform.plan.md).

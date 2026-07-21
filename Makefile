@@ -2,7 +2,7 @@
 	backend-shell db-migrate db-reset seed api-validate api-generate-ios api-check-generated test clean-local \
 	repo-checks docker-build ios-generate ios-build ios-test account-deletion-finalize \
 	staging-up staging-smoke backup-postgres restore-postgres perf-profile \
-	job-upload-cleanup job-sketch-session-cleanup job-idempotency-cleanup \
+	job-upload-cleanup job-sketch-session-cleanup job-story-session-cleanup job-idempotency-cleanup \
 	job-deleted-media-cleanup job-missing-prompt-check jobs-dry-run
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -94,6 +94,9 @@ job-upload-cleanup:
 job-sketch-session-cleanup:
 	$(call run_backend,python -m app.jobs.sketch_session_cleanup)
 
+job-story-session-cleanup:
+	$(call run_backend,python -m app.jobs.story_session_cleanup)
+
 job-idempotency-cleanup:
 	$(call run_backend,python -m app.jobs.idempotency_cleanup)
 
@@ -106,6 +109,7 @@ job-missing-prompt-check:
 jobs-dry-run:
 	$(call run_backend,python -m app.jobs.upload_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.sketch_session_cleanup --dry-run)
+	$(call run_backend,python -m app.jobs.story_session_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.idempotency_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.deleted_media_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.missing_prompt_check --dry-run)

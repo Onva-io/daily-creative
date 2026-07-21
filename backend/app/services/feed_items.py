@@ -9,6 +9,7 @@ from app.models.user import User
 from app.repositories.submissions import FeedRow
 from app.schemas.feed import FeedItem, FeedPromptSummary, FeedUserSummary
 from app.schemas.me import TimerModeSchema
+from app.schemas.submissions import CreativeTypeSchema
 from app.services.media_urls import signed_display_url, signed_thumbnail_url
 from app.storage.base import StorageAdapter
 
@@ -37,26 +38,42 @@ async def build_feed_item(
     avatar_url: str | None = None,
 ) -> FeedItem:
     """Build a FeedItem from a joined feed/profile row."""
-    image_url = await signed_display_url(
-        storage=storage,
-        original_key=row.upload.storage_key,
-        expires_at=expires_at,
-    )
-    thumbnail_url = await signed_thumbnail_url(
-        storage=storage,
-        original_key=row.upload.storage_key,
-        expires_at=expires_at,
-    )
+    image_url = None
+    thumbnail_url = None
+    if row.upload is not None:
+        image_url = await signed_display_url(
+            storage=storage,
+            original_key=row.upload.storage_key,
+            expires_at=expires_at,
+        )
+        thumbnail_url = await signed_thumbnail_url(
+            storage=storage,
+            original_key=row.upload.storage_key,
+            expires_at=expires_at,
+        )
 
-    timer_mode = TimerModeSchema(row.sketch_session.timer_mode.value)
-    if row.sketch_session.timer_mode == TimerMode.no_timer:
-        timer_seconds = None
+    session = row.sketch_session or row.story_session
+    if session is not None:
+        timer_mode = TimerModeSchema(session.timer_mode.value)
+        if session.timer_mode == TimerMode.no_timer:
+            timer_seconds = None
+        else:
+            timer_seconds = session.selected_timer_seconds
     else:
-        timer_seconds = row.sketch_session.selected_timer_seconds
+        timer_mode = TimerModeSchema.no_timer
+        timer_seconds = None
 
     is_owner = viewer is not None and viewer.id == row.submission.user_id
+    creative_type = CreativeTypeSchema(row.submission.creative_type.value)
+    body_preview_text = None
+    word_count = None
+    if row.submission.body is not None:
+        body_preview_text = caption_preview(row.submission.body)
+        word_count = len(row.submission.body.split())
+
     return FeedItem(
         id=row.submission.id,
+        creative_type=creative_type,
         image_url=image_url,
         thumbnail_url=thumbnail_url,
         user=FeedUserSummary(
@@ -75,6 +92,8 @@ async def build_feed_item(
         timer_mode=timer_mode,
         timer_seconds=timer_seconds,
         caption_preview=caption_preview(row.submission.caption),
+        body_preview=body_preview_text,
+        word_count=word_count,
         like_count=row.submission.like_count,
         reflection_count=row.submission.reflection_count,
         viewer_has_liked=viewer_has_liked,

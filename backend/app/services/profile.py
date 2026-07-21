@@ -16,6 +16,7 @@ from app.core.usernames import (
     is_valid_username_format,
     normalize_username,
 )
+from app.models.enums import CreativeType
 from app.models.upload import UploadPurpose, UploadStatus
 from app.models.user import User, UserStatus
 from app.repositories.likes import LikeRepository
@@ -155,10 +156,17 @@ class ProfileService:
         username: str,
         *,
         viewer: User | None = None,
+        creative_type: CreativeType | None = None,
     ) -> PublicUserResponse:
         user = await self._require_public_profile(username, viewer=viewer)
-        submission_count = await self._submissions.count_user_published(user.id)
-        prompt_dates = await self._submissions.published_prompt_dates(user.id)
+        submission_count = await self._submissions.count_user_published(
+            user.id,
+            creative_type=creative_type,
+        )
+        prompt_dates = await self._submissions.published_prompt_dates(
+            user.id,
+            creative_type=creative_type,
+        )
         current_streak = compute_current_streak(prompt_dates, today=self._clock.today())
         avatar_url = await self._resolve_user_avatar_url(user)
         return PublicUserResponse(
@@ -179,6 +187,7 @@ class ProfileService:
         cursor: str | None = None,
         limit: int = 20,
         viewer: User | None = None,
+        creative_type: CreativeType | None = None,
     ) -> RecentFeedResponse:
         if self._storage is None:
             raise RuntimeError("Storage adapter is required for profile submissions")
@@ -197,6 +206,7 @@ class ProfileService:
             cursor_id=cursor_id,
             viewer_id=viewer.id if viewer is not None else None,
             excluded_author_ids=excluded or None,
+            creative_type=creative_type,
         )
         page_rows = rows[:limit]
         next_cursor: str | None = None

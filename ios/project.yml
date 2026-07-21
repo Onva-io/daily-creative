@@ -44,6 +44,8 @@ targets:
         SENTRY_DSN: $(SENTRY_DSN)
         SHOW_ENVIRONMENT_BADGE: $(SHOW_ENVIRONMENT_BADGE)
         ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
+        BRAND_NAME: $(BRAND_NAME)
+        CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
         NSCameraUsageDescription: Daily Sketch uses the camera so you can photograph your drawing and share it with the community.
         NSPhotoLibraryUsageDescription: Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.
         NSAppTransportSecurity:
@@ -72,6 +74,70 @@ targets:
       base:
         PRODUCT_NAME: DailySketch
         INFOPLIST_FILE: DailySketch/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGNING_ALLOWED: "YES"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_REQUIRED: "NO"
+  DailyStory:
+    type: application
+    platform: iOS
+    sources:
+      - path: DailyStory
+      - path: DailySketch/Core
+      - path: DailySketch/App
+        excludes:
+          - DailySketchApp.swift
+      - path: DailySketch/Features/Auth
+      - path: DailySketch/Features/Profile
+      - path: DailySketch/Features/Settings
+      - path: DailySketch/Features/Onboarding
+      - path: DailySketch/Features/Blocking
+      - path: DailySketch/Features/Reporting
+      - path: DailySketch/Features/SubmissionDetail
+      - path: DailySketch/Features/TimerSelection
+    info:
+      path: DailyStory/Resources/Info.plist
+      properties:
+        API_BASE_URL: $(API_BASE_URL)
+        APP_ENVIRONMENT: $(APP_ENVIRONMENT)
+        DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
+        SUPPORT_URL: $(SUPPORT_URL)
+        PRIVACY_URL: $(PRIVACY_URL)
+        TERMS_URL: $(TERMS_URL)
+        COMMUNITY_GUIDELINES_URL: $(COMMUNITY_GUIDELINES_URL)
+        SENTRY_DSN: $(SENTRY_DSN)
+        SHOW_ENVIRONMENT_BADGE: $(SHOW_ENVIRONMENT_BADGE)
+        ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
+        BRAND_NAME: $(BRAND_NAME)
+        CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    configFiles:
+      Debug-Local: Config/DailyStory/Debug-Local.xcconfig
+      Debug-Development: Config/DailyStory/Debug-Development.xcconfig
+      Release-Staging: Config/DailyStory/Release-Staging.xcconfig
+      Release-Production: Config/DailyStory/Release-Production.xcconfig
+    dependencies:
+      - package: DailySketchAPI
+      - package: DescopeKit
+    settings:
+      base:
+        PRODUCT_NAME: DailyStory
+        INFOPLIST_FILE: DailyStory/Resources/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_STRICT_CONCURRENCY: complete
@@ -137,6 +203,34 @@ schemes:
     build:
       targets:
         DailySketch: all
+    run:
+      config: Debug-Development
+    test:
+      config: Debug-Development
+    analyze:
+      config: Debug-Development
+    profile:
+      config: Release-Staging
+    archive:
+      config: Release-Staging
+  DailyStory:
+    build:
+      targets:
+        DailyStory: all
+    run:
+      config: Debug-Local
+    test:
+      config: Debug-Local
+    analyze:
+      config: Debug-Local
+    profile:
+      config: Release-Production
+    archive:
+      config: Release-Production
+  DailyStory Development:
+    build:
+      targets:
+        DailyStory: all
     run:
       config: Debug-Development
     test:

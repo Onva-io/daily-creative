@@ -17,11 +17,12 @@ open class FeedAPI {
      
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
+     - parameter creativeType: (query) Filter by creative type. Defaults to sketch for backward compatibility. (optional)
      - returns: RecentFeed
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getRecentFeed(cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
-        return try await getRecentFeedWithRequestBuilder(cursor: cursor, limit: limit).execute().body
+    open class func getRecentFeed(cursor: String? = nil, limit: Int? = nil, creativeType: CreativeType? = nil) async throws -> RecentFeed {
+        return try await getRecentFeedWithRequestBuilder(cursor: cursor, limit: limit, creativeType: creativeType).execute().body
     }
 
     /**
@@ -31,9 +32,10 @@ open class FeedAPI {
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
+     - parameter creativeType: (query) Filter by creative type. Defaults to sketch for backward compatibility. (optional)
      - returns: RequestBuilder<RecentFeed> 
      */
-    open class func getRecentFeedWithRequestBuilder(cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
+    open class func getRecentFeedWithRequestBuilder(cursor: String? = nil, limit: Int? = nil, creativeType: CreativeType? = nil) -> RequestBuilder<RecentFeed> {
         let localVariablePath = "/api/v1/feed/recent"
         let localVariableURLString = DailySketchAPIAPI.basePath + localVariablePath
         let localVariableParameters: [String: Any]? = nil
@@ -42,6 +44,7 @@ open class FeedAPI {
         localVariableUrlComponents?.queryItems = APIHelper.mapValuesToQueryItems([
             "cursor": (wrappedValue: cursor?.encodeToJSON(), isExplode: true),
             "limit": (wrappedValue: limit?.encodeToJSON(), isExplode: true),
+            "creative_type": (wrappedValue: creativeType?.encodeToJSON(), isExplode: true),
         ])
 
         let localVariableNillableHeaders: [String: Any?] = [

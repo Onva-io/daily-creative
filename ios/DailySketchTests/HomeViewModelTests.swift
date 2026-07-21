@@ -253,6 +253,7 @@ final class HomeViewModelTests: XCTestCase {
         let first = FeedItemModel.preview
         let second = FeedItemModel(
             id: UUID(),
+            creativeType: "sketch",
             imageURL: first.imageURL,
             thumbnailURL: first.thumbnailURL,
             userId: first.userId,
@@ -264,6 +265,8 @@ final class HomeViewModelTests: XCTestCase {
             timerMode: first.timerMode,
             timerSeconds: first.timerSeconds,
             captionPreview: "Next page",
+            bodyPreview: nil,
+            wordCount: nil,
             likeCount: 1,
             reflectionCount: 0,
             viewerHasLiked: false,
@@ -296,6 +299,7 @@ final class HomeViewModelTests: XCTestCase {
 
         let refreshed = FeedItemModel(
             id: UUID(),
+            creativeType: "sketch",
             imageURL: first.imageURL,
             thumbnailURL: first.thumbnailURL,
             userId: first.userId,
@@ -307,6 +311,8 @@ final class HomeViewModelTests: XCTestCase {
             timerMode: first.timerMode,
             timerSeconds: first.timerSeconds,
             captionPreview: nil,
+            bodyPreview: nil,
+            wordCount: nil,
             likeCount: 0,
             reflectionCount: 0,
             viewerHasLiked: false,

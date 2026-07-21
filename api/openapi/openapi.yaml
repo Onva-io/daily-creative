@@ -442,6 +442,13 @@ paths:
             minLength: 3
             maxLength: 30
           example: sketchy_matt
+        - name: creative_type
+          in: query
+          required: false
+          description: Filter by creative type. Defaults to sketch for backward compatibility.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       responses:
         "200":
           description: Public profile
@@ -509,6 +516,13 @@ paths:
             maximum: 50
             default: 20
           example: 20
+        - name: creative_type
+          in: query
+          required: false
+          description: Filter by creative type. Defaults to sketch for backward compatibility.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       responses:
         "200":
           description: Profile submission page
@@ -664,6 +678,13 @@ paths:
             maximum: 50
             default: 20
           example: 20
+        - name: creative_type
+          in: query
+          required: false
+          description: Filter by creative type. Defaults to sketch for backward compatibility.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       responses:
         "200":
           description: Feed page
@@ -943,6 +964,239 @@ paths:
                 photo_step_reached_at: null
                 upload_started_at: null
                 upload_completed_at: null
+                completed_at: null
+                abandoned_at: "2026-07-18T20:05:00Z"
+                created_at: "2026-07-18T20:00:00Z"
+                updated_at: "2026-07-18T20:05:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/story-sessions:
+    post:
+      operationId: createStorySession
+      tags:
+        - story-sessions
+      summary: Start a Story Session
+      description: |
+        Creates an authenticated Story Session for a published Daily Prompt.
+        Pass an `Idempotency-Key` header to safely retry create without
+        duplicating sessions.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStorySessionRequest"
+            example:
+              prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+              timer_mode: countdown
+              selected_timer_seconds: 300
+              client_timezone: Europe/London
+              client_session_id: local-session-001
+      responses:
+        "201":
+          description: Story Session created
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorySession"
+              example:
+                id: e3f4a5b6-c7d8-9012-efab-345678901234
+                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                timer_mode: countdown
+                selected_timer_seconds: 300
+                status: active
+                started_at: "2026-07-18T20:00:00Z"
+                paused_total_seconds: 0
+                timer_completed_at: null
+                finish_requested_at: null
+                completed_at: null
+                abandoned_at: null
+                created_at: "2026-07-18T20:00:00Z"
+                updated_at: "2026-07-18T20:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/story-sessions/{session_id}:
+    get:
+      operationId: getStorySession
+      tags:
+        - story-sessions
+      summary: Get a Story Session
+      description: |
+        Returns a Story Session owned by the authenticated user.
+        Non-owner and missing sessions both return `session_not_found`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Story Session UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: e3f4a5b6-c7d8-9012-efab-345678901234
+      responses:
+        "200":
+          description: Story Session
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorySession"
+              example:
+                id: e3f4a5b6-c7d8-9012-efab-345678901234
+                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                timer_mode: countdown
+                selected_timer_seconds: 300
+                status: active
+                started_at: "2026-07-18T20:00:00Z"
+                paused_total_seconds: 0
+                timer_completed_at: null
+                finish_requested_at: null
+                completed_at: null
+                abandoned_at: null
+                created_at: "2026-07-18T20:00:00Z"
+                updated_at: "2026-07-18T20:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/story-sessions/{session_id}/events:
+    post:
+      operationId: postStorySessionEvent
+      tags:
+        - story-sessions
+      summary: Record a Story Session lifecycle event
+      description: |
+        Appends a lifecycle event and updates denormalised session timestamps
+        and status when the transition is valid.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Story Session UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: e3f4a5b6-c7d8-9012-efab-345678901234
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorySessionEventRequest"
+            example:
+              event_type: paused
+              client_occurred_at: "2026-07-18T20:01:00Z"
+              metadata: {}
+      responses:
+        "200":
+          description: Updated Story Session after the event
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorySession"
+              example:
+                id: e3f4a5b6-c7d8-9012-efab-345678901234
+                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                timer_mode: countdown
+                selected_timer_seconds: 300
+                status: paused
+                started_at: "2026-07-18T20:00:00Z"
+                paused_total_seconds: 0
+                timer_completed_at: null
+                finish_requested_at: null
+                completed_at: null
+                abandoned_at: null
+                created_at: "2026-07-18T20:00:00Z"
+                updated_at: "2026-07-18T20:01:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/story-sessions/{session_id}/abandon:
+    post:
+      operationId: abandonStorySession
+      tags:
+        - story-sessions
+      summary: Abandon a Story Session
+      description: |
+        Marks the session abandoned. Calling abandon on an already-abandoned
+        session is idempotent and returns the existing session.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Story Session UUID.
+          schema:
+            $ref: "#/components/schemas/UUID"
+          example: e3f4a5b6-c7d8-9012-efab-345678901234
+      responses:
+        "200":
+          description: Abandoned Story Session
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorySession"
+              example:
+                id: e3f4a5b6-c7d8-9012-efab-345678901234
+                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                timer_mode: countdown
+                selected_timer_seconds: 300
+                status: abandoned
+                started_at: "2026-07-18T20:00:00Z"
+                paused_total_seconds: 0
+                timer_completed_at: null
+                finish_requested_at: null
                 completed_at: null
                 abandoned_at: "2026-07-18T20:05:00Z"
                 created_at: "2026-07-18T20:00:00Z"
@@ -2401,6 +2655,7 @@ components:
         Like/Reflection counts, viewer Like state, and ownership flags.
       required:
         - id
+        - creative_type
         - image_url
         - thumbnail_url
         - user
@@ -2416,12 +2671,18 @@ components:
       properties:
         id:
           $ref: "#/components/schemas/UUID"
+        creative_type:
+          $ref: "#/components/schemas/CreativeType"
         image_url:
-          type: string
+          type:
+            - string
+            - "null"
           format: uri
           description: Display image URL.
         thumbnail_url:
-          type: string
+          type:
+            - string
+            - "null"
           format: uri
           description: Thumbnail image URL.
         user:
@@ -2440,6 +2701,16 @@ components:
             - string
             - "null"
           description: Truncated caption preview, or null when absent.
+        body_preview:
+          type:
+            - string
+            - "null"
+          description: Truncated story body preview. Null for non-story submissions.
+        word_count:
+          type:
+            - integer
+            - "null"
+          description: Story word count. Null for non-story submissions.
         like_count:
           type: integer
           minimum: 0
@@ -2761,6 +3032,148 @@ components:
             - $ref: "#/components/schemas/SignedUpload"
             - type: "null"
           description: Present when status is pending and a signed upload is available.
+    CreativeType:
+      type: string
+      description: The type of creative activity.
+      enum:
+        - sketch
+        - story
+    StorySessionStatus:
+      type: string
+      description: Story Session lifecycle status.
+      enum:
+        - active
+        - paused
+        - writing
+        - completed
+        - abandoned
+        - expired
+    StorySessionEventType:
+      type: string
+      description: Story Session lifecycle event type.
+      enum:
+        - started
+        - paused
+        - resumed
+        - timer_completed
+        - finished_early
+        - writing_started
+        - draft_saved
+        - submission_created
+        - abandoned
+    CreateStorySessionRequest:
+      type: object
+      description: |
+        Authenticated Story Session create payload.
+        Countdown mode requires selected_timer_seconds in {60, 180, 300, 600}.
+        No-timer mode requires selected_timer_seconds to be null.
+      additionalProperties: false
+      required:
+        - prompt_id
+        - timer_mode
+      properties:
+        prompt_id:
+          $ref: "#/components/schemas/UUID"
+        timer_mode:
+          $ref: "#/components/schemas/TimerMode"
+        selected_timer_seconds:
+          type:
+            - integer
+            - "null"
+          description: Countdown duration in seconds, or null for no_timer.
+          example: 300
+        client_timezone:
+          type:
+            - string
+            - "null"
+          description: Optional IANA timezone reported by the client for analytics.
+          example: Europe/London
+        client_session_id:
+          type:
+            - string
+            - "null"
+          description: Optional local session identifier for recovery correlation.
+          maxLength: 128
+          example: local-session-001
+    StorySession:
+      type: object
+      description: Authenticated Story Session record.
+      required:
+        - id
+        - user_id
+        - prompt_id
+        - timer_mode
+        - selected_timer_seconds
+        - status
+        - started_at
+        - paused_total_seconds
+        - timer_completed_at
+        - finish_requested_at
+        - completed_at
+        - abandoned_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        user_id:
+          $ref: "#/components/schemas/UUID"
+        prompt_id:
+          $ref: "#/components/schemas/UUID"
+        timer_mode:
+          $ref: "#/components/schemas/TimerMode"
+        selected_timer_seconds:
+          type:
+            - integer
+            - "null"
+          example: 300
+        status:
+          $ref: "#/components/schemas/StorySessionStatus"
+        started_at:
+          $ref: "#/components/schemas/Timestamp"
+        paused_total_seconds:
+          type: integer
+          minimum: 0
+          example: 0
+        timer_completed_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        finish_requested_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        completed_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        abandoned_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+        updated_at:
+          $ref: "#/components/schemas/Timestamp"
+    StorySessionEventRequest:
+      type: object
+      description: Client lifecycle event recorded against a Story Session.
+      additionalProperties: false
+      required:
+        - event_type
+      properties:
+        event_type:
+          $ref: "#/components/schemas/StorySessionEventType"
+        client_occurred_at:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+          description: Optional client-side occurrence time.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Optional structured metadata for the event.
+          default: {}
     SubmissionVisibility:
       type: string
       description: Submission visibility. Version one supports public only.
@@ -2778,17 +3191,27 @@ components:
     CreateSubmissionRequest:
       type: object
       description: |
-        Publish a reviewed sketch. The backend derives owner, Prompt, and timer
-        metadata from the Sketch Session and Upload.
+        Publish a creative submission. For sketches, provide sketch_session_id
+        and upload_id. For stories, provide story_session_id and body.
+        The creative_type field determines validation rules.
       additionalProperties: false
       required:
-        - sketch_session_id
-        - upload_id
+        - creative_type
       properties:
+        creative_type:
+          $ref: "#/components/schemas/CreativeType"
         sketch_session_id:
+          $ref: "#/components/schemas/UUID"
+        story_session_id:
           $ref: "#/components/schemas/UUID"
         upload_id:
           $ref: "#/components/schemas/UUID"
+        body:
+          type:
+            - string
+            - "null"
+          description: Story body text. Required for story submissions.
+          maxLength: 10000
         caption:
           type:
             - string
@@ -2801,6 +3224,7 @@ components:
       description: Public Submission projection with signed media URLs.
       required:
         - id
+        - creative_type
         - caption
         - visibility
         - status
@@ -2815,13 +3239,17 @@ components:
         - user
         - prompt
         - sketch_session_id
+        - story_session_id
         - upload_id
+        - body
         - published_at
         - created_at
         - updated_at
       properties:
         id:
           $ref: "#/components/schemas/UUID"
+        creative_type:
+          $ref: "#/components/schemas/CreativeType"
         caption:
           type:
             - string
@@ -2854,11 +3282,15 @@ components:
           type: boolean
           example: true
         image_url:
-          type: string
+          type:
+            - string
+            - "null"
           format: uri
           description: Short-lived signed display image URL.
         thumbnail_url:
-          type: string
+          type:
+            - string
+            - "null"
           format: uri
           description: Short-lived signed thumbnail URL.
         user:
@@ -2866,9 +3298,22 @@ components:
         prompt:
           $ref: "#/components/schemas/FeedPromptSummary"
         sketch_session_id:
-          $ref: "#/components/schemas/UUID"
+          oneOf:
+            - $ref: "#/components/schemas/UUID"
+            - type: "null"
+        story_session_id:
+          oneOf:
+            - $ref: "#/components/schemas/UUID"
+            - type: "null"
         upload_id:
-          $ref: "#/components/schemas/UUID"
+          oneOf:
+            - $ref: "#/components/schemas/UUID"
+            - type: "null"
+        body:
+          type:
+            - string
+            - "null"
+          description: Full story body text. Null for non-story submissions.
         published_at:
           $ref: "#/components/schemas/Timestamp"
         created_at:
@@ -3074,6 +3519,8 @@ tags:
     description: Community feed endpoints
   - name: sketch-sessions
     description: Authenticated Sketch Session and timer lifecycle endpoints
+  - name: story-sessions
+    description: Authenticated Story Session and timer lifecycle endpoints
   - name: uploads
     description: Direct signed upload orchestration endpoints
   - name: submissions

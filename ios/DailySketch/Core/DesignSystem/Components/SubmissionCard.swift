@@ -57,35 +57,64 @@ struct SubmissionCard: View {
 
     private var artwork: some View {
         Button(action: onTapArtwork) {
-            AsyncImage(url: item.imageURL) { phase in
-                switch phase {
-                case .empty:
-                    LoadingSkeleton(height: 280)
-                        .accessibilityLabel("Loading artwork")
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 480)
-                case .failure:
-                    RoundedRectangle(cornerRadius: AppRadii.card, style: .continuous)
-                        .fill(AppColors.surfaceTertiary)
-                        .frame(height: 220)
-                        .overlay {
-                            Text("Couldn’t load image")
-                                .font(AppTypography.bodySmall)
-                                .foregroundStyle(AppColors.textTertiary)
-                        }
-                @unknown default:
-                    EmptyView()
-                }
+            if item.isStory {
+                storyPreview
+            } else {
+                sketchArtwork
             }
-            .clipShape(RoundedRectangle(cornerRadius: AppRadii.card, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(artworkAccessibilityLabel)
-        .accessibilityHint("Opens sketch detail")
+        .accessibilityHint(item.isStory ? "Opens story detail" : "Opens sketch detail")
+    }
+
+    private var storyPreview: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text(item.bodyPreview ?? "Untitled story")
+                .font(AppTypography.body)
+                .foregroundStyle(AppColors.textPrimary)
+                .lineLimit(6)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let wordCount = item.wordCount {
+                Text(wordCount == 1 ? "1 word" : "\(wordCount) words")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(AppColors.textTertiary)
+            }
+        }
+        .padding(AppSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColors.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: AppRadii.card, style: .continuous))
+    }
+
+    private var sketchArtwork: some View {
+        AsyncImage(url: item.imageURL) { phase in
+            switch phase {
+            case .empty:
+                LoadingSkeleton(height: 280)
+                    .accessibilityLabel("Loading artwork")
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: 480)
+            case .failure:
+                RoundedRectangle(cornerRadius: AppRadii.card, style: .continuous)
+                    .fill(AppColors.surfaceTertiary)
+                    .frame(height: 220)
+                    .overlay {
+                        Text("Couldn’t load image")
+                            .font(AppTypography.bodySmall)
+                            .foregroundStyle(AppColors.textTertiary)
+                    }
+            @unknown default:
+                EmptyView()
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: AppRadii.card, style: .continuous))
     }
 
     private var metadataRow: some View {
@@ -113,10 +142,14 @@ struct SubmissionCard: View {
     }
 
     private var artworkAccessibilityLabel: String {
-        if let caption = item.captionPreview, !caption.isEmpty {
-            return "Sketch by \(item.displayName). \(caption)"
+        let kind = item.isStory ? "Story" : "Sketch"
+        if item.isStory, let preview = item.bodyPreview, !preview.isEmpty {
+            return "\(kind) by \(item.displayName). \(preview)"
         }
-        return "Sketch by \(item.displayName). Prompt: \(item.promptWords.joined(separator: ", "))"
+        if let caption = item.captionPreview, !caption.isEmpty {
+            return "\(kind) by \(item.displayName). \(caption)"
+        }
+        return "\(kind) by \(item.displayName). Prompt: \(item.promptWords.joined(separator: ", "))"
     }
 }
 

@@ -17,10 +17,11 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     public static let reflectionCountRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: nil, exclusiveMaximum: false, multipleOf: nil)
     /** Canonical UUID string identifier. */
     public var id: UUID
+    public var creativeType: CreativeType
     /** Display image URL. */
-    public var imageUrl: String
+    public var imageUrl: String?
     /** Thumbnail image URL. */
-    public var thumbnailUrl: String
+    public var thumbnailUrl: String?
     public var user: FeedUserSummary
     public var prompt: FeedPromptSummary
     public var timerMode: TimerMode
@@ -28,6 +29,10 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     public var timerSeconds: Int?
     /** Truncated caption preview, or null when absent. */
     public var captionPreview: String?
+    /** Truncated story body preview. Null for non-story submissions. */
+    public var bodyPreview: String?
+    /** Story word count. Null for non-story submissions. */
+    public var wordCount: Int?
     public var likeCount: Int
     public var reflectionCount: Int
     public var viewerHasLiked: Bool
@@ -35,8 +40,9 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     /** RFC 3339 UTC timestamp. */
     public var publishedAt: Date
 
-    public init(id: UUID, imageUrl: String, thumbnailUrl: String, user: FeedUserSummary, prompt: FeedPromptSummary, timerMode: TimerMode, timerSeconds: Int?, captionPreview: String?, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, publishedAt: Date) {
+    public init(id: UUID, creativeType: CreativeType, imageUrl: String?, thumbnailUrl: String?, user: FeedUserSummary, prompt: FeedPromptSummary, timerMode: TimerMode, timerSeconds: Int?, captionPreview: String?, bodyPreview: String? = nil, wordCount: Int? = nil, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, publishedAt: Date) {
         self.id = id
+        self.creativeType = creativeType
         self.imageUrl = imageUrl
         self.thumbnailUrl = thumbnailUrl
         self.user = user
@@ -44,6 +50,8 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
         self.timerMode = timerMode
         self.timerSeconds = timerSeconds
         self.captionPreview = captionPreview
+        self.bodyPreview = bodyPreview
+        self.wordCount = wordCount
         self.likeCount = likeCount
         self.reflectionCount = reflectionCount
         self.viewerHasLiked = viewerHasLiked
@@ -53,6 +61,7 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case id
+        case creativeType = "creative_type"
         case imageUrl = "image_url"
         case thumbnailUrl = "thumbnail_url"
         case user
@@ -60,6 +69,8 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
         case timerMode = "timer_mode"
         case timerSeconds = "timer_seconds"
         case captionPreview = "caption_preview"
+        case bodyPreview = "body_preview"
+        case wordCount = "word_count"
         case likeCount = "like_count"
         case reflectionCount = "reflection_count"
         case viewerHasLiked = "viewer_has_liked"
@@ -72,6 +83,7 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encode(creativeType, forKey: .creativeType)
         try container.encode(imageUrl, forKey: .imageUrl)
         try container.encode(thumbnailUrl, forKey: .thumbnailUrl)
         try container.encode(user, forKey: .user)
@@ -79,6 +91,8 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
         try container.encode(timerMode, forKey: .timerMode)
         try container.encode(timerSeconds, forKey: .timerSeconds)
         try container.encode(captionPreview, forKey: .captionPreview)
+        try container.encodeIfPresent(bodyPreview, forKey: .bodyPreview)
+        try container.encodeIfPresent(wordCount, forKey: .wordCount)
         try container.encode(likeCount, forKey: .likeCount)
         try container.encode(reflectionCount, forKey: .reflectionCount)
         try container.encode(viewerHasLiked, forKey: .viewerHasLiked)

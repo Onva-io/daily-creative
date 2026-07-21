@@ -10,6 +10,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
+from app.models.enums import CreativeType, creative_type_sa
 
 
 class SubmissionVisibility(str, enum.Enum):
@@ -44,19 +45,24 @@ class Submission(Base):
         ForeignKey("daily_prompts.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    sketch_session_id: Mapped[uuid.UUID] = mapped_column(
+    creative_type: Mapped[CreativeType] = mapped_column(creative_type_sa, nullable=False)
+    sketch_session_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("sketch_sessions.id", ondelete="RESTRICT"),
-        nullable=False,
-        unique=True,
+        nullable=True,
     )
-    upload_id: Mapped[uuid.UUID] = mapped_column(
+    story_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("story_sessions.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    upload_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("uploads.id", ondelete="RESTRICT"),
-        nullable=False,
-        unique=True,
+        nullable=True,
     )
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[SubmissionVisibility] = mapped_column(
         Enum(SubmissionVisibility, name="submission_visibility", native_enum=True),
         nullable=False,

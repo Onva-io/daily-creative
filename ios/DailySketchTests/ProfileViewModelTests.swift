@@ -37,6 +37,7 @@ final class ProfileViewModelTests: XCTestCase {
         let first = FeedItemModel.preview
         let second = FeedItemModel(
             id: UUID(),
+            creativeType: "sketch",
             imageURL: URL(string: "https://example.test/display-2")!,
             thumbnailURL: URL(string: "https://example.test/thumb-2")!,
             userId: first.userId,
@@ -48,6 +49,8 @@ final class ProfileViewModelTests: XCTestCase {
             timerMode: "no_timer",
             timerSeconds: nil,
             captionPreview: nil,
+            bodyPreview: nil,
+            wordCount: nil,
             likeCount: 1,
             reflectionCount: 0,
             viewerHasLiked: false,

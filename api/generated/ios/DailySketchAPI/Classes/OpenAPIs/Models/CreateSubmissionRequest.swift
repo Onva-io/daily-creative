@@ -10,26 +10,38 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Publish a reviewed sketch. The backend derives owner, Prompt, and timer metadata from the Sketch Session and Upload.  */
+/** Publish a creative submission. For sketches, provide sketch_session_id and upload_id. For stories, provide story_session_id and body. The creative_type field determines validation rules.  */
 public struct CreateSubmissionRequest: Codable, JSONEncodable, Hashable {
 
+    public static let bodyRule = StringRule(minLength: nil, maxLength: 10000, pattern: nil)
     public static let captionRule = StringRule(minLength: nil, maxLength: 280, pattern: nil)
+    public var creativeType: CreativeType
     /** Canonical UUID string identifier. */
-    public var sketchSessionId: UUID
+    public var sketchSessionId: UUID?
     /** Canonical UUID string identifier. */
-    public var uploadId: UUID
+    public var storySessionId: UUID?
+    /** Canonical UUID string identifier. */
+    public var uploadId: UUID?
+    /** Story body text. Required for story submissions. */
+    public var body: String?
     /** Optional plain-text caption. */
     public var caption: String?
 
-    public init(sketchSessionId: UUID, uploadId: UUID, caption: String? = nil) {
+    public init(creativeType: CreativeType, sketchSessionId: UUID? = nil, storySessionId: UUID? = nil, uploadId: UUID? = nil, body: String? = nil, caption: String? = nil) {
+        self.creativeType = creativeType
         self.sketchSessionId = sketchSessionId
+        self.storySessionId = storySessionId
         self.uploadId = uploadId
+        self.body = body
         self.caption = caption
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
+        case creativeType = "creative_type"
         case sketchSessionId = "sketch_session_id"
+        case storySessionId = "story_session_id"
         case uploadId = "upload_id"
+        case body
         case caption
     }
 
@@ -37,8 +49,11 @@ public struct CreateSubmissionRequest: Codable, JSONEncodable, Hashable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(sketchSessionId, forKey: .sketchSessionId)
-        try container.encode(uploadId, forKey: .uploadId)
+        try container.encode(creativeType, forKey: .creativeType)
+        try container.encodeIfPresent(sketchSessionId, forKey: .sketchSessionId)
+        try container.encodeIfPresent(storySessionId, forKey: .storySessionId)
+        try container.encodeIfPresent(uploadId, forKey: .uploadId)
+        try container.encodeIfPresent(body, forKey: .body)
         try container.encodeIfPresent(caption, forKey: .caption)
     }
 }

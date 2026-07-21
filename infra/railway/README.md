@@ -97,6 +97,7 @@ Railway does not run the Makefile job targets natively. Options:
 |-----|---------|
 | upload_cleanup | `python -m app.jobs.upload_cleanup` |
 | sketch_session_cleanup | `python -m app.jobs.sketch_session_cleanup` |
+| story_session_cleanup | `python -m app.jobs.story_session_cleanup` |
 | idempotency_cleanup | `python -m app.jobs.idempotency_cleanup` |
 | deleted_media_cleanup | `python -m app.jobs.deleted_media_cleanup` |
 | missing_prompt_check | `python -m app.jobs.missing_prompt_check` |

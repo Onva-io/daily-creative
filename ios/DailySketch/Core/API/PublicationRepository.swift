@@ -19,6 +19,7 @@ struct UploadSlotModel: Equatable, Sendable, Identifiable {
 
 struct SubmissionModel: Equatable, Sendable, Identifiable {
     let id: UUID
+    let creativeType: String
     let caption: String?
     let status: String
     let timerMode: String
@@ -27,19 +28,24 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
     let reflectionCount: Int
     let viewerHasLiked: Bool
     let isOwner: Bool
-    let imageURL: URL
-    let thumbnailURL: URL
+    let imageURL: URL?
+    let thumbnailURL: URL?
     let userId: UUID
     let username: String
     let displayName: String
     let promptWords: [String]
     let promptDate: Date
-    let sketchSessionId: UUID
+    let sketchSessionId: UUID?
+    let storySessionId: UUID?
+    let body: String?
     let publishedAt: Date
+
+    var isStory: Bool { creativeType == "story" }
 
     func withLikeState(liked: Bool, likeCount: Int) -> SubmissionModel {
         SubmissionModel(
             id: id,
+            creativeType: creativeType,
             caption: caption,
             status: status,
             timerMode: timerMode,
@@ -56,6 +62,8 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
             promptWords: promptWords,
             promptDate: promptDate,
             sketchSessionId: sketchSessionId,
+            storySessionId: storySessionId,
+            body: body,
             publishedAt: publishedAt
         )
     }
@@ -63,6 +71,7 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
     func withReflectionCount(_ count: Int) -> SubmissionModel {
         SubmissionModel(
             id: id,
+            creativeType: creativeType,
             caption: caption,
             status: status,
             timerMode: timerMode,
@@ -79,6 +88,8 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
             promptWords: promptWords,
             promptDate: promptDate,
             sketchSessionId: sketchSessionId,
+            storySessionId: storySessionId,
+            body: body,
             publishedAt: publishedAt
         )
     }
@@ -167,6 +178,14 @@ protocol SubmissionServing: Sendable {
         accessToken: String,
         sketchSessionId: UUID,
         uploadId: UUID,
+        caption: String?,
+        idempotencyKey: String?
+    ) async throws -> SubmissionModel
+
+    func createStorySubmission(
+        accessToken: String,
+        storySessionId: UUID,
+        body: String,
         caption: String?,
         idempotencyKey: String?
     ) async throws -> SubmissionModel
@@ -311,8 +330,34 @@ struct SubmissionRepository: SubmissionServing {
         configureClient(accessToken: accessToken)
         do {
             let request = CreateSubmissionRequest(
+                creativeType: .sketch,
                 sketchSessionId: sketchSessionId,
                 uploadId: uploadId,
+                caption: caption
+            )
+            let submission = try await SubmissionsAPI.createSubmission(
+                createSubmissionRequest: request,
+                idempotencyKey: idempotencyKey
+            )
+            return mapSubmission(submission)
+        } catch {
+            throw mapAPIError(error)
+        }
+    }
+
+    func createStorySubmission(
+        accessToken: String,
+        storySessionId: UUID,
+        body: String,
+        caption: String?,
+        idempotencyKey: String?
+    ) async throws -> SubmissionModel {
+        configureClient(accessToken: accessToken)
+        do {
+            let request = CreateSubmissionRequest(
+                creativeType: .story,
+                storySessionId: storySessionId,
+                body: body,
                 caption: caption
             )
             let submission = try await SubmissionsAPI.createSubmission(
@@ -367,6 +412,7 @@ struct SubmissionRepository: SubmissionServing {
     private func mapSubmission(_ submission: Submission) -> SubmissionModel {
         SubmissionModel(
             id: submission.id,
+            creativeType: submission.creativeType.rawValue,
             caption: submission.caption,
             status: submission.status.rawValue,
             timerMode: submission.timerMode.rawValue,
@@ -375,8 +421,8 @@ struct SubmissionRepository: SubmissionServing {
             reflectionCount: submission.reflectionCount,
             viewerHasLiked: submission.viewerHasLiked,
             isOwner: submission.isOwner,
-            imageURL: URL(string: submission.imageUrl) ?? URL(string: "about:blank")!,
-            thumbnailURL: URL(string: submission.thumbnailUrl) ?? URL(string: "about:blank")!,
+            imageURL: submission.imageUrl.flatMap(URL.init(string:)),
+            thumbnailURL: submission.thumbnailUrl.flatMap(URL.init(string:)),
             userId: submission.user.id,
             username: submission.user.username,
             displayName: submission.user.displayName,
@@ -387,6 +433,8 @@ struct SubmissionRepository: SubmissionServing {
             ],
             promptDate: submission.prompt.promptDate,
             sketchSessionId: submission.sketchSessionId,
+            storySessionId: submission.storySessionId,
+            body: submission.body,
             publishedAt: submission.publishedAt
         )
     }
@@ -529,10 +577,12 @@ final class RecordingSubmissionRepository: SubmissionServing, @unchecked Sendabl
     ) async throws -> SubmissionModel {
         createCallCount += 1
         lastIdempotencyKey = idempotencyKey
+        _ = uploadId
         if let createError { throw createError }
         if let nextSubmission { return nextSubmission }
         return SubmissionModel(
             id: UUID(),
+            creativeType: "sketch",
             caption: caption,
             status: "published",
             timerMode: "countdown",
@@ -549,6 +599,44 @@ final class RecordingSubmissionRepository: SubmissionServing, @unchecked Sendabl
             promptWords: ["A", "B", "C"],
             promptDate: Date(),
             sketchSessionId: sketchSessionId,
+            storySessionId: nil,
+            body: nil,
+            publishedAt: Date()
+        )
+    }
+
+    func createStorySubmission(
+        accessToken: String,
+        storySessionId: UUID,
+        body: String,
+        caption: String?,
+        idempotencyKey: String?
+    ) async throws -> SubmissionModel {
+        createCallCount += 1
+        lastIdempotencyKey = idempotencyKey
+        if let createError { throw createError }
+        if let nextSubmission { return nextSubmission }
+        return SubmissionModel(
+            id: UUID(),
+            creativeType: "story",
+            caption: caption,
+            status: "published",
+            timerMode: "countdown",
+            timerSeconds: 300,
+            likeCount: 0,
+            reflectionCount: 0,
+            viewerHasLiked: false,
+            isOwner: true,
+            imageURL: nil,
+            thumbnailURL: nil,
+            userId: UUID(),
+            username: "writer",
+            displayName: "Writer",
+            promptWords: ["A", "B", "C"],
+            promptDate: Date(),
+            sketchSessionId: nil,
+            storySessionId: storySessionId,
+            body: body,
             publishedAt: Date()
         )
     }

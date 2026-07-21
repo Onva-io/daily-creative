@@ -101,7 +101,8 @@ final class SubmissionDetailViewModel {
     }
 
     var navigationTitle: String {
-        guard case .loaded(let submission) = state else { return "Sketch" }
+        let fallback = ProductConfig.current.creativeTypeID == "story" ? "Story" : "Sketch"
+        guard case .loaded(let submission) = state else { return fallback }
         if let caption = submission.caption?.trimmingCharacters(in: .whitespacesAndNewlines),
            !caption.isEmpty {
             let limit = 28
@@ -110,7 +111,7 @@ final class SubmissionDetailViewModel {
             }
             return String(caption.prefix(limit - 1)) + "…"
         }
-        return "Sketch"
+        return fallback
     }
 
     var timerLabel: String {

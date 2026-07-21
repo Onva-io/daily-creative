@@ -58,6 +58,7 @@ terraform apply
 |-----|-------------|------------------|
 | upload_cleanup | `app.jobs.upload_cleanup` | hourly |
 | sketch_session_cleanup | `app.jobs.sketch_session_cleanup` | hourly |
+| story_session_cleanup | `app.jobs.story_session_cleanup` | hourly |
 | idempotency_cleanup | `app.jobs.idempotency_cleanup` | every 6 hours |
 | deleted_media_cleanup | `app.jobs.deleted_media_cleanup` | daily |
 | missing_prompt_check | `app.jobs.missing_prompt_check` | 08:00 UTC daily |
