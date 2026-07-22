@@ -17,15 +17,15 @@ npx --yes @openapitools/openapi-generator-cli@2.15.3 generate \
   -i "${SPEC}" \
   -g swift5 \
   -o "${TMP}" \
-  --additional-properties=projectName=DailySketchAPI,responseAs=AsyncAwait,library=urlsession,hideGenerationTimestamp=true \
+  --additional-properties=projectName=DailyCreativeAPI,responseAs=AsyncAwait,library=urlsession,hideGenerationTimestamp=true \
   --skip-validate-spec
 
 rm -rf "${OUT}"
 mkdir -p "${OUT}"
 
-# swift5 generator emits DailySketchAPI/Classes plus Package.swift
-if [[ -d "${TMP}/DailySketchAPI" ]]; then
-  cp -R "${TMP}/DailySketchAPI" "${OUT}/DailySketchAPI"
+# swift5 generator emits DailyCreativeAPI/Classes plus Package.swift
+if [[ -d "${TMP}/DailyCreativeAPI" ]]; then
+  cp -R "${TMP}/DailyCreativeAPI" "${OUT}/DailyCreativeAPI"
 fi
 if [[ -f "${TMP}/Package.swift" ]]; then
   cp "${TMP}/Package.swift" "${OUT}/Package.swift"
@@ -34,31 +34,31 @@ if [[ -d "${TMP}/.openapi-generator" ]]; then
   cp -R "${TMP}/.openapi-generator" "${OUT}/.openapi-generator"
 fi
 
-if [[ ! -d "${OUT}/DailySketchAPI" ]]; then
-  echo "OpenAPI generator did not produce DailySketchAPI sources." >&2
+if [[ ! -d "${OUT}/DailyCreativeAPI" ]]; then
+  echo "OpenAPI generator did not produce DailyCreativeAPI sources." >&2
   exit 1
 fi
 
 # openapi-generator emits `extension String: CodingKey`, which Swift 6 warns about as a
 # retroactive conformance. Mark it explicitly so builds stay clean across regenerations.
-EXTENSIONS="${OUT}/DailySketchAPI/Classes/OpenAPIs/Extensions.swift"
+EXTENSIONS="${OUT}/DailyCreativeAPI/Classes/OpenAPIs/Extensions.swift"
 if [[ -f "${EXTENSIONS}" ]]; then
   perl -i -pe 's/extension String: CodingKey/extension String: \@retroactive CodingKey/g' "${EXTENSIONS}"
 fi
 
 # DateFormatter is @unchecked Sendable; Swift 6 requires subclasses to restate that.
-FORMATTER="${OUT}/DailySketchAPI/Classes/OpenAPIs/OpenISO8601DateFormatter.swift"
+FORMATTER="${OUT}/DailyCreativeAPI/Classes/OpenAPIs/OpenISO8601DateFormatter.swift"
 if [[ -f "${FORMATTER}" ]]; then
   perl -i -pe 's/public class OpenISO8601DateFormatter: DateFormatter \{/public class OpenISO8601DateFormatter: DateFormatter, \@unchecked Sendable \{/g' "${FORMATTER}"
 fi
 
 # URLSession dataTask completions are @Sendable; mark request builders so capturing
 # self in those closures is valid under Swift 6 strict concurrency.
-APIS="${OUT}/DailySketchAPI/Classes/OpenAPIs/APIs.swift"
+APIS="${OUT}/DailyCreativeAPI/Classes/OpenAPIs/APIs.swift"
 if [[ -f "${APIS}" ]]; then
   perl -i -pe 's/open class RequestBuilder<T> \{/open class RequestBuilder<T>: \@unchecked Sendable \{/g' "${APIS}"
 fi
-URLSESSION="${OUT}/DailySketchAPI/Classes/OpenAPIs/URLSessionImplementations.swift"
+URLSESSION="${OUT}/DailyCreativeAPI/Classes/OpenAPIs/URLSessionImplementations.swift"
 if [[ -f "${URLSESSION}" ]]; then
   perl -i -pe 's/open class URLSessionRequestBuilder<T>: RequestBuilder<T> \{/open class URLSessionRequestBuilder<T>: RequestBuilder<T>, \@unchecked Sendable \{/g' "${URLSESSION}"
   perl -i -pe 's/open class URLSessionDecodableRequestBuilder<T: Decodable>: URLSessionRequestBuilder<T> \{/open class URLSessionDecodableRequestBuilder<T: Decodable>: URLSessionRequestBuilder<T>, \@unchecked Sendable \{/g' "${URLSESSION}"

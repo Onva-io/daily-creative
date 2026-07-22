@@ -3,7 +3,7 @@ terraform {
     bucket         = "REPLACE_AFTER_BOOTSTRAP"
     key            = "production/terraform.tfstate"
     region         = "eu-west-1"
-    dynamodb_table = "dailysketch-terraform-locks"
+    dynamodb_table = "dailycreative-terraform-locks"
     encrypt        = true
   }
 
@@ -26,7 +26,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "dailysketch"
+      Project     = "dailycreative"
       Environment = "production"
       ManagedBy   = "terraform"
     }
@@ -39,7 +39,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "dailysketch"
+      Project     = "dailycreative"
       Environment = "production"
       ManagedBy   = "terraform"
     }
@@ -53,7 +53,7 @@ data "aws_availability_zones" "available" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  name_prefix = "dailysketch-production"
+  name_prefix = "dailycreative-production"
 
   common_tags = {
     Environment = "production"
@@ -245,7 +245,7 @@ module "ecs" {
     STORAGE_BUCKET                = module.s3_media.bucket_id
     STORAGE_USE_SSL               = "true"
     PROMPT_DATE_TIMEZONE          = var.prompt_date_timezone
-    SKETCH_SESSION_EXPIRY_SECONDS = tostring(var.sketch_session_expiry_seconds)
+    CREATIVE_SESSION_EXPIRY_SECONDS = tostring(var.creative_session_expiry_seconds)
   }
   secret_arns = local.container_secret_arns
   tags        = local.common_tags

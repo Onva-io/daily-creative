@@ -13,7 +13,7 @@ from app.core.settings import Settings, get_settings
 from app.models.enums import CreativeType
 from app.models.user import User
 from app.repositories.likes import LikeRepository
-from app.repositories.submissions import SubmissionRepository
+from app.repositories.publications import PublicationRepository
 from app.repositories.uploads import UploadRepository
 from app.schemas.feed import FeedItem, RecentFeedResponse
 from app.services.blocks import BlockService
@@ -33,7 +33,7 @@ class FeedService:
         settings: Settings | None = None,
     ) -> None:
         self._session = session
-        self._submissions = SubmissionRepository(session)
+        self._publications = PublicationRepository(session)
         self._likes = LikeRepository(session)
         self._uploads = UploadRepository(session)
         self._blocks = BlockService(session, clock, settings=settings, storage=storage)
@@ -47,7 +47,7 @@ class FeedService:
         cursor: str | None = None,
         limit: int = 20,
         viewer: User | None = None,
-        creative_type: CreativeType | None = None,
+        creative_type: CreativeType,
     ) -> RecentFeedResponse:
         cursor_published_at = None
         cursor_id = None
@@ -57,7 +57,7 @@ class FeedService:
         excluded = await self._blocks.exclude_ids_for(viewer.id if viewer else None)
 
         # Fetch one extra row to detect whether another page exists.
-        rows = await self._submissions.list_recent_published(
+        rows = await self._publications.list_recent_published(
             limit=limit + 1,
             cursor_published_at=cursor_published_at,
             cursor_id=cursor_id,
@@ -69,7 +69,7 @@ class FeedService:
         page_rows = rows[:limit]
         next_cursor: str | None = None
         if len(rows) > limit:
-            last = page_rows[-1].submission
+            last = page_rows[-1].publication
             next_cursor = encode_cursor(
                 published_at=last.published_at,
                 submission_id=last.id,
@@ -79,7 +79,7 @@ class FeedService:
         if viewer is not None and page_rows:
             liked_ids = await self._likes.liked_submission_ids(
                 user_id=viewer.id,
-                submission_ids=[row.submission.id for row in page_rows],
+                submission_ids=[row.publication.id for row in page_rows],
             )
 
         expires_at = self._clock.now() + timedelta(
@@ -107,7 +107,7 @@ class FeedService:
                     viewer=viewer,
                     storage=self._storage,
                     expires_at=expires_at,
-                    viewer_has_liked=row.submission.id in liked_ids,
+                    viewer_has_liked=row.publication.id in liked_ids,
                     avatar_url=avatar_url,
                 )
             )

@@ -1,5 +1,5 @@
 variable "name_prefix" {
-  description = "Resource name prefix, e.g. dailysketch-staging."
+  description = "Resource name prefix, e.g. dailycreative-staging."
   type        = string
 }
 

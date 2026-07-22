@@ -1,4 +1,4 @@
-# Daily Sketch
+# Daily Creative
 
 Native iOS creative journal with a FastAPI backend. Every user receives the same three-word Daily Prompt; guests can sketch before authenticating.
 
@@ -62,9 +62,9 @@ Each environment is defined in `ios/Config/*.xcconfig` and injected into the app
 | Environment | Xcode scheme | API base URL |
 | --- | --- | --- |
 | Local | DailySketch / DailyStory | `http://localhost:8000` |
-| Development | DailySketch Development / DailyStory Development | `https://api.development.dailysketch.example` |
-| Staging | DailySketch Staging / DailyStory Staging | `https://api.staging.dailysketch.example` |
-| Production | DailySketch Production / DailyStory Production | `https://api.dailysketch.example` |
+| Development | DailySketch Development / DailyStory Development | `https://api.development.dailycreative.example` |
+| Staging | DailySketch Staging / DailyStory Staging | `https://api.staging.dailycreative.example` |
+| Production | DailySketch Production / DailyStory Production | `https://api.dailycreative.example` |
 
 Remote hostnames and Descope project IDs are placeholders until real values are supplied in the xcconfig files. Non-production builds show an environment badge in the app.
 

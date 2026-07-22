@@ -1,5 +1,5 @@
 // Story analytics events are defined as cases on AnalyticsEventName
-// in DailySketch/Core/Utilities/AnalyticsClient.swift:
+// in DailyCreative/Utilities/AnalyticsClient.swift:
 //   - .storySessionStarted
 //   - .storyWritingStarted
 //   - .storyPublished

@@ -111,8 +111,8 @@ variable "prompt_date_timezone" {
   default     = "UTC"
 }
 
-variable "sketch_session_expiry_seconds" {
-  description = "SKETCH_SESSION_EXPIRY_SECONDS."
+variable "creative_session_expiry_seconds" {
+  description = "CREATIVE_SESSION_EXPIRY_SECONDS."
   type        = number
   default     = 86400
 }

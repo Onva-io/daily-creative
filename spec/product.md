@@ -2,6 +2,7 @@
 
 **Version:** 1.1
 **Status:** Canonical baseline for implementation
+**Platform:** Daily Creative
 **Product:** Daily Sketch
 **Primary platform:** Native iOS application
 

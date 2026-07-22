@@ -14,7 +14,7 @@ from app.models.sketch_session import SketchSession, SketchSessionStatus
 
 async def run(dry_run: bool) -> int:
     settings = get_settings()
-    cutoff = datetime.now(UTC) - timedelta(seconds=settings.sketch_session_expiry_seconds)
+    cutoff = datetime.now(UTC) - timedelta(seconds=settings.creative_session_expiry_seconds)
 
     async with SessionLocal() as session:
         result = await session.execute(

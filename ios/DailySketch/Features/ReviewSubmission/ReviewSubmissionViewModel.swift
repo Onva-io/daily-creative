@@ -217,11 +217,11 @@ final class ReviewSubmissionViewModel {
             try draftStore.save(draft)
 
             let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
-            let submission = try await submissionService.createSubmission(
+            let submission = try await submissionService.createPublication(
                 accessToken: token,
-                sketchSessionId: sessionId,
-                uploadId: uploadId,
-                caption: trimmed.isEmpty ? nil : trimmed,
+                creativeType: ProductConfig.current.creativeTypeID,
+                sessionId: sessionId,
+                content: .sketch(uploadId: uploadId, caption: trimmed.isEmpty ? nil : trimmed),
                 idempotencyKey: idempotencyKey
             )
 

@@ -15,7 +15,7 @@ struct AuthenticationView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.contentGapLarge) {
-                Text("Daily Sketch")
+                Text(ProductConfig.current.brandName)
                     .font(AppTypography.title1)
                     .foregroundStyle(AppColors.textPrimary)
 

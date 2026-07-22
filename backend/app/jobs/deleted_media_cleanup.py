@@ -1,4 +1,4 @@
-"""Remove media for soft-deleted submissions after retention."""
+"""Remove media for soft-deleted sketch publications after retention."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ from sqlalchemy import select
 from app.core.settings import get_settings
 from app.db.session import SessionLocal
 from app.jobs.runner import job_main
-from app.models.submission import Submission, SubmissionStatus
+from app.models.creative_publication import CreativePublication, PublicationStatus
+from app.models.sketch_submission import SketchSubmission
 from app.models.upload import Upload
 from app.storage.base import get_storage_adapter
 
@@ -22,17 +23,21 @@ async def run(dry_run: bool) -> int:
 
     async with SessionLocal() as session:
         result = await session.execute(
-            select(Submission, Upload)
-            .join(Upload, Upload.id == Submission.upload_id)
+            select(CreativePublication, SketchSubmission, Upload)
+            .join(
+                SketchSubmission,
+                SketchSubmission.publication_id == CreativePublication.id,
+            )
+            .join(Upload, Upload.id == SketchSubmission.upload_id)
             .where(
-                Submission.status == SubmissionStatus.deleted,
-                Submission.deleted_at.is_not(None),
-                Submission.deleted_at < cutoff,
+                CreativePublication.status == PublicationStatus.deleted,
+                CreativePublication.deleted_at.is_not(None),
+                CreativePublication.deleted_at < cutoff,
                 Upload.deleted_at.is_(None),
             )
         )
         rows = result.all()
-        for _submission, upload in rows:
+        for _publication, _detail, upload in rows:
             affected += 1
             if dry_run:
                 continue

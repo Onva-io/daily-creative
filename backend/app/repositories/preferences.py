@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user_preferences import AppearancePreference, TimerMode, UserPreferences
+from app.models.user_preferences import AppearancePreference, UserPreferences
 
 
 class PreferencesRepository:
@@ -28,9 +28,6 @@ class PreferencesRepository:
             notifications_enabled=False,
             notification_time_local=None,
             timezone="UTC",
-            remember_timer_option=False,
-            remembered_timer_mode=None,
-            remembered_timer_seconds=None,
             appearance=AppearancePreference.system,
         )
         self._session.add(prefs)
@@ -52,9 +49,6 @@ class PreferencesRepository:
         notifications_enabled: bool | None = None,
         notification_time_local: time | None | object = ...,
         timezone: str | None = None,
-        remember_timer_option: bool | None = None,
-        remembered_timer_mode: TimerMode | None | object = ...,
-        remembered_timer_seconds: int | None | object = ...,
         appearance: AppearancePreference | None = None,
     ) -> UserPreferences:
         if notifications_enabled is not None:
@@ -63,12 +57,6 @@ class PreferencesRepository:
             prefs.notification_time_local = notification_time_local  # type: ignore[assignment]
         if timezone is not None:
             prefs.timezone = timezone
-        if remember_timer_option is not None:
-            prefs.remember_timer_option = remember_timer_option
-        if remembered_timer_mode is not ...:
-            prefs.remembered_timer_mode = remembered_timer_mode  # type: ignore[assignment]
-        if remembered_timer_seconds is not ...:
-            prefs.remembered_timer_seconds = remembered_timer_seconds  # type: ignore[assignment]
         if appearance is not None:
             prefs.appearance = appearance
         await self._session.commit()

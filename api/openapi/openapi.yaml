@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: Daily Sketch API
+  title: Daily Creative API
   version: 0.1.0
   description: |
-    Contract-first OpenAPI definition for Daily Sketch.
+    Contract-first OpenAPI definition for Daily Creative.
 
     Version-one feature routes use the `/api/v1` prefix.
     Process health probes remain at the root (`/health/live`, `/health/ready`)
@@ -86,6 +86,14 @@ paths:
         with an incomplete profile and default preferences.
       security:
         - bearerAuth: []
+      parameters:
+        - name: creative_type
+          in: query
+          required: true
+          description: Creative type context for preferences and profile stats.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       responses:
         "200":
           description: Current user
@@ -131,6 +139,14 @@ paths:
         (purpose must be `avatar`). The upload is consumed on success.
       security:
         - bearerAuth: []
+      parameters:
+        - name: creative_type
+          in: query
+          required: true
+          description: Creative type context for preferences and profile stats.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       requestBody:
         required: true
         content:
@@ -259,6 +275,14 @@ paths:
       description: Returns server-backed preferences for the authenticated user.
       security:
         - bearerAuth: []
+      parameters:
+        - name: creative_type
+          in: query
+          required: true
+          description: Creative type whose timer and session preferences are returned.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       responses:
         "200":
           description: Preferences
@@ -294,6 +318,14 @@ paths:
         `no_timer` requires `remembered_timer_seconds` to be null.
       security:
         - bearerAuth: []
+      parameters:
+        - name: creative_type
+          in: query
+          required: true
+          description: Creative type whose timer and session preferences are updated.
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
       requestBody:
         required: true
         content:
@@ -444,8 +476,8 @@ paths:
           example: sketchy_matt
         - name: creative_type
           in: query
-          required: false
-          description: Filter by creative type. Defaults to sketch for backward compatibility.
+          required: true
+          description: Creative type for submission counts and streak stats.
           schema:
             $ref: "#/components/schemas/CreativeType"
           example: sketch
@@ -518,8 +550,8 @@ paths:
           example: 20
         - name: creative_type
           in: query
-          required: false
-          description: Filter by creative type. Defaults to sketch for backward compatibility.
+          required: true
+          description: Creative type of submissions to return.
           schema:
             $ref: "#/components/schemas/CreativeType"
           example: sketch
@@ -680,8 +712,8 @@ paths:
           example: 20
         - name: creative_type
           in: query
-          required: false
-          description: Filter by creative type. Defaults to sketch for backward compatibility.
+          required: true
+          description: Creative type of submissions to return.
           schema:
             $ref: "#/components/schemas/CreativeType"
           example: sketch
@@ -1453,7 +1485,7 @@ paths:
       summary: Publish a Submission
       description: |
         Atomically creates a public Submission from a ready Upload and owned
-        Sketch Session. Requires a completed profile. Pass an `Idempotency-Key`
+        creative Session. Requires a completed profile. Pass an `Idempotency-Key`
         header to safely retry without duplicating Submissions.
       security:
         - bearerAuth: []
@@ -1466,9 +1498,12 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateSubmissionRequest"
             example:
-              sketch_session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-              upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
-              caption: A quiet coffee and banana sketch.
+              creative_type: sketch
+              session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+              content:
+                creative_type: sketch
+                upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                caption: A quiet coffee and banana sketch.
       responses:
         "201":
           description: Submission published
@@ -1481,6 +1516,7 @@ paths:
                 $ref: "#/components/schemas/Submission"
               example:
                 id: d4e5f6a7-b8c9-0123-def0-234567890123
+                creative_type: sketch
                 caption: A quiet coffee and banana sketch.
                 visibility: public
                 status: published
@@ -1503,8 +1539,9 @@ paths:
                   word_1: Chocolate
                   word_2: Coffee
                   word_3: Banana
-                sketch_session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+                session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
                 upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                body: null
                 published_at: "2026-07-18T20:12:00Z"
                 created_at: "2026-07-18T20:12:00Z"
                 updated_at: "2026-07-18T20:12:00Z"
@@ -1551,6 +1588,7 @@ paths:
                 $ref: "#/components/schemas/Submission"
               example:
                 id: d4e5f6a7-b8c9-0123-def0-234567890123
+                creative_type: sketch
                 caption: A quiet coffee and banana sketch.
                 visibility: public
                 status: published
@@ -1573,8 +1611,9 @@ paths:
                   word_1: Chocolate
                   word_2: Coffee
                   word_3: Banana
-                sketch_session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+                session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
                 upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
+                body: null
                 published_at: "2026-07-18T20:12:00Z"
                 created_at: "2026-07-18T20:12:00Z"
                 updated_at: "2026-07-18T20:12:00Z"
@@ -2650,14 +2689,12 @@ components:
     FeedItem:
       type: object
       description: |
-        Feed projection for a published Submission. Includes image URLs,
-        user and Prompt summaries, timer metadata, caption preview,
-        Like/Reflection counts, viewer Like state, and ownership flags.
+        Feed projection for a published Submission. Includes image URLs for
+        sketch submissions, user and Prompt summaries, timer metadata, caption
+        preview, Like/Reflection counts, viewer Like state, and ownership flags.
       required:
         - id
         - creative_type
-        - image_url
-        - thumbnail_url
         - user
         - prompt
         - timer_mode
@@ -3188,30 +3225,19 @@ components:
         - hidden
         - removed
         - deleted
-    CreateSubmissionRequest:
+    SketchSubmissionContent:
       type: object
-      description: |
-        Publish a creative submission. For sketches, provide sketch_session_id
-        and upload_id. For stories, provide story_session_id and body.
-        The creative_type field determines validation rules.
+      description: Sketch-specific submission payload.
       additionalProperties: false
       required:
         - creative_type
+        - upload_id
       properties:
         creative_type:
-          $ref: "#/components/schemas/CreativeType"
-        sketch_session_id:
-          $ref: "#/components/schemas/UUID"
-        story_session_id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          const: sketch
         upload_id:
           $ref: "#/components/schemas/UUID"
-        body:
-          type:
-            - string
-            - "null"
-          description: Story body text. Required for story submissions.
-          maxLength: 10000
         caption:
           type:
             - string
@@ -3219,6 +3245,53 @@ components:
           description: Optional plain-text caption.
           maxLength: 280
           example: A quiet coffee and banana sketch.
+    StorySubmissionContent:
+      type: object
+      description: Story-specific submission payload.
+      additionalProperties: false
+      required:
+        - creative_type
+        - body
+      properties:
+        creative_type:
+          type: string
+          const: story
+        body:
+          type: string
+          description: Story body text.
+          minLength: 1
+          maxLength: 10000
+        caption:
+          type:
+            - string
+            - "null"
+          description: Optional plain-text caption.
+          maxLength: 280
+    CreateSubmissionRequest:
+      type: object
+      description: |
+        Publish a creative submission. Provide the creative type, owned session
+        id, and type-specific content. The content discriminator determines
+        validation rules.
+      additionalProperties: false
+      required:
+        - creative_type
+        - session_id
+        - content
+      properties:
+        creative_type:
+          $ref: "#/components/schemas/CreativeType"
+        session_id:
+          $ref: "#/components/schemas/UUID"
+        content:
+          oneOf:
+            - $ref: "#/components/schemas/SketchSubmissionContent"
+            - $ref: "#/components/schemas/StorySubmissionContent"
+          discriminator:
+            propertyName: creative_type
+            mapping:
+              sketch: "#/components/schemas/SketchSubmissionContent"
+              story: "#/components/schemas/StorySubmissionContent"
     Submission:
       type: object
       description: Public Submission projection with signed media URLs.
@@ -3238,8 +3311,7 @@ components:
         - thumbnail_url
         - user
         - prompt
-        - sketch_session_id
-        - story_session_id
+        - session_id
         - upload_id
         - body
         - published_at
@@ -3297,14 +3369,8 @@ components:
           $ref: "#/components/schemas/FeedUserSummary"
         prompt:
           $ref: "#/components/schemas/FeedPromptSummary"
-        sketch_session_id:
-          oneOf:
-            - $ref: "#/components/schemas/UUID"
-            - type: "null"
-        story_session_id:
-          oneOf:
-            - $ref: "#/components/schemas/UUID"
-            - type: "null"
+        session_id:
+          $ref: "#/components/schemas/UUID"
         upload_id:
           oneOf:
             - $ref: "#/components/schemas/UUID"

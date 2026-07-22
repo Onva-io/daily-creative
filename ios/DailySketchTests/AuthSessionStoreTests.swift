@@ -31,7 +31,7 @@ final class AuthSessionStoreTests: XCTestCase {
         XCTAssertTrue(store.isAuthenticated)
         XCTAssertEqual(store.currentUser?.displayName, "Ada")
         XCTAssertNotNil(meFetcher.lastAccessToken)
-        XCTAssertEqual(DailySketchAPITokenBridge.currentToken, meFetcher.lastAccessToken)
+        XCTAssertEqual(DailyCreativeAPITokenBridge.currentToken, meFetcher.lastAccessToken)
         XCTAssertTrue(meFetcher.lastAccessToken?.split(separator: ".").count == 3)
     }
 
@@ -53,7 +53,7 @@ final class AuthSessionStoreTests: XCTestCase {
 
         XCTAssertFalse(store.isAuthenticated)
         XCTAssertNil(store.currentUser)
-        XCTAssertNil(DailySketchAPITokenBridge.currentToken)
+        XCTAssertNil(DailyCreativeAPITokenBridge.currentToken)
         if case .guest = store.state {
             // expected
         } else {

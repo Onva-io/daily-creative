@@ -9,7 +9,7 @@ import pytest
 
 from app.core.errors import AppError
 from app.models.user import User, UserStatus
-from app.models.user_preferences import TimerMode
+from app.models.enums import TimerMode
 from app.services.preferences import validate_timer_preference
 from app.services.profile import ProfileService
 

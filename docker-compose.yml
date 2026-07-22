@@ -6,16 +6,16 @@ services:
   postgres:
     image: postgres:18.4-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-dailysketch}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dailysketch}
-      POSTGRES_DB: ${POSTGRES_DB:-dailysketch}
+      POSTGRES_USER: ${POSTGRES_USER:-dailycreative}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dailycreative}
+      POSTGRES_DB: ${POSTGRES_DB:-dailycreative}
     ports:
       - "5432:5432"
     volumes:
       # PostgreSQL 18+ images expect the mount at /var/lib/postgresql (versioned data dir inside).
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dailysketch} -d ${POSTGRES_DB:-dailysketch}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dailycreative} -d ${POSTGRES_DB:-dailycreative}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -40,13 +40,13 @@ services:
     entrypoint: >
       /bin/sh -c "
       until mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 1; done;
-      mc mb --ignore-existing local/$${STORAGE_BUCKET:-dailysketch-local-media};
+      mc mb --ignore-existing local/$${STORAGE_BUCKET:-dailycreative-local-media};
       exit 0;
       "
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-dailysketch-local-media}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-dailycreative-local-media}
     restart: "no"
 
   backend:
@@ -57,11 +57,11 @@ services:
       APP_ENV: local
       LOG_LEVEL: INFO
       API_PUBLIC_URL: http://localhost:8000
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dailysketch}:${POSTGRES_PASSWORD:-dailysketch}@postgres:5432/${POSTGRES_DB:-dailysketch}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dailycreative}:${POSTGRES_PASSWORD:-dailycreative}@postgres:5432/${POSTGRES_DB:-dailycreative}
       STORAGE_ENDPOINT: http://minio:9000
       STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
       STORAGE_REGION: us-east-1
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-dailysketch-local-media}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-dailycreative-local-media}
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       STORAGE_USE_SSL: "false"
@@ -95,7 +95,7 @@ services:
       dockerfile: Dockerfile
     profiles: ["migrate"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dailysketch}:${POSTGRES_PASSWORD:-dailysketch}@postgres:5432/${POSTGRES_DB:-dailysketch}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dailycreative}:${POSTGRES_PASSWORD:-dailycreative}@postgres:5432/${POSTGRES_DB:-dailycreative}
     depends_on:
       postgres:
         condition: service_healthy

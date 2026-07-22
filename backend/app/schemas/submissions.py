@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Annotated, Literal, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, Tag
 
+from app.models.creative_publication import CreativePublication
 from app.models.daily_prompt import DailyPrompt
 from app.models.enums import TimerMode
 from app.models.sketch_session import SketchSession
 from app.models.story_session import StorySession
-from app.models.submission import Submission
 from app.models.user import User
 from app.schemas.feed_shared import FeedPromptSummary, FeedUserSummary
 from app.schemas.me import TimerModeSchema
@@ -35,15 +36,37 @@ class SubmissionStatusSchema(str, Enum):
     deleted = "deleted"
 
 
+class SketchSubmissionContent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    creative_type: Literal["sketch"] = "sketch"
+    upload_id: UUID
+    caption: str | None = Field(default=None, max_length=280)
+
+
+class StorySubmissionContent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    creative_type: Literal["story"] = "story"
+    body: str = Field(min_length=1, max_length=10000)
+    caption: str | None = Field(default=None, max_length=280)
+
+
+SubmissionContent = Annotated[
+    Union[
+        Annotated[SketchSubmissionContent, Tag("sketch")],
+        Annotated[StorySubmissionContent, Tag("story")],
+    ],
+    Field(discriminator="creative_type"),
+]
+
+
 class CreateSubmissionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     creative_type: CreativeTypeSchema
-    sketch_session_id: UUID | None = None
-    story_session_id: UUID | None = None
-    upload_id: UUID | None = None
-    body: str | None = Field(default=None, max_length=10000)
-    caption: str | None = Field(default=None, max_length=280)
+    session_id: UUID
+    content: SubmissionContent
 
 
 class SubmissionResponse(BaseModel):
@@ -65,8 +88,7 @@ class SubmissionResponse(BaseModel):
     thumbnail_url: str | None
     user: FeedUserSummary
     prompt: FeedPromptSummary
-    sketch_session_id: UUID | None
-    story_session_id: UUID | None
+    session_id: UUID
     upload_id: UUID | None
     published_at: datetime
     created_at: datetime
@@ -76,7 +98,7 @@ class SubmissionResponse(BaseModel):
     def from_parts(
         cls,
         *,
-        submission: Submission,
+        publication: CreativePublication,
         user: User,
         prompt: DailyPrompt,
         sketch_session: SketchSession | None = None,
@@ -84,6 +106,8 @@ class SubmissionResponse(BaseModel):
         image_url: str | None = None,
         thumbnail_url: str | None = None,
         body: str | None = None,
+        caption: str | None = None,
+        upload_id: UUID | None = None,
         is_owner: bool,
         viewer_has_liked: bool = False,
         avatar_url: str | None = None,
@@ -100,16 +124,16 @@ class SubmissionResponse(BaseModel):
             timer_seconds = None
 
         return cls(
-            id=submission.id,
-            creative_type=CreativeTypeSchema(submission.creative_type.value),
-            caption=submission.caption,
-            body=body if body is not None else submission.body,
-            visibility=SubmissionVisibilitySchema(submission.visibility.value),
-            status=SubmissionStatusSchema(submission.status.value),
+            id=publication.id,
+            creative_type=CreativeTypeSchema(publication.creative_type.value),
+            caption=caption,
+            body=body,
+            visibility=SubmissionVisibilitySchema(publication.visibility.value),
+            status=SubmissionStatusSchema(publication.status.value),
             timer_mode=timer_mode,
             timer_seconds=timer_seconds,
-            like_count=submission.like_count,
-            reflection_count=submission.reflection_count,
+            like_count=publication.like_count,
+            reflection_count=publication.reflection_count,
             viewer_has_liked=viewer_has_liked,
             is_owner=is_owner,
             image_url=image_url,
@@ -127,10 +151,9 @@ class SubmissionResponse(BaseModel):
                 word_2=prompt.word_2,
                 word_3=prompt.word_3,
             ),
-            sketch_session_id=submission.sketch_session_id,
-            story_session_id=submission.story_session_id,
-            upload_id=submission.upload_id,
-            published_at=submission.published_at,
-            created_at=submission.created_at,
-            updated_at=submission.updated_at,
+            session_id=publication.session_id,
+            upload_id=upload_id,
+            published_at=publication.published_at,
+            created_at=publication.created_at,
+            updated_at=publication.updated_at,
         )

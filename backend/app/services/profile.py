@@ -20,13 +20,12 @@ from app.models.enums import CreativeType
 from app.models.upload import UploadPurpose, UploadStatus
 from app.models.user import User, UserStatus
 from app.repositories.likes import LikeRepository
-from app.repositories.submissions import SubmissionRepository
+from app.repositories.publications import PublicationRepository
 from app.repositories.uploads import UploadRepository
 from app.repositories.users import UserRepository
 from app.schemas.feed import FeedItem, RecentFeedResponse
 from app.schemas.me import (
     CurrentUserResponse,
-    PreferencesSummary,
     PublicUserResponse,
     UpdateMeRequest,
 )
@@ -50,7 +49,7 @@ class ProfileService:
         self._session = session
         self._users = UserRepository(session)
         self._uploads = UploadRepository(session)
-        self._submissions = SubmissionRepository(session)
+        self._publications = PublicationRepository(session)
         self._likes = LikeRepository(session)
         self._preferences_service = PreferencesService(session)
         self._clock = clock or SystemClock()
@@ -63,16 +62,30 @@ class ProfileService:
             storage=storage,
         )
 
-    async def get_current_user_response(self, user: User) -> CurrentUserResponse:
-        prefs = await self._preferences_service.get_or_create(user.id)
+    async def get_current_user_response(
+        self,
+        user: User,
+        *,
+        creative_type: CreativeType,
+    ) -> CurrentUserResponse:
+        prefs_summary = await self._preferences_service.get_summary(
+            user.id,
+            creative_type=creative_type,
+        )
         avatar_url = await self._resolve_user_avatar_url(user)
         return CurrentUserResponse.from_user(
             user,
-            PreferencesSummary.from_orm_prefs(prefs),
+            prefs_summary,
             avatar_url=avatar_url,
         )
 
-    async def update_me(self, user: User, payload: UpdateMeRequest) -> CurrentUserResponse:
+    async def update_me(
+        self,
+        user: User,
+        payload: UpdateMeRequest,
+        *,
+        creative_type: CreativeType,
+    ) -> CurrentUserResponse:
         username = payload.username
         username_normalized: str | None = None
         if username is not None:
@@ -149,21 +162,21 @@ class ProfileService:
             status=status_update,
             profile_completed_at=completed_at,
         )
-        return await self.get_current_user_response(user)
+        return await self.get_current_user_response(user, creative_type=creative_type)
 
     async def get_public_user(
         self,
         username: str,
         *,
         viewer: User | None = None,
-        creative_type: CreativeType | None = None,
+        creative_type: CreativeType,
     ) -> PublicUserResponse:
         user = await self._require_public_profile(username, viewer=viewer)
-        submission_count = await self._submissions.count_user_published(
+        submission_count = await self._publications.count_user_published(
             user.id,
             creative_type=creative_type,
         )
-        prompt_dates = await self._submissions.published_prompt_dates(
+        prompt_dates = await self._publications.published_prompt_dates(
             user.id,
             creative_type=creative_type,
         )
@@ -187,7 +200,7 @@ class ProfileService:
         cursor: str | None = None,
         limit: int = 20,
         viewer: User | None = None,
-        creative_type: CreativeType | None = None,
+        creative_type: CreativeType,
     ) -> RecentFeedResponse:
         if self._storage is None:
             raise RuntimeError("Storage adapter is required for profile submissions")
@@ -199,7 +212,7 @@ class ProfileService:
             cursor_published_at, cursor_id = decode_cursor(cursor)
 
         excluded = await self._blocks.exclude_ids_for(viewer.id if viewer else None)
-        rows = await self._submissions.list_user_published(
+        rows = await self._publications.list_user_published(
             user_id=user.id,
             limit=limit + 1,
             cursor_published_at=cursor_published_at,
@@ -211,7 +224,7 @@ class ProfileService:
         page_rows = rows[:limit]
         next_cursor: str | None = None
         if len(rows) > limit:
-            last = page_rows[-1].submission
+            last = page_rows[-1].publication
             next_cursor = encode_cursor(
                 published_at=last.published_at,
                 submission_id=last.id,
@@ -221,7 +234,7 @@ class ProfileService:
         if viewer is not None and page_rows:
             liked_ids = await self._likes.liked_submission_ids(
                 user_id=viewer.id,
-                submission_ids=[row.submission.id for row in page_rows],
+                submission_ids=[row.publication.id for row in page_rows],
             )
 
         expires_at = self._clock.now() + timedelta(
@@ -237,7 +250,7 @@ class ProfileService:
                     viewer=viewer,
                     storage=self._storage,
                     expires_at=expires_at,
-                    viewer_has_liked=row.submission.id in liked_ids,
+                    viewer_has_liked=row.publication.id in liked_ids,
                     avatar_url=avatar_url,
                 )
             )

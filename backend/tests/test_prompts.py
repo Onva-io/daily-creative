@@ -26,7 +26,7 @@ from app.repositories.prompts import PromptRepository
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -260,7 +260,7 @@ async def test_recent_feed_returns_empty_page(
     client: AsyncClient,
     openapi_spec: dict[str, Any],
 ) -> None:
-    response = await client.get("/api/v1/feed/recent")
+    response = await client.get("/api/v1/feed/recent", params={"creative_type": "sketch"})
     assert response.status_code == 200
     body = response.json()
     assert body == {"items": [], "next_cursor": None}
@@ -270,6 +270,8 @@ async def test_recent_feed_returns_empty_page(
 @requires_postgres
 @pytest.mark.asyncio
 async def test_recent_feed_rejects_invalid_cursor(client: AsyncClient) -> None:
-    response = await client.get("/api/v1/feed/recent", params={"cursor": "abc", "limit": 10})
+    response = await client.get(
+        "/api/v1/feed/recent", params={"cursor": "abc", "limit": 10, "creative_type": "sketch"}
+    )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_cursor"

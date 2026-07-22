@@ -26,7 +26,7 @@ from app.schemas.story_sessions import (
     StorySessionEventTypeSchema,
     StorySessionResponse,
 )
-from app.services.preferences import ALLOWED_TIMER_SECONDS
+from app.services.base_creative_session import validate_timer_selection
 
 CREATE_ENDPOINT = "POST /api/v1/story-sessions"
 
@@ -220,7 +220,7 @@ class StorySessionService:
     async def _maybe_expire(self, story_session: StorySession) -> StorySession:
         if story_session.status in TERMINAL_STATUSES:
             return story_session
-        expiry_seconds = self._settings.sketch_session_expiry_seconds
+        expiry_seconds = self._settings.creative_session_expiry_seconds
         age = self._clock.now() - story_session.started_at
         if age.total_seconds() < expiry_seconds:
             return story_session
@@ -302,31 +302,6 @@ class StorySessionService:
         if event_type == StorySessionEventType.submission_created:
             story_session.completed_at = now
             story_session.status = StorySessionStatus.completed
-
-
-def validate_timer_selection(mode: TimerMode, seconds: int | None) -> None:
-    """Validate Story Session timer mode/seconds combination."""
-    if mode == TimerMode.no_timer:
-        if seconds is not None:
-            raise AppError(
-                code="invalid_timer_selection",
-                message="Timer mode and selected seconds are inconsistent.",
-                status_code=422,
-            )
-        return
-    if mode == TimerMode.countdown:
-        if seconds not in ALLOWED_TIMER_SECONDS:
-            raise AppError(
-                code="invalid_timer_selection",
-                message="Timer mode and selected seconds are inconsistent.",
-                status_code=422,
-            )
-        return
-    raise AppError(
-        code="invalid_timer_selection",
-        message="Timer mode and selected seconds are inconsistent.",
-        status_code=422,
-    )
 
 
 def _hash_create_request(payload: CreateStorySessionRequest) -> str:

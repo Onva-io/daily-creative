@@ -1,7 +1,7 @@
 #include "../Base.xcconfig"
 
 PRODUCT_BUNDLE_IDENTIFIER = com.example.dailystory.development
-API_BASE_URL = https:/$()/api.development.dailysketch.example
+API_BASE_URL = https:/$()/api.development.dailycreative.example
 APP_ENVIRONMENT = development
 DESCOPE_PROJECT_ID = replace-me
 ANALYTICS_ENVIRONMENT = development
@@ -9,6 +9,10 @@ LOGGING_LEVEL = info
 SHOW_ENVIRONMENT_BADGE = YES
 BRAND_NAME = Daily Story
 CREATIVE_TYPE_ID = story
+COMMUNITY_TITLE = Community Stories
+START_ACTION_TITLE = Start Writing
+REQUIRES_CAMERA = NO
+DAILY_REMINDER_NOTIFICATION_ID = daily-story.daily-reminder
 
 DEBUG_INFORMATION_FORMAT = dwarf
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG PRODUCT_STORY

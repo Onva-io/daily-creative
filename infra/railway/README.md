@@ -1,6 +1,6 @@
 # Railway — shared test environment
 
-Railway hosts a **shared remote test** backend for Daily Sketch. It is not production infrastructure; use [AWS Terraform](../terraform/README.md) for staging/production targets on AWS.
+Railway hosts a **shared remote test** backend for Daily Creative. It is not production infrastructure; use [AWS Terraform](../terraform/README.md) for staging/production targets on AWS.
 
 ## Prerequisites
 
@@ -66,7 +66,7 @@ Railway does not host object storage. Use AWS S3:
 
 **Option A — dedicated test bucket (recommended)**
 
-- Bucket name e.g. `dailysketch-railway-media`
+- Bucket name e.g. `dailycreative-railway-media`
 - Block public access; IAM user with `s3:PutObject`, `GetObject`, `DeleteObject`, `ListBucket` on `users/*` prefix
 - Store `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` in Railway secrets
 

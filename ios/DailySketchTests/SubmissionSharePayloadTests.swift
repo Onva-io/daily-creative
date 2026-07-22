@@ -15,7 +15,7 @@ final class SubmissionSharePayloadTests: XCTestCase {
 
         XCTAssertTrue(payload.text.contains("Chocolate · Coffee · Banana"))
         XCTAssertTrue(payload.text.contains("A sketch by Matt (@sketchy_matt)"))
-        XCTAssertTrue(payload.text.contains("Shared via Daily Sketch"))
+        XCTAssertTrue(payload.text.contains(ProductConfig.current.shareFooter))
         XCTAssertFalse(SubmissionSharePayload.textContainsPrivateURL(payload.text))
         XCTAssertEqual(payload.activityItems.count, 2)
     }

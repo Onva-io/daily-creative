@@ -27,5 +27,5 @@ def test_reserved_usernames_rejected() -> None:
     assert is_reserved_username("admin")
     assert is_reserved_username("Admin")
     assert is_reserved_username("  ME ")
-    assert is_reserved_username("dailysketch")
+    assert is_reserved_username("dailycreative")
     assert not is_reserved_username("sketchy_matt")

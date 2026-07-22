@@ -20,7 +20,7 @@ from app.models.user_preferences import UserPreferences  # noqa: F401
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 requires_postgres = pytest.mark.skipif(
@@ -81,7 +81,7 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient]:
 @requires_postgres
 @pytest.mark.asyncio
 async def test_missing_token_rejected(client: AsyncClient) -> None:
-    response = await client.get("/api/v1/me")
+    response = await client.get("/api/v1/me", params={"creative_type": "sketch"})
     assert response.status_code == 401
     body = response.json()
     assert body["error"]["code"] == "unauthenticated"

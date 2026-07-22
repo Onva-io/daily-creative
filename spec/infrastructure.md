@@ -1,4 +1,4 @@
-# Daily Sketch — Infrastructure Specification
+# Daily Creative — Infrastructure Specification
 
 **Version:** 1.1
 **Status:** Canonical infrastructure and operations baseline
@@ -7,7 +7,7 @@
 
 ## 1. Purpose of this document
 
-This document defines how Daily Sketch should be run, deployed, secured, monitored, backed up, and maintained.
+This document defines how Daily Creative should be run, deployed, secured, monitored, backed up, and maintained.
 
 It is authoritative for:
 
@@ -120,7 +120,7 @@ Every production change should be:
 
 ## 3. Environment model
 
-Daily Sketch supports four logical environments.
+Daily Creative supports four logical environments.
 
 ## 3.1 Local
 
@@ -276,9 +276,9 @@ The initial deployment should use one backend service.
 Recommended hostnames:
 
 ```text
-api.dev.dailysketch.example
-api.staging.dailysketch.example
-api.dailysketch.example
+api.dev.dailycreative.example
+api.staging.dailycreative.example
+api.dailycreative.example
 ```
 
 Requirements:
@@ -603,9 +603,9 @@ Retention must align with privacy policy.
 Recommended:
 
 ```text
-dailysketch-dev-media
-dailysketch-staging-media
-dailysketch-production-media
+dailycreative-dev-media
+dailycreative-staging-media
+dailycreative-production-media
 ```
 
 Separate cloud projects/accounts are preferable when practical.

@@ -22,7 +22,7 @@ router = APIRouter(tags=["users"])
 @router.get("/users/{username}", response_model=PublicUserResponse)
 async def get_public_user(
     username: str,
-    creative_type: CreativeType | None = Query(default=None),
+    creative_type: CreativeType = Query(...),
     viewer: User | None = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
@@ -42,7 +42,7 @@ async def get_user_submissions(
     username: str,
     cursor: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
-    creative_type: CreativeType | None = Query(default=None),
+    creative_type: CreativeType = Query(...),
     viewer: User | None = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),

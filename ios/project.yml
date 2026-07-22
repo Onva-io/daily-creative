@@ -21,7 +21,7 @@ configs:
   Release-Staging: release
   Release-Production: release
 packages:
-  DailySketchAPI:
+  DailyCreativeAPI:
     path: ../api/generated/ios
   DescopeKit:
     url: https://github.com/descope/descope-swift
@@ -32,6 +32,7 @@ targets:
     platform: iOS
     sources:
       - path: DailySketch
+      - path: DailyCreative
     info:
       path: DailySketch/Resources/Info.plist
       properties:
@@ -47,6 +48,10 @@ targets:
         ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
         BRAND_NAME: $(BRAND_NAME)
         CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
+        COMMUNITY_TITLE: $(COMMUNITY_TITLE)
+        START_ACTION_TITLE: $(START_ACTION_TITLE)
+        REQUIRES_CAMERA: $(REQUIRES_CAMERA)
+        DAILY_REMINDER_NOTIFICATION_ID: $(DAILY_REMINDER_NOTIFICATION_ID)
         NSCameraUsageDescription: Daily Sketch uses the camera so you can photograph your drawing and share it with the community.
         NSPhotoLibraryUsageDescription: Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.
         NSAppTransportSecurity:
@@ -69,7 +74,7 @@ targets:
       Release-Staging: Config/Release-Staging.xcconfig
       Release-Production: Config/Release-Production.xcconfig
     dependencies:
-      - package: DailySketchAPI
+      - package: DailyCreativeAPI
       - package: DescopeKit
     settings:
       base:
@@ -86,7 +91,7 @@ targets:
     platform: iOS
     sources:
       - path: DailyStory
-      - path: DailySketch/Core
+      - path: DailyCreative
       - path: DailySketch/App
         excludes:
           - DailySketchApp.swift
@@ -113,6 +118,10 @@ targets:
         ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
         BRAND_NAME: $(BRAND_NAME)
         CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
+        COMMUNITY_TITLE: $(COMMUNITY_TITLE)
+        START_ACTION_TITLE: $(START_ACTION_TITLE)
+        REQUIRES_CAMERA: $(REQUIRES_CAMERA)
+        DAILY_REMINDER_NOTIFICATION_ID: $(DAILY_REMINDER_NOTIFICATION_ID)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         UILaunchScreen:
@@ -133,7 +142,7 @@ targets:
       Release-Staging: Config/DailyStory/Release-Staging.xcconfig
       Release-Production: Config/DailyStory/Release-Production.xcconfig
     dependencies:
-      - package: DailySketchAPI
+      - package: DailyCreativeAPI
       - package: DescopeKit
     settings:
       base:

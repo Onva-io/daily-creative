@@ -1,19 +1,28 @@
 """ORM models."""
 
 from app.models.activity_event import ActivityEvent, ActivityEventType
+from app.models.creative_publication import (
+    CreativePublication,
+    PublicationStatus,
+    PublicationVisibility,
+    Submission,
+    SubmissionStatus,
+    SubmissionVisibility,
+)
 from app.models.creative_type_preferences import CreativeTypePreferences
 from app.models.daily_prompt import DailyPrompt, PromptStatus
 from app.models.enums import CreativeType, TimerMode
 from app.models.idempotency_key import IdempotencyKey
 from app.models.moderation_action import ModerationAction, ModerationActionType
+from app.models.publication_like import PublicationLike, SubmissionLike
 from app.models.reflection import Reflection, ReflectionStatus
 from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
 from app.models.sketch_session import SketchSession, SketchSessionStatus
 from app.models.sketch_session_event import SketchSessionEvent, SketchSessionEventType
+from app.models.sketch_submission import SketchSubmission
 from app.models.story_session import StorySession, StorySessionStatus
 from app.models.story_session_event import StorySessionEvent, StorySessionEventType
-from app.models.submission import Submission, SubmissionStatus, SubmissionVisibility
-from app.models.submission_like import SubmissionLike
+from app.models.story_submission import StorySubmission
 from app.models.upload import DerivativeStatus, Upload, UploadPurpose, UploadStatus
 from app.models.user import User, UserStatus
 from app.models.user_block import UserBlock
@@ -23,6 +32,7 @@ __all__ = [
     "ActivityEvent",
     "ActivityEventType",
     "AppearancePreference",
+    "CreativePublication",
     "CreativeType",
     "CreativeTypePreferences",
     "DailyPrompt",
@@ -31,6 +41,9 @@ __all__ = [
     "ModerationAction",
     "ModerationActionType",
     "PromptStatus",
+    "PublicationLike",
+    "PublicationStatus",
+    "PublicationVisibility",
     "Reflection",
     "ReflectionStatus",
     "Report",
@@ -41,10 +54,12 @@ __all__ = [
     "SketchSessionEvent",
     "SketchSessionEventType",
     "SketchSessionStatus",
+    "SketchSubmission",
     "StorySession",
     "StorySessionEvent",
     "StorySessionEventType",
     "StorySessionStatus",
+    "StorySubmission",
     "Submission",
     "SubmissionLike",
     "SubmissionStatus",

@@ -14,7 +14,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project   = "dailysketch"
+      Project   = "dailycreative"
       ManagedBy = "terraform"
       Purpose   = "terraform-state-bootstrap"
     }

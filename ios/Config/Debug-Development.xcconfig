@@ -1,7 +1,7 @@
 #include "Base.xcconfig"
 
 PRODUCT_BUNDLE_IDENTIFIER = com.example.dailysketch.development
-API_BASE_URL = https:/$()/api.development.dailysketch.example
+API_BASE_URL = https:/$()/api.development.dailycreative.example
 APP_ENVIRONMENT = development
 DESCOPE_PROJECT_ID = replace-me-development
 ANALYTICS_ENVIRONMENT = development

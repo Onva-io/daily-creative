@@ -28,8 +28,12 @@
 	<string>1</string>
 	<key>COMMUNITY_GUIDELINES_URL</key>
 	<string>$(COMMUNITY_GUIDELINES_URL)</string>
+	<key>COMMUNITY_TITLE</key>
+	<string>$(COMMUNITY_TITLE)</string>
 	<key>CREATIVE_TYPE_ID</key>
 	<string>$(CREATIVE_TYPE_ID)</string>
+	<key>DAILY_REMINDER_NOTIFICATION_ID</key>
+	<string>$(DAILY_REMINDER_NOTIFICATION_ID)</string>
 	<key>DESCOPE_PROJECT_ID</key>
 	<string>$(DESCOPE_PROJECT_ID)</string>
 	<key>NSAppTransportSecurity</key>
@@ -43,10 +47,14 @@
 	<string>Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.</string>
 	<key>PRIVACY_URL</key>
 	<string>$(PRIVACY_URL)</string>
+	<key>REQUIRES_CAMERA</key>
+	<string>$(REQUIRES_CAMERA)</string>
 	<key>SENTRY_DSN</key>
 	<string>$(SENTRY_DSN)</string>
 	<key>SHOW_ENVIRONMENT_BADGE</key>
 	<string>$(SHOW_ENVIRONMENT_BADGE)</string>
+	<key>START_ACTION_TITLE</key>
+	<string>$(START_ACTION_TITLE)</string>
 	<key>SUPPORT_URL</key>
 	<string>$(SUPPORT_URL)</string>
 	<key>TERMS_URL</key>

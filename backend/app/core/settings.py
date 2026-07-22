@@ -27,9 +27,9 @@ class Settings(BaseSettings):
     request_timeout_seconds: int = Field(default=30, alias="REQUEST_TIMEOUT_SECONDS")
     max_request_body_bytes: int = Field(default=1_048_576, alias="MAX_REQUEST_BODY_BYTES")
     prompt_date_timezone: str = Field(default="UTC", alias="PROMPT_DATE_TIMEZONE")
-    sketch_session_expiry_seconds: int = Field(
+    creative_session_expiry_seconds: int = Field(
         default=86400,
-        alias="SKETCH_SESSION_EXPIRY_SECONDS",
+        alias="CREATIVE_SESSION_EXPIRY_SECONDS",
     )
 
     db_pool_size: int = Field(default=5, alias="DB_POOL_SIZE")
@@ -67,14 +67,14 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",
+        default="postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
         alias="DATABASE_URL",
     )
 
     storage_endpoint: str = Field(default="http://localhost:9000", alias="STORAGE_ENDPOINT")
     storage_public_endpoint: str | None = Field(default=None, alias="STORAGE_PUBLIC_ENDPOINT")
     storage_region: str = Field(default="us-east-1", alias="STORAGE_REGION")
-    storage_bucket: str = Field(default="dailysketch-local-media", alias="STORAGE_BUCKET")
+    storage_bucket: str = Field(default="dailycreative-local-media", alias="STORAGE_BUCKET")
     storage_access_key: str = Field(default="minioadmin", alias="STORAGE_ACCESS_KEY")
     storage_secret_key: str = Field(default="minioadmin", alias="STORAGE_SECRET_KEY")
     storage_use_ssl: bool = Field(default=False, alias="STORAGE_USE_SSL")
@@ -121,11 +121,11 @@ class Settings(BaseSettings):
             raise ValueError("MAX_REQUEST_BODY_BYTES must be at least 1024")
         return value
 
-    @field_validator("sketch_session_expiry_seconds")
+    @field_validator("creative_session_expiry_seconds")
     @classmethod
-    def validate_sketch_session_expiry(cls, value: int) -> int:
+    def validate_creative_session_expiry(cls, value: int) -> int:
         if value < 60:
-            raise ValueError("SKETCH_SESSION_EXPIRY_SECONDS must be at least 60")
+            raise ValueError("CREATIVE_SESSION_EXPIRY_SECONDS must be at least 60")
         return value
 
     @field_validator("max_upload_bytes")

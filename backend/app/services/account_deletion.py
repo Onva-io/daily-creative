@@ -9,12 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import Clock
 from app.core.settings import Settings, get_settings
-from app.models.submission import SubmissionStatus
+from app.models.creative_publication import PublicationStatus
 from app.models.user import User, UserStatus
 from app.repositories.idempotency import IdempotencyRepository
 from app.repositories.likes import LikeRepository
+from app.repositories.publications import PublicationRepository
 from app.repositories.reflections import ReflectionRepository
-from app.repositories.submissions import SubmissionRepository
 from app.repositories.uploads import UploadRepository
 from app.repositories.users import UserRepository
 from app.schemas.safety import AccountDeletionResponse, AccountDeletionStatus
@@ -39,7 +39,7 @@ class AccountDeletionService:
         self._settings = settings or get_settings()
         self._storage = storage
         self._users = UserRepository(session)
-        self._submissions = SubmissionRepository(session)
+        self._publications = PublicationRepository(session)
         self._reflections = ReflectionRepository(session)
         self._likes = LikeRepository(session)
         self._uploads = UploadRepository(session)
@@ -108,11 +108,11 @@ class AccountDeletionService:
         return finalized
 
     async def _hide_user_content(self, *, user: User, now: datetime) -> None:
-        submissions = await self._submissions.list_published_for_user_ids(user.id)
-        for submission in submissions:
-            await self._submissions.set_status(
-                submission,
-                status=SubmissionStatus.hidden,
+        publications = await self._publications.list_published_for_user_ids(user.id)
+        for publication in publications:
+            await self._publications.set_status(
+                publication,
+                status=PublicationStatus.hidden,
                 commit=False,
             )
 
@@ -124,64 +124,57 @@ class AccountDeletionService:
                 commit=False,
             )
             if transitioned:
-                reflection_submission = await self._submissions.get_by_id(reflection.submission_id)
-                if reflection_submission is not None:
-                    reflection_submission.reflection_count = max(
-                        0, reflection_submission.reflection_count - 1
+                reflection_publication = await self._publications.get_by_id(
+                    reflection.submission_id
+                )
+                if reflection_publication is not None:
+                    reflection_publication.reflection_count = max(
+                        0, reflection_publication.reflection_count - 1
                     )
 
         likes = await self._likes.list_for_user(user.id)
         for like in likes:
             deleted = await self._likes.delete(
-                submission_id=like.submission_id,
+                submission_id=like.publication_id,
                 user_id=user.id,
                 commit=False,
             )
             if deleted:
-                like_submission = await self._submissions.get_by_id(like.submission_id)
-                if like_submission is not None:
-                    like_submission.like_count = max(0, like_submission.like_count - 1)
+                like_publication = await self._publications.get_by_id(like.publication_id)
+                if like_publication is not None:
+                    like_publication.like_count = max(0, like_publication.like_count - 1)
 
     async def _finalize_user(self, user: User) -> None:
         if user.status == UserStatus.deleted:
             return
 
-        # Best-effort media cleanup for all owned submissions + avatar.
-        rows = await self._submissions.list_user_published(
-            user_id=user.id,
-            limit=10_000,
-        )
-        # Also load any non-published with uploads via direct IDs when needed.
-        from sqlalchemy import select
-
-        from app.models.submission import Submission
-
-        result = await self._session.execute(
-            select(Submission).where(Submission.user_id == user.id)
-        )
-        all_submissions = list(result.scalars().all())
-        _ = rows
-        for submission in all_submissions:
-            upload = await self._uploads.get_by_id(submission.upload_id)
-            if upload is not None and self._storage is not None:
-                for key in (
-                    upload.storage_key,
-                    self._storage.derivative_key(original_key=upload.storage_key, kind="display"),
-                    self._storage.derivative_key(
-                        original_key=upload.storage_key,
-                        kind="thumbnail",
-                    ),
-                ):
-                    try:
-                        await self._storage.delete_object(key=key)
-                    except Exception:
-                        logger.exception("Failed to delete media key during account finalize")
-                if upload.deleted_at is None:
-                    upload.deleted_at = self._clock.now()
-            if submission.status != SubmissionStatus.deleted:
-                await self._submissions.set_status(
-                    submission,
-                    status=SubmissionStatus.deleted,
+        all_publications = await self._publications.list_all_for_user(user.id)
+        for publication in all_publications:
+            sketch_detail = await self._publications.get_sketch_submission(publication.id)
+            if sketch_detail is not None:
+                upload = await self._uploads.get_by_id(sketch_detail.upload_id)
+                if upload is not None and self._storage is not None:
+                    for key in (
+                        upload.storage_key,
+                        self._storage.derivative_key(
+                            original_key=upload.storage_key,
+                            kind="display",
+                        ),
+                        self._storage.derivative_key(
+                            original_key=upload.storage_key,
+                            kind="thumbnail",
+                        ),
+                    ):
+                        try:
+                            await self._storage.delete_object(key=key)
+                        except Exception:
+                            logger.exception("Failed to delete media key during account finalize")
+                    if upload.deleted_at is None:
+                        upload.deleted_at = self._clock.now()
+            if publication.status != PublicationStatus.deleted:
+                await self._publications.set_status(
+                    publication,
+                    status=PublicationStatus.deleted,
                     deleted_at=self._clock.now(),
                     commit=False,
                 )
@@ -204,7 +197,6 @@ class AccountDeletionService:
                 if avatar.deleted_at is None:
                     avatar.deleted_at = self._clock.now()
 
-        # Descope identity coordination seam — no-op without management credentials.
         self._coordinate_descope_deletion(user)
 
         await self._users.set_status(
@@ -216,7 +208,6 @@ class AccountDeletionService:
 
     def _coordinate_descope_deletion(self, user: User) -> None:
         """Best-effort Descope disable/delete. No-op when management creds are absent."""
-        # Version one records intent only; management API integration is optional.
         logger.info(
             "account_deletion_descope_seam user_id=%s descope_subject=%s",
             user.id,

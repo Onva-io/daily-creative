@@ -46,22 +46,22 @@ jobs:
       postgres:
         image: postgres:18.4-alpine
         env:
-          POSTGRES_USER: dailysketch
-          POSTGRES_PASSWORD: dailysketch
-          POSTGRES_DB: dailysketch
+          POSTGRES_USER: dailycreative
+          POSTGRES_PASSWORD: dailycreative  # pragma: allowlist secret
+          POSTGRES_DB: dailycreative
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U dailysketch -d dailysketch"
+          --health-cmd "pg_isready -U dailycreative -d dailycreative"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch
+      DATABASE_URL: postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative  # pragma: allowlist secret
       STORAGE_ENDPOINT: http://localhost:9000
       STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
       STORAGE_REGION: us-east-1
-      STORAGE_BUCKET: dailysketch-ci-media
+      STORAGE_BUCKET: dailycreative-ci-media
       STORAGE_ACCESS_KEY: minioadmin
       STORAGE_SECRET_KEY: minioadmin
       STORAGE_USE_SSL: "false"
@@ -88,7 +88,7 @@ jobs:
           docker run --rm --network host \
             -e MC_HOST_local=http://minioadmin:minioadmin@localhost:9000 \
             minio/mc:RELEASE.2025-08-13T08-35-41Z \
-            mb --ignore-existing local/dailysketch-ci-media
+            mb --ignore-existing local/dailycreative-ci-media
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"

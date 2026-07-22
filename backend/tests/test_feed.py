@@ -12,7 +12,6 @@ from typing import Any
 import pytest
 import yaml
 from httpx import ASGITransport, AsyncClient
-from jsonschema import Draft202012Validator
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -25,7 +24,7 @@ from app.models.daily_prompt import DailyPrompt  # noqa: F401
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
 from app.models.sketch_session import SketchSession  # noqa: F401
 from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.submission import Submission  # noqa: F401
+from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User, UserStatus
 from app.models.user_preferences import UserPreferences  # noqa: F401
@@ -34,24 +33,24 @@ from app.storage.base import get_storage_adapter
 from fake_storage import InMemoryStorageAdapter
 from jwt_helpers import StaticTokenVerifier, generate_rsa_keypair, mint_token
 from test_uploads_submissions import (
+    CREATIVE_TYPE_SKETCH,
     _complete_profile,
     _create_ready_session,
     _create_ready_upload,
+    _creative_type_params,
     _seed_prompt,
+    _sketch_submission_json,
+    assert_matches_schema,
+    requires_postgres,
 )
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OPENAPI_PATH = REPO_ROOT / "api" / "openapi" / "openapi.yaml"
-
-requires_postgres = pytest.mark.skipif(
-    os.environ.get("SKIP_POSTGRES_TESTS") == "1",
-    reason="SKIP_POSTGRES_TESTS=1",
-)
 
 
 class FixedClock:
@@ -74,30 +73,6 @@ def openapi_spec() -> dict[str, Any]:
         loaded = yaml.safe_load(handle)
     assert isinstance(loaded, dict)
     return loaded
-
-
-def assert_matches_schema(
-    instance: object,
-    schema_name: str,
-    openapi_spec: dict[str, Any],
-) -> None:
-    schema = openapi_spec["components"]["schemas"][schema_name]
-
-    def expand(node: object) -> object:
-        if isinstance(node, dict):
-            if "$ref" in node and isinstance(node["$ref"], str):
-                ref = node["$ref"]
-                if ref.startswith("#/components/schemas/"):
-                    name = ref.rsplit("/", 1)[-1]
-                    return expand(openapi_spec["components"]["schemas"][name])
-            return {key: expand(value) for key, value in node.items()}
-        if isinstance(node, list):
-            return [expand(item) for item in node]
-        return node
-
-    expanded = expand(schema)
-    assert isinstance(expanded, dict)
-    Draft202012Validator(expanded).validate(instance)
 
 
 @pytest.fixture
@@ -191,11 +166,7 @@ async def _publish_submission(
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload["id"],
-            "caption": caption,
-        },
+        json=_sketch_submission_json(session_id, upload["id"], caption=caption),
     )
     assert created.status_code == 201, created.text
     return {"headers": headers, "submission": created.json()}
@@ -219,7 +190,7 @@ async def test_feed_orders_newest_first_and_matches_contract(
         advance_seconds=30,
     )
 
-    response = await client.get("/api/v1/feed/recent")
+    response = await client.get("/api/v1/feed/recent", params=_creative_type_params())
     assert response.status_code == 200
     body = response.json()
     assert_matches_schema(body, "RecentFeed", openapi_spec)
@@ -256,7 +227,10 @@ async def test_feed_cursor_pagination_stable_under_new_inserts(
         )
         published_ids.append(result["submission"]["id"])
 
-    first_page = await client.get("/api/v1/feed/recent", params={"limit": 2})
+    first_page = await client.get(
+        "/api/v1/feed/recent",
+        params={"limit": 2, "creative_type": CREATIVE_TYPE_SKETCH},
+    )
     assert first_page.status_code == 200
     first_body = first_page.json()
     assert len(first_body["items"]) == 2
@@ -272,7 +246,11 @@ async def test_feed_cursor_pagination_stable_under_new_inserts(
 
     second_page = await client.get(
         "/api/v1/feed/recent",
-        params={"limit": 2, "cursor": first_body["next_cursor"]},
+        params={
+            "limit": 2,
+            "cursor": first_body["next_cursor"],
+            "creative_type": CREATIVE_TYPE_SKETCH,
+        },
     )
     assert second_page.status_code == 200
     second_body = second_page.json()
@@ -314,7 +292,7 @@ async def test_feed_excludes_deleted_and_suspended_authors(client: AsyncClient) 
         user.status = UserStatus.suspended
         await session.commit()
 
-    response = await client.get("/api/v1/feed/recent")
+    response = await client.get("/api/v1/feed/recent", params=_creative_type_params())
     assert response.status_code == 200
     ids = [item["id"] for item in response.json()["items"]]
     assert ids == [kept["submission"]["id"]]
@@ -338,7 +316,11 @@ async def test_feed_owner_flag_for_authenticated_viewer(client: AsyncClient) -> 
         advance_seconds=15,
     )
 
-    response = await client.get("/api/v1/feed/recent", headers=owned["headers"])
+    response = await client.get(
+        "/api/v1/feed/recent",
+        headers=owned["headers"],
+        params=_creative_type_params(),
+    )
     assert response.status_code == 200
     items = {item["id"]: item for item in response.json()["items"]}
     assert items[owned["submission"]["id"]]["is_owner"] is True
@@ -352,7 +334,7 @@ async def test_owner_delete_removes_from_feed_and_detail(client: AsyncClient) ->
     published = await _publish_submission(client, username="deleter", caption="Gone soon")
     submission_id = published["submission"]["id"]
 
-    before = await client.get("/api/v1/feed/recent")
+    before = await client.get("/api/v1/feed/recent", params={"creative_type": "sketch"})
     assert submission_id in [item["id"] for item in before.json()["items"]]
 
     deleted = await client.delete(
@@ -361,7 +343,7 @@ async def test_owner_delete_removes_from_feed_and_detail(client: AsyncClient) ->
     )
     assert deleted.status_code == 204
 
-    after = await client.get("/api/v1/feed/recent")
+    after = await client.get("/api/v1/feed/recent", params={"creative_type": "sketch"})
     assert submission_id not in [item["id"] for item in after.json()["items"]]
 
     detail = await client.get(f"/api/v1/submissions/{submission_id}")
@@ -375,6 +357,7 @@ async def test_feed_accepts_invalid_bearer_as_anonymous(client: AsyncClient) -> 
     response = await client.get(
         "/api/v1/feed/recent",
         headers={"Authorization": "Bearer totally-invalid-token"},
+        params=_creative_type_params(),
     )
     assert response.status_code == 200
     assert len(response.json()["items"]) >= 1

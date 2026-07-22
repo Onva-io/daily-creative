@@ -1,4 +1,4 @@
-"""Daily Sketch FastAPI application entrypoint."""
+"""Daily Creative FastAPI application entrypoint."""
 
 from fastapi import FastAPI
 from fastapi.responses import Response
@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
     configure_observability(settings)
 
     application = FastAPI(
-        title="Daily Sketch API",
+        title="Daily Creative API",
         version=settings.release_version,
         docs_url="/docs" if settings.app_env != "production" else None,
         redoc_url="/redoc" if settings.app_env != "production" else None,

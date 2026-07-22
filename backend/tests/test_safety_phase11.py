@@ -27,7 +27,7 @@ from app.models.moderation_action import ModerationAction  # noqa: F401
 from app.models.report import Report  # noqa: F401
 from app.models.sketch_session import SketchSession  # noqa: F401
 from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.submission import Submission  # noqa: F401
+from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User, UserStatus
 from app.models.user_block import UserBlock  # noqa: F401
@@ -46,7 +46,7 @@ from test_uploads_submissions import (
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -220,7 +220,9 @@ async def test_block_filters_feed_detail_profile_and_rejects_interactions(
     assert_matches_schema(block.json(), "BlockState", openapi_spec)
     assert block.json()["blocked"] is True
 
-    feed = await client.get("/api/v1/feed/recent", headers=alice_headers)
+    feed = await client.get(
+        "/api/v1/feed/recent", headers=alice_headers, params={"creative_type": "sketch"}
+    )
     assert feed.status_code == 200
     assert all(item["id"] != bob_submission["id"] for item in feed.json()["items"])
 
@@ -336,10 +338,10 @@ async def test_account_deletion_pending_and_finalize(
     again = await client.delete("/api/v1/me", headers=headers)
     assert again.status_code == 202
 
-    public = await client.get("/api/v1/users/delete_me_user")
+    public = await client.get("/api/v1/users/delete_me_user", params={"creative_type": "sketch"})
     assert public.status_code == 404
 
-    feed = await client.get("/api/v1/feed/recent")
+    feed = await client.get("/api/v1/feed/recent", params={"creative_type": "sketch"})
     assert feed.status_code == 200
     assert all(item["id"] != submission["id"] for item in feed.json()["items"])
 

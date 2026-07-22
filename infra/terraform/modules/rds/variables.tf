@@ -16,13 +16,13 @@ variable "security_group_ids" {
 variable "database_name" {
   description = "Initial database name."
   type        = string
-  default     = "dailysketch"
+  default     = "dailycreative"
 }
 
 variable "master_username" {
   description = "Master database username."
   type        = string
-  default     = "dailysketch"
+  default     = "dailycreative"
 }
 
 variable "instance_class" {

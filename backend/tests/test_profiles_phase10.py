@@ -25,7 +25,7 @@ from app.models.daily_prompt import DailyPrompt  # noqa: F401
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
 from app.models.sketch_session import SketchSession  # noqa: F401
 from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.submission import Submission  # noqa: F401
+from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload, UploadPurpose, UploadStatus  # noqa: F401
 from app.models.user import User, UserStatus
 from app.models.user_preferences import UserPreferences  # noqa: F401
@@ -44,7 +44,7 @@ from test_uploads_submissions import (
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -235,7 +235,7 @@ async def test_public_profile_includes_count_streak_and_is_self(
     # Second submission same day should not increase the streak.
     await _publish_for_date(client, headers, today, caption="Today again")
 
-    guest = await client.get("/api/v1/users/streak_user")
+    guest = await client.get("/api/v1/users/streak_user", params={"creative_type": "sketch"})
     assert guest.status_code == 200
     body = guest.json()
     assert_matches_schema(body, "PublicUser", openapi_spec)
@@ -246,7 +246,9 @@ async def test_public_profile_includes_count_streak_and_is_self(
     assert "preferences" not in body
     assert "descope_subject" not in body
 
-    owned = await client.get("/api/v1/users/streak_user", headers=headers)
+    owned = await client.get(
+        "/api/v1/users/streak_user", headers=headers, params={"creative_type": "sketch"}
+    )
     assert owned.status_code == 200
     assert owned.json()["is_self"] is True
     assert owned.json()["id"] == profile["id"]
@@ -261,7 +263,7 @@ async def test_delete_final_submission_changes_streak(client: AsyncClient) -> No
     first = await _publish_for_date(client, headers, today)
     await _publish_for_date(client, headers, today - timedelta(days=1))
 
-    before = await client.get("/api/v1/users/delete_streak")
+    before = await client.get("/api/v1/users/delete_streak", params={"creative_type": "sketch"})
     assert before.json()["current_streak"] == 2
     assert before.json()["submission_count"] == 2
 
@@ -271,7 +273,7 @@ async def test_delete_final_submission_changes_streak(client: AsyncClient) -> No
     )
     assert deleted.status_code == 204
 
-    after = await client.get("/api/v1/users/delete_streak")
+    after = await client.get("/api/v1/users/delete_streak", params={"creative_type": "sketch"})
     assert after.json()["submission_count"] == 1
     assert after.json()["current_streak"] == 1
 
@@ -306,7 +308,7 @@ async def test_user_submissions_pagination_and_contract(
 
     second_page = await client.get(
         "/api/v1/users/gallery_user/submissions",
-        params={"limit": 2, "cursor": body["next_cursor"]},
+        params={"limit": 2, "cursor": body["next_cursor"], "creative_type": "sketch"},
     )
     assert second_page.status_code == 200
     second = second_page.json()
@@ -337,11 +339,13 @@ async def test_user_submissions_404_when_profile_not_public(
         session.add(user)
         await session.commit()
 
-    response = await client.get("/api/v1/users/ghost_user/submissions")
+    response = await client.get(
+        "/api/v1/users/ghost_user/submissions", params={"creative_type": "sketch"}
+    )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "user_not_found"
 
-    profile = await client.get("/api/v1/users/ghost_user")
+    profile = await client.get("/api/v1/users/ghost_user", params={"creative_type": "sketch"})
     assert profile.status_code == 404
 
 
@@ -358,6 +362,7 @@ async def test_avatar_upload_flow_and_idempotent_repatch(
     patched = await client.patch(
         "/api/v1/me",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={"avatar_upload_id": avatar["id"]},
     )
     assert patched.status_code == 200, patched.text
@@ -366,10 +371,12 @@ async def test_avatar_upload_flow_and_idempotent_repatch(
     assert body["avatar_url"]
     assert body["avatar_url"].startswith("http")
 
-    me = await client.get("/api/v1/me", headers=headers)
+    me = await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     assert me.json()["avatar_url"] == body["avatar_url"]
 
-    public = await client.get("/api/v1/users/avatar_user", headers=headers)
+    public = await client.get(
+        "/api/v1/users/avatar_user", headers=headers, params={"creative_type": "sketch"}
+    )
     assert public.status_code == 200
     assert public.json()["avatar_url"]
 
@@ -377,6 +384,7 @@ async def test_avatar_upload_flow_and_idempotent_repatch(
     again = await client.patch(
         "/api/v1/me",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={"avatar_upload_id": avatar["id"]},
     )
     assert again.status_code == 200
@@ -424,7 +432,7 @@ async def test_current_user_contract_includes_avatar_url(
     openapi_spec: dict[str, Any],
 ) -> None:
     headers = _auth_headers(client)
-    response = await client.get("/api/v1/me", headers=headers)
+    response = await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     assert response.status_code == 200
     assert_matches_schema(response.json(), "CurrentUser", openapi_spec)
     assert response.json()["avatar_url"] is None

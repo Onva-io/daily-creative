@@ -12,7 +12,7 @@ from app.models.user import User, UserStatus
 from app.repositories.preferences import PreferencesRepository
 from app.repositories.users import UserRepository
 
-DEFAULT_DISPLAY_NAME = "New sketcher"
+DEFAULT_DISPLAY_NAME = "New creator"
 
 
 class UserService:

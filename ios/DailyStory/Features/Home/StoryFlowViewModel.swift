@@ -156,11 +156,11 @@ final class StoryFlowViewModel {
         Task {
             defer { isPublishing = false }
             do {
-                let submission = try await submissionService.createStorySubmission(
+                let submission = try await submissionService.createPublication(
                     accessToken: token,
-                    storySessionId: sessionId,
-                    body: body,
-                    caption: nil,
+                    creativeType: ProductConfig.current.creativeTypeID,
+                    sessionId: sessionId,
+                    content: .story(body: body, caption: nil),
                     idempotencyKey: UUID().uuidString
                 )
                 draftTextStore.deleteDraft(forSessionId: sessionId)

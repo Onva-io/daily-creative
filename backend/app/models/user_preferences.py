@@ -6,15 +6,13 @@ import enum
 import uuid
 from datetime import datetime, time
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Text, Time, Uuid, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text, Time, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
-from app.models.enums import TimerMode, timer_mode_sa
 
 __all__ = [
     "AppearancePreference",
-    "TimerMode",
     "UserPreferences",
 ]
 
@@ -40,12 +38,6 @@ class UserPreferences(Base):
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notification_time_local: Mapped[time | None] = mapped_column(Time, nullable=True)
     timezone: Mapped[str] = mapped_column(Text, nullable=False, default="UTC")
-    remember_timer_option: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    remembered_timer_mode: Mapped[TimerMode | None] = mapped_column(
-        timer_mode_sa,
-        nullable=True,
-    )
-    remembered_timer_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     appearance: Mapped[AppearancePreference] = mapped_column(
         Enum(AppearancePreference, name="appearance", native_enum=True),
         nullable=False,

@@ -11,7 +11,7 @@ from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
 from app.models.user import User
 from app.schemas.submissions import CreateSubmissionRequest, SubmissionResponse
-from app.services.submissions import SubmissionService
+from app.services.publications import PublicationService
 from app.storage.base import StorageAdapter, get_storage_adapter
 
 router = APIRouter(tags=["submissions"])
@@ -28,7 +28,7 @@ async def create_submission(
     settings: Settings = Depends(get_settings),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> SubmissionResponse:
-    body, status_code = await SubmissionService(session, clock, storage, settings).create(
+    body, status_code = await PublicationService(session, clock, storage, settings).create(
         user=user,
         payload=payload,
         idempotency_key=idempotency_key,
@@ -46,7 +46,7 @@ async def get_submission(
     storage: StorageAdapter = Depends(get_storage_adapter),
     settings: Settings = Depends(get_settings),
 ) -> SubmissionResponse:
-    return await SubmissionService(session, clock, storage, settings).get(
+    return await PublicationService(session, clock, storage, settings).get(
         submission_id=submission_id,
         viewer=viewer,
     )
@@ -61,7 +61,7 @@ async def delete_submission(
     storage: StorageAdapter = Depends(get_storage_adapter),
     settings: Settings = Depends(get_settings),
 ) -> Response:
-    await SubmissionService(session, clock, storage, settings).delete(
+    await PublicationService(session, clock, storage, settings).delete(
         user=user,
         submission_id=submission_id,
     )

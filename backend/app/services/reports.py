@@ -9,11 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.models.reflection import ReflectionStatus
 from app.models.report import ReportReason, ReportTargetType
-from app.models.submission import SubmissionStatus
+from app.models.creative_publication import PublicationStatus
 from app.models.user import User, UserStatus
 from app.repositories.reflections import ReflectionRepository
 from app.repositories.reports import ReportRepository
-from app.repositories.submissions import SubmissionRepository
+from app.repositories.publications import PublicationRepository
 from app.repositories.users import UserRepository
 from app.schemas.safety import CreateReportRequest, ReportResponse
 
@@ -24,7 +24,7 @@ class ReportService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._reports = ReportRepository(session)
-        self._submissions = SubmissionRepository(session)
+        self._publications = PublicationRepository(session)
         self._reflections = ReflectionRepository(session)
         self._users = UserRepository(session)
 
@@ -67,13 +67,13 @@ class ReportService:
         target_id: uuid.UUID,
     ) -> None:
         if target_type == ReportTargetType.submission:
-            submission = await self._submissions.get_by_id(target_id)
+            submission = await self._publications.get_by_id(target_id)
             if (
                 submission is None
                 or submission.status
                 in {
-                    SubmissionStatus.deleted,
-                    SubmissionStatus.removed,
+                    PublicationStatus.deleted,
+                    PublicationStatus.removed,
                 }
                 or submission.deleted_at is not None
             ):

@@ -24,7 +24,7 @@ from app.models.moderation_action import ModerationAction
 from app.models.report import Report, ReportStatus  # noqa: F401
 from app.models.sketch_session import SketchSession  # noqa: F401
 from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.submission import Submission, SubmissionStatus  # noqa: F401
+from app.models.creative_publication import CreativePublication, PublicationStatus  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User, UserStatus  # noqa: F401
 from app.models.user_block import UserBlock  # noqa: F401
@@ -42,7 +42,7 @@ from test_uploads_submissions import (
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 OPERATOR_TOKEN = "test-operator-token"

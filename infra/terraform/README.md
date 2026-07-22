@@ -1,6 +1,6 @@
-# Daily Sketch — AWS Terraform
+# Daily Creative — AWS Terraform
 
-Production-grade AWS infrastructure for Daily Sketch: VPC, private media storage, CloudFront for derivatives only, ECS Fargate API, RDS PostgreSQL, Secrets Manager, CloudWatch, and EventBridge scheduled jobs.
+Production-grade AWS infrastructure for Daily Creative: VPC, private media storage, CloudFront for derivatives only, ECS Fargate API, RDS PostgreSQL, Secrets Manager, CloudWatch, and EventBridge scheduled jobs.
 
 ## Layout
 

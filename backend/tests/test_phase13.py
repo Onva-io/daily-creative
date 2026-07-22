@@ -55,7 +55,7 @@ def test_staging_settings_accept_valid_config(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv("DB_SSL_REQUIRE", "true")
     monkeypatch.setenv(
         "DATABASE_URL",
-        "postgresql+asyncpg://user:pass@db.example.com:5432/dailysketch",  # pragma: allowlist secret
+        "postgresql+asyncpg://user:pass@db.example.com:5432/dailycreative",  # pragma: allowlist secret
     )
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.app_env == "staging"

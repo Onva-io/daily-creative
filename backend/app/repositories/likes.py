@@ -1,4 +1,4 @@
-"""Submission Like repository."""
+"""Publication Like repository."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.submission_like import SubmissionLike
+from app.models.publication_like import PublicationLike
 
 
 class LikeRepository:
@@ -18,9 +18,9 @@ class LikeRepository:
 
     async def exists(self, *, submission_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         result = await self._session.execute(
-            select(SubmissionLike.submission_id).where(
-                SubmissionLike.submission_id == submission_id,
-                SubmissionLike.user_id == user_id,
+            select(PublicationLike.publication_id).where(
+                PublicationLike.publication_id == submission_id,
+                PublicationLike.user_id == user_id,
             )
         )
         return result.scalar_one_or_none() is not None
@@ -34,9 +34,9 @@ class LikeRepository:
         if not submission_ids:
             return set()
         result = await self._session.execute(
-            select(SubmissionLike.submission_id).where(
-                SubmissionLike.user_id == user_id,
-                SubmissionLike.submission_id.in_(submission_ids),
+            select(PublicationLike.publication_id).where(
+                PublicationLike.user_id == user_id,
+                PublicationLike.publication_id.in_(submission_ids),
             )
         )
         return set(result.scalars().all())
@@ -51,16 +51,16 @@ class LikeRepository:
     ) -> bool:
         """Insert a Like. Returns True when a new row was inserted."""
         statement = (
-            insert(SubmissionLike)
+            insert(PublicationLike)
             .values(
-                submission_id=submission_id,
+                publication_id=submission_id,
                 user_id=user_id,
                 created_at=created_at,
             )
             .on_conflict_do_nothing(
-                index_elements=[SubmissionLike.submission_id, SubmissionLike.user_id]
+                index_elements=[PublicationLike.publication_id, PublicationLike.user_id]
             )
-            .returning(SubmissionLike.submission_id)
+            .returning(PublicationLike.publication_id)
         )
         result = await self._session.execute(statement)
         inserted = result.scalar_one_or_none() is not None
@@ -79,7 +79,7 @@ class LikeRepository:
     ) -> bool:
         """Delete a Like. Returns True when a row was deleted."""
         existing = await self._session.get(
-            SubmissionLike,
+            PublicationLike,
             (submission_id, user_id),
         )
         if existing is None:
@@ -91,8 +91,8 @@ class LikeRepository:
             await self._session.flush()
         return True
 
-    async def list_for_user(self, user_id: uuid.UUID) -> list[SubmissionLike]:
+    async def list_for_user(self, user_id: uuid.UUID) -> list[PublicationLike]:
         result = await self._session.execute(
-            select(SubmissionLike).where(SubmissionLike.user_id == user_id)
+            select(PublicationLike).where(PublicationLike.user_id == user_id)
         )
         return list(result.scalars().all())

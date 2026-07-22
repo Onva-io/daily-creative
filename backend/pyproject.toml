@@ -1,7 +1,7 @@
 [project]
-name = "dailysketch-backend"
+name = "dailycreative-backend"
 version = "0.1.0"
-description = "Daily Sketch FastAPI backend"
+description = "Daily Creative FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

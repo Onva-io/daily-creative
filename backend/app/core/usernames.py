@@ -18,6 +18,7 @@ RESERVED_USERNAMES: frozenset[str] = frozenset(
         "api",
         "auth",
         "dailysketch",
+        "dailycreative",
         "help",
         "home",
         "login",

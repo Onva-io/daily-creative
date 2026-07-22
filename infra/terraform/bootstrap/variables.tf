@@ -12,7 +12,7 @@ variable "state_bucket_name" {
 variable "lock_table_name" {
   description = "DynamoDB table name for Terraform state locking."
   type        = string
-  default     = "dailysketch-terraform-locks"
+  default     = "dailycreative-terraform-locks"
 }
 
 variable "enable_bucket_replication" {

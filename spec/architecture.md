@@ -2196,8 +2196,8 @@ Future additions must preserve:
 The platform supports multiple creative types (sketch, story, and future types) through:
 
 - **Independent session tables**: Each creative type has its own `*_sessions` and `*_session_events` tables with type-specific status enums and columns. No shared/polymorphic sessions table.
-- **Shared submissions**: The `submissions` table has a `creative_type` discriminator. Each submission links to exactly one session type via nullable FKs (`sketch_session_id`, `story_session_id`) enforced by a check constraint.
-- **Shared social layer**: Likes, reflections, blocks, and reports remain keyed on `submission_id` regardless of creative type.
+- **Publication anchor + typed detail tables**: `creative_publications` holds shared social/index fields with a generic `session_id`. Each creative type has a 1:1 detail table (`sketch_submissions`, `story_submissions`) with typed payload columns.
+- **Shared social layer**: Likes, reflections, blocks, and reports remain keyed on `creative_publications.id` regardless of creative type.
 - **Type-scoped queries**: Feed, profile, and streak endpoints accept an optional `creative_type` filter parameter.
 - **Per-type iOS targets**: DailySketch and DailyStory are separate app targets sharing code from DailyCore (auth, profile, design system, social). Each target has its own session flow, branding, and build configuration.
 - **ProductConfig**: Info.plist-driven branding (`BRAND_NAME`, `CREATIVE_TYPE_ID`) allows each app target to customize UI without code changes.

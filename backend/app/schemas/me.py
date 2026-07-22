@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.creative_type_preferences import CreativeTypePreferences
 from app.models.user import User
 from app.models.user_preferences import UserPreferences
 
@@ -44,22 +45,32 @@ class PreferencesSummary(BaseModel):
     appearance: AppearancePreferenceSchema = AppearancePreferenceSchema.system
 
     @classmethod
-    def from_orm_prefs(cls, prefs: UserPreferences) -> PreferencesSummary:
+    def from_orm_prefs(
+        cls,
+        prefs: UserPreferences,
+        type_prefs: CreativeTypePreferences | None = None,
+    ) -> PreferencesSummary:
         time_value: str | None = None
         if prefs.notification_time_local is not None:
             time_value = prefs.notification_time_local.strftime("%H:%M:%S")
-        mode = (
-            TimerModeSchema(prefs.remembered_timer_mode.value)
-            if prefs.remembered_timer_mode is not None
-            else None
-        )
+        mode = None
+        remembered_seconds = None
+        remember_timer_option = False
+        if type_prefs is not None:
+            remember_timer_option = type_prefs.remember_timer_option
+            mode = (
+                TimerModeSchema(type_prefs.remembered_timer_mode.value)
+                if type_prefs.remembered_timer_mode is not None
+                else None
+            )
+            remembered_seconds = type_prefs.remembered_timer_seconds
         return cls(
             notifications_enabled=prefs.notifications_enabled,
             notification_time_local=time_value,
             timezone=prefs.timezone,
-            remember_timer_option=prefs.remember_timer_option,
+            remember_timer_option=remember_timer_option,
             remembered_timer_mode=mode,
-            remembered_timer_seconds=prefs.remembered_timer_seconds,
+            remembered_timer_seconds=remembered_seconds,
             appearance=AppearancePreferenceSchema(prefs.appearance.value),
         )
 

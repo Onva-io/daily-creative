@@ -34,7 +34,7 @@ from app.services.sketch_sessions import validate_timer_selection
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

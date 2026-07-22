@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-@preconcurrency import DailySketchAPI
+@preconcurrency import DailyCreativeAPI
 
 @MainActor
 @Observable
@@ -105,13 +105,13 @@ final class AuthSessionStore {
         await authService.signOut()
         currentUser = nil
         state = .guest
-        DailySketchAPITokenBridge.clear()
+        DailyCreativeAPITokenBridge.clear()
     }
 
     func handleExpiredSession() async {
         await authService.signOut()
         currentUser = nil
-        DailySketchAPITokenBridge.clear()
+        DailyCreativeAPITokenBridge.clear()
         state = .failed(message: AuthServiceError.sessionExpired.localizedDescription)
     }
 
@@ -136,7 +136,7 @@ final class AuthSessionStore {
         } catch {
             await authService.signOut()
             currentUser = nil
-            DailySketchAPITokenBridge.clear()
+            DailyCreativeAPITokenBridge.clear()
             if let authError = error as? AuthServiceError, authError == .sessionExpired {
                 state = .failed(message: AuthServiceError.sessionExpired.localizedDescription)
             } else if let profileError = error as? ProfileAPIError, profileError == .sessionExpired {
@@ -149,7 +149,7 @@ final class AuthSessionStore {
     }
 }
 
-enum DailySketchAPITokenBridge {
+enum DailyCreativeAPITokenBridge {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var _token: String?
 
@@ -163,7 +163,7 @@ enum DailySketchAPITokenBridge {
         lock.lock()
         _token = nil
         lock.unlock()
-        DailySketchAPIAPI.customHeaders.removeValue(forKey: "Authorization")
+        DailyCreativeAPIAPI.customHeaders.removeValue(forKey: "Authorization")
     }
 
     static var currentToken: String? {

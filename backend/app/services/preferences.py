@@ -8,7 +8,9 @@ from datetime import time
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.models.user_preferences import AppearancePreference, TimerMode, UserPreferences
+from app.models.enums import CreativeType, TimerMode
+from app.models.user_preferences import AppearancePreference, UserPreferences
+from app.repositories.creative_type_preferences import CreativeTypePreferencesRepository
 from app.repositories.preferences import PreferencesRepository
 from app.schemas.me import PreferencesSummary, PreferencesUpdateRequest
 
@@ -18,6 +20,7 @@ ALLOWED_TIMER_SECONDS = frozenset({60, 180, 300, 600})
 class PreferencesService:
     def __init__(self, session: AsyncSession) -> None:
         self._repo = PreferencesRepository(session)
+        self._creative_type_repo = CreativeTypePreferencesRepository(session)
 
     async def get_or_create(self, user_id: uuid.UUID) -> UserPreferences:
         existing = await self._repo.get_by_user_id(user_id)
@@ -25,16 +28,31 @@ class PreferencesService:
             return existing
         return await self._repo.create_defaults(user_id)
 
-    async def get_summary(self, user_id: uuid.UUID) -> PreferencesSummary:
+    async def get_summary(
+        self,
+        user_id: uuid.UUID,
+        *,
+        creative_type: CreativeType,
+    ) -> PreferencesSummary:
         prefs = await self.get_or_create(user_id)
-        return PreferencesSummary.from_orm_prefs(prefs)
+        type_prefs = await self._creative_type_repo.get_or_create_defaults(
+            user_id=user_id,
+            creative_type=creative_type,
+        )
+        return PreferencesSummary.from_orm_prefs(prefs, type_prefs)
 
     async def update(
         self,
         user_id: uuid.UUID,
         payload: PreferencesUpdateRequest,
+        *,
+        creative_type: CreativeType,
     ) -> PreferencesSummary:
         prefs = await self.get_or_create(user_id)
+        type_prefs = await self._creative_type_repo.get_or_create_defaults(
+            user_id=user_id,
+            creative_type=creative_type,
+        )
 
         notification_time: time | None | object = ...
         if "notification_time_local" in payload.model_fields_set:
@@ -58,26 +76,43 @@ class PreferencesService:
         if payload.appearance is not None:
             appearance = AppearancePreference(payload.appearance.value)
 
-        # Validate the effective timer combination after applying the patch.
         effective_mode = (
-            remembered_mode if remembered_mode is not ... else prefs.remembered_timer_mode
+            remembered_mode if remembered_mode is not ... else type_prefs.remembered_timer_mode
         )
         effective_seconds = (
-            remembered_seconds if remembered_seconds is not ... else prefs.remembered_timer_seconds
+            remembered_seconds
+            if remembered_seconds is not ...
+            else type_prefs.remembered_timer_seconds
         )
         _validate_timer_preference(effective_mode, effective_seconds)
+
+        if any(
+            field in payload.model_fields_set
+            for field in (
+                "remember_timer_option",
+                "remembered_timer_mode",
+                "remembered_timer_seconds",
+            )
+        ):
+            await self._creative_type_repo.update(
+                type_prefs,
+                remember_timer_option=payload.remember_timer_option,
+                remembered_timer_mode=remembered_mode,
+                remembered_timer_seconds=remembered_seconds,
+            )
 
         updated = await self._repo.update(
             prefs,
             notifications_enabled=payload.notifications_enabled,
             notification_time_local=notification_time,
             timezone=payload.timezone,
-            remember_timer_option=payload.remember_timer_option,
-            remembered_timer_mode=remembered_mode,
-            remembered_timer_seconds=remembered_seconds,
             appearance=appearance,
         )
-        return PreferencesSummary.from_orm_prefs(updated)
+        refreshed_type_prefs = await self._creative_type_repo.get_or_create_defaults(
+            user_id=user_id,
+            creative_type=creative_type,
+        )
+        return PreferencesSummary.from_orm_prefs(updated, refreshed_type_prefs)
 
 
 def validate_timer_preference(

@@ -28,8 +28,8 @@ from app.models.idempotency_key import IdempotencyKey  # noqa: F401
 from app.models.reflection import Reflection  # noqa: F401
 from app.models.sketch_session import SketchSession  # noqa: F401
 from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.submission import Submission  # noqa: F401
-from app.models.submission_like import SubmissionLike  # noqa: F401
+from app.models.creative_publication import CreativePublication  # noqa: F401
+from app.models.publication_like import PublicationLike  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_preferences import UserPreferences  # noqa: F401
@@ -46,7 +46,7 @@ from test_uploads_submissions import (
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -243,8 +243,8 @@ async def test_like_is_idempotent_and_unlike_is_safe(
         likes = (
             (
                 await session.execute(
-                    select(SubmissionLike).where(
-                        SubmissionLike.submission_id == uuid.UUID(submission_id)
+                    select(PublicationLike).where(
+                        PublicationLike.publication_id == uuid.UUID(submission_id)
                     )
                 )
             )
@@ -336,12 +336,14 @@ async def test_viewer_has_liked_on_detail_and_feed(client: AsyncClient) -> None:
     assert guest_detail.status_code == 200
     assert guest_detail.json()["viewer_has_liked"] is False
 
-    feed = await client.get("/api/v1/feed/recent", headers=liker_headers)
+    feed = await client.get(
+        "/api/v1/feed/recent", headers=liker_headers, params={"creative_type": "sketch"}
+    )
     assert feed.status_code == 200
     item = next(i for i in feed.json()["items"] if i["id"] == submission_id)
     assert item["viewer_has_liked"] is True
 
-    guest_feed = await client.get("/api/v1/feed/recent")
+    guest_feed = await client.get("/api/v1/feed/recent", params={"creative_type": "sketch"})
     guest_item = next(i for i in guest_feed.json()["items"] if i["id"] == submission_id)
     assert guest_item["viewer_has_liked"] is False
 

@@ -15,14 +15,14 @@ from app.core.pagination import decode_reflection_cursor, encode_reflection_curs
 from app.core.settings import Settings, get_settings
 from app.models.activity_event import ActivityEventType
 from app.models.reflection import Reflection, ReflectionStatus
-from app.models.submission import Submission, SubmissionStatus
+from app.models.creative_publication import CreativePublication, PublicationStatus
 from app.models.user import User, UserStatus
 from app.repositories.activity_events import ActivityEventRepository
 from app.repositories.blocks import BlockRepository
 from app.repositories.idempotency import IdempotencyRepository
 from app.repositories.likes import LikeRepository
 from app.repositories.reflections import ReflectionRepository
-from app.repositories.submissions import SubmissionRepository
+from app.repositories.publications import PublicationRepository
 from app.repositories.uploads import UploadRepository
 from app.repositories.users import UserRepository
 from app.schemas.feed import FeedUserSummary
@@ -53,7 +53,7 @@ class SocialService:
         self._likes = LikeRepository(session)
         self._reflections = ReflectionRepository(session)
         self._activity = ActivityEventRepository(session)
-        self._submissions = SubmissionRepository(session)
+        self._publications = PublicationRepository(session)
         self._uploads = UploadRepository(session)
         self._users = UserRepository(session)
         self._blocks = BlockRepository(session)
@@ -262,7 +262,7 @@ class SocialService:
                 status_code=403,
             )
 
-        submission = await self._submissions.get_by_id(reflection.submission_id)
+        submission = await self._publications.get_by_id(reflection.submission_id)
         now = self._clock.now()
         transitioned = await self._reflections.soft_delete(
             reflection,
@@ -278,11 +278,11 @@ class SocialService:
         submission_id: uuid.UUID,
         *,
         viewer: User | None = None,
-    ) -> Submission:
-        submission = await self._submissions.get_by_id(submission_id)
+    ) -> CreativePublication:
+        submission = await self._publications.get_by_id(submission_id)
         if (
             submission is None
-            or submission.status != SubmissionStatus.published
+            or submission.status != PublicationStatus.published
             or submission.deleted_at is not None
         ):
             raise AppError(

@@ -84,24 +84,24 @@ class MetricsMiddleware:
 
 def metrics_response() -> Response:
     lines: list[str] = []
-    lines.append("# HELP dailysketch_http_requests_total Total HTTP requests by route class")
-    lines.append("# TYPE dailysketch_http_requests_total counter")
+    lines.append("# HELP dailycreative_http_requests_total Total HTTP requests by route class")
+    lines.append("# TYPE dailycreative_http_requests_total counter")
     for route, count in sorted(_count_by_route.items()):
         label = route.replace('"', "")
-        lines.append(f'dailysketch_http_requests_total{{route="{label}"}} {count}')
+        lines.append(f'dailycreative_http_requests_total{{route="{label}"}} {count}')
 
-    lines.append("# HELP dailysketch_auth_failures_total Authentication failures")
-    lines.append("# TYPE dailysketch_auth_failures_total counter")
-    lines.append(f"dailysketch_auth_failures_total {_auth_failures}")
+    lines.append("# HELP dailycreative_auth_failures_total Authentication failures")
+    lines.append("# TYPE dailycreative_auth_failures_total counter")
+    lines.append(f"dailycreative_auth_failures_total {_auth_failures}")
 
-    lines.append("# HELP dailysketch_job_outcomes_total Scheduled job outcomes")
-    lines.append("# TYPE dailysketch_job_outcomes_total counter")
+    lines.append("# HELP dailycreative_job_outcomes_total Scheduled job outcomes")
+    lines.append("# TYPE dailycreative_job_outcomes_total counter")
     for key, count in sorted(_job_outcomes.items()):
         label = key.replace('"', "")
-        lines.append(f'dailysketch_job_outcomes_total{{job="{label}"}} {count}')
+        lines.append(f'dailycreative_job_outcomes_total{{job="{label}"}} {count}')
 
-    lines.append("# HELP dailysketch_http_latency_ms_p95 Approximate p95 latency by route class")
-    lines.append("# TYPE dailysketch_http_latency_ms_p95 gauge")
+    lines.append("# HELP dailycreative_http_latency_ms_p95 Approximate p95 latency by route class")
+    lines.append("# TYPE dailycreative_http_latency_ms_p95 gauge")
     for route, samples in sorted(_latency_ms_by_route.items()):
         if not samples:
             continue
@@ -109,7 +109,7 @@ def metrics_response() -> Response:
         idx = max(int(len(ordered) * 0.95) - 1, 0)
         p95 = ordered[idx]
         label = route.replace('"', "")
-        lines.append(f'dailysketch_http_latency_ms_p95{{route="{label}"}} {p95:.2f}')
+        lines.append(f'dailycreative_http_latency_ms_p95{{route="{label}"}} {p95:.2f}')
 
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
@@ -145,7 +145,7 @@ def configure_observability(settings: Settings) -> None:
             provider = TracerProvider(
                 resource=Resource.create(
                     {
-                        "service.name": "dailysketch-backend",
+                        "service.name": "dailycreative-backend",
                         "deployment.environment": settings.app_env,
                         "service.version": settings.release_version,
                     }
@@ -154,7 +154,7 @@ def configure_observability(settings: Settings) -> None:
             exporter = OTLPSpanExporter(endpoint=settings.otel_exporter_otlp_endpoint)
             provider.add_span_processor(BatchSpanProcessor(exporter))
             trace.set_tracer_provider(provider)
-            _tracer = trace.get_tracer("dailysketch")
+            _tracer = trace.get_tracer("dailycreative")
         except Exception:
             logger.exception("otel_init_failed")
 

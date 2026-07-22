@@ -27,7 +27,7 @@ from app.models.daily_prompt import DailyPrompt
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
 from app.models.sketch_session import SketchSession  # noqa: F401
 from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.submission import Submission  # noqa: F401
+from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_preferences import UserPreferences  # noqa: F401
@@ -38,11 +38,57 @@ from jwt_helpers import StaticTokenVerifier, generate_rsa_keypair, mint_token
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OPENAPI_PATH = REPO_ROOT / "api" / "openapi" / "openapi.yaml"
+
+CREATIVE_TYPE_SKETCH = "sketch"
+CREATIVE_TYPE_STORY = "story"
+
+
+def _creative_type_params(creative_type: str = CREATIVE_TYPE_SKETCH) -> dict[str, str]:
+    return {"creative_type": creative_type}
+
+
+def _sketch_submission_json(
+    session_id: str | uuid.UUID,
+    upload_id: str | uuid.UUID,
+    *,
+    caption: str | None = None,
+) -> dict[str, object]:
+    content: dict[str, object] = {
+        "creative_type": CREATIVE_TYPE_SKETCH,
+        "upload_id": str(upload_id),
+    }
+    if caption is not None:
+        content["caption"] = caption
+    return {
+        "creative_type": CREATIVE_TYPE_SKETCH,
+        "session_id": str(session_id),
+        "content": content,
+    }
+
+
+def _story_submission_json(
+    session_id: str | uuid.UUID,
+    *,
+    body: str,
+    caption: str | None = None,
+) -> dict[str, object]:
+    content: dict[str, object] = {
+        "creative_type": CREATIVE_TYPE_STORY,
+        "body": body,
+    }
+    if caption is not None:
+        content["caption"] = caption
+    return {
+        "creative_type": CREATIVE_TYPE_STORY,
+        "session_id": str(session_id),
+        "content": content,
+    }
+
 
 requires_postgres = pytest.mark.skipif(
     os.environ.get("SKIP_POSTGRES_TESTS") == "1",
@@ -185,6 +231,7 @@ async def _complete_profile(
     response = await client.patch(
         "/api/v1/me",
         headers=headers,
+        params=_creative_type_params(),
         json={
             "username": username or f"user_{suffix}",
             "display_name": "Test User",
@@ -243,7 +290,7 @@ async def _put_upload_bytes(
     upload_id: str,
     jpeg_bytes: bytes,
 ) -> None:
-    me = await client.get("/api/v1/me", headers=headers)
+    me = await client.get("/api/v1/me", headers=headers, params=_creative_type_params())
     assert me.status_code == 200
     user_id = me.json()["id"]
     key = f"users/{user_id}/uploads/{upload_id}/original"
@@ -359,11 +406,11 @@ async def test_upload_cannot_be_consumed_twice(client: AsyncClient) -> None:
     first = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "consume-sub-1"},
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload["id"],
-            "caption": "First publish",
-        },
+        json=_sketch_submission_json(
+            session_id,
+            upload["id"],
+            caption="First publish",
+        ),
     )
     assert first.status_code == 201
 
@@ -373,11 +420,11 @@ async def test_upload_cannot_be_consumed_twice(client: AsyncClient) -> None:
     second = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "consume-sub-2"},
-        json={
-            "sketch_session_id": second_session,
-            "upload_id": upload["id"],
-            "caption": "Reuse upload",
-        },
+        json=_sketch_submission_json(
+            second_session,
+            upload["id"],
+            caption="Reuse upload",
+        ),
     )
     assert second.status_code == 409
     assert second.json()["error"]["code"] in {
@@ -415,10 +462,7 @@ async def test_another_user_cannot_consume_upload(client: AsyncClient) -> None:
     other_submit = await client.post(
         "/api/v1/submissions",
         headers=other_headers,
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload_id,
-        },
+        json=_sketch_submission_json(session_id, upload_id),
     )
     assert other_submit.status_code == 404
     assert other_submit.json()["error"]["code"] in {
@@ -437,11 +481,11 @@ async def test_duplicate_submission_idempotency_key_returns_same_result(
     prompt = await _seed_prompt(client)
     session_id = await _create_ready_session(client, headers, prompt.id)
     upload = await _create_ready_upload(client, headers)
-    payload = {
-        "sketch_session_id": session_id,
-        "upload_id": upload["id"],
-        "caption": "Idempotent caption",
-    }
+    payload = _sketch_submission_json(
+        session_id,
+        upload["id"],
+        caption="Idempotent caption",
+    )
 
     first = await client.post(
         "/api/v1/submissions",
@@ -544,7 +588,7 @@ async def test_multiple_submissions_for_same_prompt(client: AsyncClient) -> None
     sub_a = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "multi-sub-a"},
-        json={"sketch_session_id": session_a, "upload_id": upload_a["id"]},
+        json=_sketch_submission_json(session_a, upload_a["id"]),
     )
     assert sub_a.status_code == 201
 
@@ -555,7 +599,7 @@ async def test_multiple_submissions_for_same_prompt(client: AsyncClient) -> None
     sub_b = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "multi-sub-b"},
-        json={"sketch_session_id": session_b, "upload_id": upload_b["id"]},
+        json=_sketch_submission_json(session_b, upload_b["id"]),
     )
     assert sub_b.status_code == 201
     assert sub_a.json()["id"] != sub_b.json()["id"]
@@ -573,7 +617,7 @@ async def test_delete_hides_submission(client: AsyncClient) -> None:
     created = await client.post(
         "/api/v1/submissions",
         headers=headers,
-        json={"sketch_session_id": session_id, "upload_id": upload["id"]},
+        json=_sketch_submission_json(session_id, upload["id"]),
     )
     assert created.status_code == 201
     submission_id = created.json()["id"]
@@ -600,7 +644,7 @@ async def test_delete_hides_submission(client: AsyncClient) -> None:
 async def test_profile_incomplete_cannot_publish(client: AsyncClient) -> None:
     headers = _auth_headers(client)
     # Ensure the user row exists without completing the profile.
-    me = await client.get("/api/v1/me", headers=headers)
+    me = await client.get("/api/v1/me", headers=headers, params=_creative_type_params())
     assert me.status_code == 200
     assert me.json()["profile_completed"] is False
 
@@ -611,7 +655,7 @@ async def test_profile_incomplete_cannot_publish(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/submissions",
         headers=headers,
-        json={"sketch_session_id": session_id, "upload_id": upload["id"]},
+        json=_sketch_submission_json(session_id, upload["id"]),
     )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "profile_incomplete"
@@ -658,14 +702,130 @@ async def test_upload_and_submission_openapi_contract(
     submission = await client.post(
         "/api/v1/submissions",
         headers=headers,
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload_body["id"],
-            "caption": "Contract sketch",
-        },
+        json=_sketch_submission_json(
+            session_id,
+            upload_body["id"],
+            caption="Contract sketch",
+        ),
     )
     assert submission.status_code == 201
     submission_body = submission.json()
     assert_matches_schema(submission_body, "Submission", openapi_spec)
     assert submission_body["status"] == "published"
     assert submission_body["is_owner"] is True
+
+
+async def _create_ready_story_session(
+    client: AsyncClient,
+    headers: dict[str, str],
+    prompt_id: uuid.UUID,
+    *,
+    idempotency_key: str | None = None,
+) -> str:
+    create_headers = dict(headers)
+    if idempotency_key is not None:
+        create_headers["Idempotency-Key"] = idempotency_key
+    created = await client.post(
+        "/api/v1/story-sessions",
+        headers=create_headers,
+        json={
+            "prompt_id": str(prompt_id),
+            "timer_mode": "countdown",
+            "selected_timer_seconds": 300,
+        },
+    )
+    assert created.status_code == 201
+    session_id = created.json()["id"]
+    finished = await client.post(
+        f"/api/v1/story-sessions/{session_id}/events",
+        headers=headers,
+        json={"event_type": "finished_early"},
+    )
+    assert finished.status_code == 200
+    writing = await client.post(
+        f"/api/v1/story-sessions/{session_id}/events",
+        headers=headers,
+        json={"event_type": "writing_started"},
+    )
+    assert writing.status_code == 200
+    return session_id
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_story_publication_create_and_feed_filter(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers, username=f"story_{uuid.uuid4().hex[:8]}")
+    prompt = await _seed_prompt(client)
+    session_id = await _create_ready_story_session(client, headers, prompt.id)
+
+    created = await client.post(
+        "/api/v1/submissions",
+        headers={**headers, "Idempotency-Key": "story-pub-1"},
+        json=_story_submission_json(session_id, body="Once upon a coffee bean."),
+    )
+    assert created.status_code == 201
+    body = created.json()
+    assert body["creative_type"] == CREATIVE_TYPE_STORY
+    assert body["body"] == "Once upon a coffee bean."
+    assert body["session_id"] == session_id
+    assert body["upload_id"] is None
+
+    story_feed = await client.get(
+        "/api/v1/feed/recent",
+        params=_creative_type_params(CREATIVE_TYPE_STORY),
+    )
+    assert story_feed.status_code == 200
+    assert any(item["id"] == body["id"] for item in story_feed.json()["items"])
+
+    sketch_feed = await client.get(
+        "/api/v1/feed/recent",
+        params=_creative_type_params(CREATIVE_TYPE_SKETCH),
+    )
+    assert sketch_feed.status_code == 200
+    assert all(item["id"] != body["id"] for item in sketch_feed.json()["items"])
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_sketch_session_cannot_publish_as_story(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers)
+    prompt = await _seed_prompt(client)
+    sketch_session_id = await _create_ready_session(client, headers, prompt.id)
+
+    response = await client.post(
+        "/api/v1/submissions",
+        headers=headers,
+        json=_story_submission_json(sketch_session_id, body="Wrong type."),
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "session_not_found"
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_story_session_lifecycle(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    prompt = await _seed_prompt(client)
+    created = await client.post(
+        "/api/v1/story-sessions",
+        headers=headers,
+        json={
+            "prompt_id": str(prompt.id),
+            "timer_mode": "no_timer",
+        },
+    )
+    assert created.status_code == 201
+    session_id = created.json()["id"]
+
+    fetched = await client.get(f"/api/v1/story-sessions/{session_id}", headers=headers)
+    assert fetched.status_code == 200
+    assert fetched.json()["status"] == "active"
+
+    abandoned = await client.post(
+        f"/api/v1/story-sessions/{session_id}/abandon",
+        headers=headers,
+    )
+    assert abandoned.status_code == 200
+    assert abandoned.json()["status"] == "abandoned"

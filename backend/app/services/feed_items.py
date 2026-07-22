@@ -6,7 +6,7 @@ from datetime import datetime
 
 from app.models.enums import TimerMode
 from app.models.user import User
-from app.repositories.submissions import FeedRow
+from app.repositories.publications import FeedRow
 from app.schemas.feed import FeedItem, FeedPromptSummary, FeedUserSummary
 from app.schemas.me import TimerModeSchema
 from app.schemas.submissions import CreativeTypeSchema
@@ -63,16 +63,21 @@ async def build_feed_item(
         timer_mode = TimerModeSchema.no_timer
         timer_seconds = None
 
-    is_owner = viewer is not None and viewer.id == row.submission.user_id
-    creative_type = CreativeTypeSchema(row.submission.creative_type.value)
+    is_owner = viewer is not None and viewer.id == row.publication.user_id
+    creative_type = CreativeTypeSchema(row.publication.creative_type.value)
+
+    caption = None
     body_preview_text = None
     word_count = None
-    if row.submission.body is not None:
-        body_preview_text = caption_preview(row.submission.body)
-        word_count = len(row.submission.body.split())
+    if row.sketch_submission is not None:
+        caption = row.sketch_submission.caption
+    if row.story_submission is not None:
+        caption = row.story_submission.caption
+        body_preview_text = caption_preview(row.story_submission.body)
+        word_count = len(row.story_submission.body.split())
 
     return FeedItem(
-        id=row.submission.id,
+        id=row.publication.id,
         creative_type=creative_type,
         image_url=image_url,
         thumbnail_url=thumbnail_url,
@@ -91,12 +96,12 @@ async def build_feed_item(
         ),
         timer_mode=timer_mode,
         timer_seconds=timer_seconds,
-        caption_preview=caption_preview(row.submission.caption),
+        caption_preview=caption_preview(caption),
         body_preview=body_preview_text,
         word_count=word_count,
-        like_count=row.submission.like_count,
-        reflection_count=row.submission.reflection_count,
+        like_count=row.publication.like_count,
+        reflection_count=row.publication.reflection_count,
         viewer_has_liked=viewer_has_liked,
         is_owner=is_owner,
-        published_at=row.submission.published_at,
+        published_at=row.publication.published_at,
     )

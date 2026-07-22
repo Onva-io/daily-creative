@@ -12,12 +12,12 @@ from app.core.errors import AppError
 from app.models.moderation_action import ModerationActionType
 from app.models.reflection import ReflectionStatus
 from app.models.report import ReportStatus, ReportTargetType
-from app.models.submission import SubmissionStatus
+from app.models.creative_publication import PublicationStatus
 from app.models.user import UserStatus
 from app.repositories.moderation_actions import ModerationActionRepository
 from app.repositories.reflections import ReflectionRepository
 from app.repositories.reports import ReportRepository
-from app.repositories.submissions import SubmissionRepository
+from app.repositories.publications import PublicationRepository
 from app.repositories.users import UserRepository
 
 
@@ -27,7 +27,7 @@ class ModerationService:
         self._clock = clock
         self._reports = ReportRepository(session)
         self._actions = ModerationActionRepository(session)
-        self._submissions = SubmissionRepository(session)
+        self._publications = PublicationRepository(session)
         self._reflections = ReflectionRepository(session)
         self._users = UserRepository(session)
 
@@ -54,7 +54,7 @@ class ModerationService:
         target_id: uuid.UUID,
     ) -> dict[str, Any]:
         if target_type == ReportTargetType.submission:
-            submission = await self._submissions.get_by_id(target_id)
+            submission = await self._publications.get_by_id(target_id)
             if submission is None:
                 raise AppError(
                     code="report_target_not_found",
@@ -116,7 +116,7 @@ class ModerationService:
         return await self._set_submission_status(
             operator_identity=operator_identity,
             submission_id=submission_id,
-            status=SubmissionStatus.hidden,
+            status=PublicationStatus.hidden,
             action=ModerationActionType.hide_submission,
             reason=reason,
             report_id=report_id,
@@ -133,7 +133,7 @@ class ModerationService:
         return await self._set_submission_status(
             operator_identity=operator_identity,
             submission_id=submission_id,
-            status=SubmissionStatus.removed,
+            status=PublicationStatus.removed,
             action=ModerationActionType.remove_submission,
             reason=reason,
             report_id=report_id,
@@ -150,7 +150,7 @@ class ModerationService:
         return await self._set_submission_status(
             operator_identity=operator_identity,
             submission_id=submission_id,
-            status=SubmissionStatus.published,
+            status=PublicationStatus.published,
             action=ModerationActionType.restore_submission,
             reason=reason,
             report_id=report_id,
@@ -315,13 +315,13 @@ class ModerationService:
         *,
         operator_identity: str,
         submission_id: uuid.UUID,
-        status: SubmissionStatus,
+        status: PublicationStatus,
         action: ModerationActionType,
         reason: str,
         report_id: uuid.UUID | None,
         clear_deleted_at: bool = False,
     ) -> dict[str, Any]:
-        submission = await self._submissions.get_by_id(submission_id)
+        submission = await self._publications.get_by_id(submission_id)
         if submission is None:
             raise AppError(
                 code="submission_not_found",
@@ -329,7 +329,7 @@ class ModerationService:
                 status_code=404,
             )
         deleted_at = None if clear_deleted_at else submission.deleted_at
-        await self._submissions.set_status(
+        await self._publications.set_status(
             submission,
             status=status,
             deleted_at=deleted_at,
@@ -375,7 +375,7 @@ class ModerationService:
             commit=False,
         )
         if adjust_counter and previous != status:
-            submission = await self._submissions.get_by_id(reflection.submission_id)
+            submission = await self._publications.get_by_id(reflection.submission_id)
             if submission is not None:
                 if adjust_counter < 0 and previous == ReflectionStatus.published:
                     submission.reflection_count = max(0, submission.reflection_count - 1)

@@ -20,7 +20,7 @@ from app.models.user_preferences import UserPreferences  # noqa: F401
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://dailysketch:dailysketch@localhost:5432/dailysketch",  # pragma: allowlist secret
+    "postgresql+asyncpg://dailycreative:dailycreative@localhost:5432/dailycreative",  # pragma: allowlist secret
 )
 
 requires_postgres = pytest.mark.skipif(
@@ -90,7 +90,7 @@ def _auth_header(
 @pytest.mark.asyncio
 async def test_patch_me_completes_profile(client: AsyncClient) -> None:
     headers = _auth_header(client, name="Matt")
-    created = await client.get("/api/v1/me", headers=headers)
+    created = await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     assert created.status_code == 200
     assert created.json()["profile_completed"] is False
     assert created.json()["preferences"]["appearance"] == "system"
@@ -98,6 +98,7 @@ async def test_patch_me_completes_profile(client: AsyncClient) -> None:
     response = await client.patch(
         "/api/v1/me",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={"username": "sketchy_matt", "display_name": "Matt", "bio": "Hello"},
     )
     assert response.status_code == 200
@@ -138,6 +139,7 @@ async def test_reserved_and_invalid_username(client: AsyncClient) -> None:
     reserved = await client.patch(
         "/api/v1/me",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={"username": "admin", "display_name": "Admin"},
     )
     assert reserved.status_code == 422
@@ -146,6 +148,7 @@ async def test_reserved_and_invalid_username(client: AsyncClient) -> None:
     invalid = await client.patch(
         "/api/v1/me",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={"username": "bad-name!", "display_name": "Bad"},
     )
     assert invalid.status_code == 422
@@ -156,11 +159,12 @@ async def test_reserved_and_invalid_username(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_preferences_persist(client: AsyncClient) -> None:
     headers = _auth_header(client)
-    await client.get("/api/v1/me", headers=headers)
+    await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
 
     updated = await client.patch(
         "/api/v1/me/preferences",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={
             "notifications_enabled": True,
             "notification_time_local": "09:00:00",
@@ -179,11 +183,13 @@ async def test_preferences_persist(client: AsyncClient) -> None:
     assert body["remembered_timer_seconds"] == 300
     assert body["appearance"] == "dark"
 
-    fetched = await client.get("/api/v1/me/preferences", headers=headers)
+    fetched = await client.get(
+        "/api/v1/me/preferences", headers=headers, params={"creative_type": "sketch"}
+    )
     assert fetched.status_code == 200
     assert fetched.json() == body
 
-    me = await client.get("/api/v1/me", headers=headers)
+    me = await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     assert me.json()["preferences"]["appearance"] == "dark"
 
 
@@ -191,10 +197,11 @@ async def test_preferences_persist(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_invalid_timer_preference_rejected(client: AsyncClient) -> None:
     headers = _auth_header(client)
-    await client.get("/api/v1/me", headers=headers)
+    await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     response = await client.patch(
         "/api/v1/me/preferences",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={
             "remembered_timer_mode": "countdown",
             "remembered_timer_seconds": 90,
@@ -211,10 +218,11 @@ async def test_public_profile_safe_fields_only(client: AsyncClient) -> None:
     await client.patch(
         "/api/v1/me",
         headers=headers,
+        params={"creative_type": "sketch"},
         json={"username": "public_matt", "display_name": "Matt", "bio": "Public bio"},
     )
 
-    response = await client.get("/api/v1/users/Public_Matt")
+    response = await client.get("/api/v1/users/Public_Matt", params={"creative_type": "sketch"})
     assert response.status_code == 200
     body = response.json()
     assert body["username"] == "public_matt"
@@ -229,7 +237,9 @@ async def test_public_profile_safe_fields_only(client: AsyncClient) -> None:
     assert "status" not in body
     assert "email" not in body
 
-    owned = await client.get("/api/v1/users/Public_Matt", headers=headers)
+    owned = await client.get(
+        "/api/v1/users/Public_Matt", headers=headers, params={"creative_type": "sketch"}
+    )
     assert owned.status_code == 200
     assert owned.json()["is_self"] is True
 
@@ -238,11 +248,11 @@ async def test_public_profile_safe_fields_only(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_public_profile_hides_incomplete(client: AsyncClient) -> None:
     headers = _auth_header(client)
-    me = await client.get("/api/v1/me", headers=headers)
+    me = await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     assert me.json()["profile_completed"] is False
 
     # Incomplete users have no public username.
-    missing = await client.get("/api/v1/users/nobody_here")
+    missing = await client.get("/api/v1/users/nobody_here", params={"creative_type": "sketch"})
     assert missing.status_code == 404
     assert missing.json()["error"]["code"] == "user_not_found"
 
@@ -270,7 +280,7 @@ async def test_public_profile_hides_suspended(client: AsyncClient, db_engine) ->
         session.add(user)
         await session.commit()
 
-    response = await client.get("/api/v1/users/suspended_user")
+    response = await client.get("/api/v1/users/suspended_user", params={"creative_type": "sketch"})
     assert response.status_code == 404
     # Ensure auth still rejects suspended accounts.
     token = mint_token(private_key, subject=subject)
