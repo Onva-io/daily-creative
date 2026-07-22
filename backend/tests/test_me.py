@@ -94,7 +94,11 @@ async def test_missing_token_rejected(client: AsyncClient) -> None:
 async def test_invalid_signature_rejected(client: AsyncClient) -> None:
     other_key, _ = generate_rsa_keypair()
     token = mint_token(other_key)
-    response = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "unauthenticated"
 
@@ -104,7 +108,11 @@ async def test_invalid_signature_rejected(client: AsyncClient) -> None:
 async def test_expired_token_rejected(client: AsyncClient) -> None:
     private_key = client.app.state.test_private_key  # type: ignore[attr-defined]
     token = mint_token(private_key, expires_in=-30)
-    response = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "unauthenticated"
 
@@ -116,7 +124,11 @@ async def test_valid_jwt_provisions_user_once(client: AsyncClient) -> None:
     subject = f"descope|{uuid.uuid4()}"
     token = mint_token(private_key, subject=subject, name="Sketchy")
 
-    first = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    first = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert first.status_code == 200
     first_body = first.json()
     assert first_body["display_name"] == "Sketchy"
@@ -128,7 +140,11 @@ async def test_valid_jwt_provisions_user_once(client: AsyncClient) -> None:
     assert first_body["preferences"]["notifications_enabled"] is False
     user_id = first_body["id"]
 
-    second = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    second = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert second.status_code == 200
     assert second.json()["id"] == user_id
 
@@ -141,8 +157,16 @@ async def test_repeated_login_resolves_same_user(client: AsyncClient, db_engine)
     token_a = mint_token(private_key, subject=subject)
     token_b = mint_token(private_key, subject=subject)
 
-    first = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token_a}"})
-    second = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token_b}"})
+    first = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token_a}"},
+        params={"creative_type": "sketch"},
+    )
+    second = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token_b}"},
+        params={"creative_type": "sketch"},
+    )
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json()["id"] == second.json()["id"]
@@ -165,7 +189,11 @@ async def test_suspended_account_rejected(client: AsyncClient, db_engine) -> Non
         await session.commit()
 
     token = mint_token(private_key, subject=subject)
-    response = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert response.status_code == 403
     body = response.json()
     assert body["error"]["code"] == "account_suspended"
@@ -189,6 +217,10 @@ async def test_deleted_account_rejected(client: AsyncClient, db_engine) -> None:
         await session.commit()
 
     token = mint_token(private_key, subject=subject)
-    response = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    response = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "account_unavailable"

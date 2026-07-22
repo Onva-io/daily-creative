@@ -42,6 +42,7 @@ from test_uploads_submissions import (
     _create_ready_session,
     _create_ready_upload,
     _seed_prompt,
+    _sketch_submission_json,
 )
 
 DATABASE_URL = os.environ.get(
@@ -192,11 +193,7 @@ async def _publish_submission(
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload["id"],
-            "caption": caption,
-        },
+        json=_sketch_submission_json(session_id, upload["id"], caption=caption),
     )
     assert created.status_code == 201, created.text
     return {"submission": created.json(), "headers": headers}

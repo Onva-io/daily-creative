@@ -742,12 +742,7 @@ async def _create_ready_story_session(
         json={"event_type": "finished_early"},
     )
     assert finished.status_code == 200
-    writing = await client.post(
-        f"/api/v1/story-sessions/{session_id}/events",
-        headers=headers,
-        json={"event_type": "writing_started"},
-    )
-    assert writing.status_code == 200
+    assert finished.json()["status"] == "writing"
     return session_id
 
 

@@ -39,6 +39,7 @@ from test_uploads_submissions import (
     _create_ready_session,
     _create_ready_upload,
     _put_upload_bytes,
+    _sketch_submission_json,
     make_jpeg,
 )
 
@@ -186,11 +187,7 @@ async def _publish_for_date(
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload["id"],
-            "caption": caption,
-        },
+        json=_sketch_submission_json(session_id, upload["id"], caption=caption),
     )
     assert created.status_code == 201, created.text
     return created.json()
@@ -297,7 +294,7 @@ async def test_user_submissions_pagination_and_contract(
 
     first_page = await client.get(
         "/api/v1/users/gallery_user/submissions",
-        params={"limit": 2},
+        params={"limit": 2, "creative_type": "sketch"},
     )
     assert first_page.status_code == 200
     body = first_page.json()
@@ -408,6 +405,7 @@ async def test_avatar_rejects_wrong_purpose_and_foreign_upload(client: AsyncClie
     wrong_purpose = await client.patch(
         "/api/v1/me",
         headers=owner_headers,
+        params={"creative_type": "sketch"},
         json={"avatar_upload_id": submission_upload["id"]},
     )
     assert wrong_purpose.status_code == 422
@@ -419,6 +417,7 @@ async def test_avatar_rejects_wrong_purpose_and_foreign_upload(client: AsyncClie
     stolen = await client.patch(
         "/api/v1/me",
         headers=other_headers,
+        params={"creative_type": "sketch"},
         json={"avatar_upload_id": foreign["id"]},
     )
     assert stolen.status_code == 404

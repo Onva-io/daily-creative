@@ -42,6 +42,7 @@ from test_uploads_submissions import (
     _complete_profile,
     _create_ready_session,
     _create_ready_upload,
+    _sketch_submission_json,
 )
 
 DATABASE_URL = os.environ.get(
@@ -190,11 +191,7 @@ async def _publish(
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json={
-            "sketch_session_id": session_id,
-            "upload_id": upload["id"],
-            "caption": caption,
-        },
+        json=_sketch_submission_json(session_id, upload["id"], caption=caption),
     )
     assert created.status_code == 201, created.text
     return created.json()
@@ -232,7 +229,11 @@ async def test_block_filters_feed_detail_profile_and_rejects_interactions(
     )
     assert detail.status_code == 404
 
-    profile = await client.get("/api/v1/users/bob_safe", headers=alice_headers)
+    profile = await client.get(
+        "/api/v1/users/bob_safe",
+        headers=alice_headers,
+        params={"creative_type": "sketch"},
+    )
     assert profile.status_code == 404
 
     like = await client.put(

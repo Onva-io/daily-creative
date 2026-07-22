@@ -119,6 +119,7 @@ async def test_duplicate_username_rejected(client: AsyncClient) -> None:
     first = await client.patch(
         "/api/v1/me",
         headers=first_headers,
+        params={"creative_type": "sketch"},
         json={"username": "taken_name", "display_name": "One"},
     )
     assert first.status_code == 200
@@ -126,6 +127,7 @@ async def test_duplicate_username_rejected(client: AsyncClient) -> None:
     duplicate = await client.patch(
         "/api/v1/me",
         headers=second_headers,
+        params={"creative_type": "sketch"},
         json={"username": "Taken_Name", "display_name": "Two"},
     )
     assert duplicate.status_code == 409
@@ -284,5 +286,9 @@ async def test_public_profile_hides_suspended(client: AsyncClient, db_engine) ->
     assert response.status_code == 404
     # Ensure auth still rejects suspended accounts.
     token = mint_token(private_key, subject=subject)
-    me = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
+    me = await client.get(
+        "/api/v1/me",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"creative_type": "sketch"},
+    )
     assert me.status_code == 403
