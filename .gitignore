@@ -28,8 +28,8 @@ htmlcov/
 .tox/
 
 # Node / OpenAPI generator (local CLI cache only; committed client keeps api/generated/ios/.openapi-generator)
+# openapitools.json is committed — it pins the generator JAR version for CI.
 node_modules/
-/openapitools.json
 
 # iOS / Xcode
 ios/**/xcuserdata/

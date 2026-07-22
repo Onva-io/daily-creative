@@ -13,7 +13,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Pin the generator JAR via openapitools.json (must be committed; CLI defaults differ across machines).
 npx --yes @openapitools/openapi-generator-cli@2.15.3 generate \
+  --openapitools "${ROOT}/openapitools.json" \
   -i "${SPEC}" \
   -g swift5 \
   -o "${TMP}" \

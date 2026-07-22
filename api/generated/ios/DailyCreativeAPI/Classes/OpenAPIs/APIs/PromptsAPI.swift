@@ -65,7 +65,7 @@ open class PromptsAPI {
     /**
      Today's Daily Prompt
      - GET /api/v1/prompts/today
-     - Returns the published Daily Prompt for the current Prompt Date (UTC calendar date). Available to guests and authenticated users. Does not invent a local prompt when none is published. 
+     - Returns the published Daily Prompt for the current Prompt Date (UTC calendar date). Available to guests and authenticated users. When no row exists for today, the server creates a deterministic published prompt under an exclusive Prompt Date lock. If a draft or withdrawn row already occupies today's date, responds with `404 prompt_not_found` and does not overwrite it. 
      - responseHeaders: [X-Request-ID(UUID)]
      - returns: RequestBuilder<DailyPrompt> 
      */
