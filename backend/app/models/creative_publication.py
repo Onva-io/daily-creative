@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Uuid, desc, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -38,6 +38,37 @@ class CreativePublication(Base):
     """Published creative work anchor for social and feed indexing."""
 
     __tablename__ = "creative_publications"
+    __table_args__ = (
+        Index("ix_creative_publications_creative_type", "creative_type"),
+        Index(
+            "ix_creative_publications_user_id_published_at",
+            "user_id",
+            desc("published_at"),
+        ),
+        Index(
+            "ix_creative_publications_published_at_id",
+            desc("published_at"),
+            desc("id"),
+        ),
+        Index(
+            "ix_creative_publications_user_id_published_at_id",
+            "user_id",
+            desc("published_at"),
+            desc("id"),
+        ),
+        Index(
+            "ix_creative_publications_prompt_id_published_at_id",
+            "prompt_id",
+            desc("published_at"),
+            desc("id"),
+        ),
+        Index(
+            "ix_creative_publications_published_active",
+            desc("published_at"),
+            desc("id"),
+            postgresql_where=text("status = 'published' AND deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(

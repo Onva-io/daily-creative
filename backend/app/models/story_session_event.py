@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,7 @@ class StorySessionEvent(Base):
     """Append-only lifecycle event for a Story Session."""
 
     __tablename__ = "story_session_events"
+    __table_args__ = (Index("ix_story_session_events_story_session_id", "story_session_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     story_session_id: Mapped[uuid.UUID] = mapped_column(

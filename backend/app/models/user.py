@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -26,6 +26,7 @@ class User(Base):
     """Local application user provisioned from a Descope subject."""
 
     __tablename__ = "users"
+    __table_args__ = (Index("ix_users_avatar_upload_id", "avatar_upload_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     descope_subject: Mapped[str] = mapped_column(Text, unique=True, nullable=False)

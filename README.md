@@ -216,7 +216,7 @@ Remote hostnames and Descope project IDs are placeholders until real values are 
 | `make seed` | Seed today + future Daily Prompts (and safety samples) |
 | `make backend-shell` | Shell into the running backend container |
 | `make backend-test` / `lint` / `typecheck` | Backend quality gates (Compose, or host `.venv` if present) |
-| `make db-migrate` / `db-reset` | Alembic migrate (reset destroys local volume) |
+| `make db-migrate` / `db-revision` / `db-check` / `db-reset` | Alembic upgrade / autogenerate / drift check (reset destroys local volume) |
 | `make backend-install` / `backend-run` | Optional host venv (used by CI; not required for local API) |
 | `make api-validate` | Validate OpenAPI (needs host `backend-install` once) |
 | `make api-generate-ios` | Regenerate Swift client |

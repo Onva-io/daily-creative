@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Uuid, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -15,6 +15,14 @@ class UserBlock(Base):
     """Private blocker → blocked relationship."""
 
     __tablename__ = "user_blocks"
+    __table_args__ = (
+        CheckConstraint(
+            "blocker_user_id <> blocked_user_id",
+            name="not_self",
+        ),
+        Index("ix_user_blocks_blocker_user_id", "blocker_user_id"),
+        Index("ix_user_blocks_blocked_user_id", "blocked_user_id"),
+    )
 
     blocker_user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),

@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -45,6 +45,16 @@ class Report(Base):
     """User-submitted report against content or a profile."""
 
     __tablename__ = "reports"
+    __table_args__ = (
+        Index("ix_reports_status_created_at", "status", "created_at"),
+        Index(
+            "ix_reports_reporter_target_open",
+            "reporter_user_id",
+            "target_type",
+            "target_id",
+            postgresql_where=text("status = 'open'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     reporter_user_id: Mapped[uuid.UUID] = mapped_column(

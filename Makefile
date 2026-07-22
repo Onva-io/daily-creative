@@ -1,5 +1,5 @@
 .PHONY: help up down logs backend-install backend-run backend-test backend-lint backend-typecheck \
-	backend-shell db-migrate db-reset seed api-validate api-generate-ios api-check-generated test clean-local \
+	backend-shell db-migrate db-revision db-check db-reset seed api-validate api-generate-ios api-check-generated test clean-local \
 	repo-checks docker-build ios-generate ios-build ios-test \
 	ios-build-local ios-build-development ios-build-staging ios-build-production \
 	ios-test-local ios-test-development ios-test-staging ios-test-production \
@@ -30,7 +30,7 @@ help:
 	@echo "  up / down / logs / clean-local / staging-up / staging-smoke"
 	@echo "  backend-shell / backend-test / backend-lint / backend-typecheck"
 	@echo "  backend-install / backend-run  (optional host venv; CI uses install)"
-	@echo "  db-migrate / db-reset / seed / account-deletion-finalize"
+	@echo "  db-migrate / db-revision / db-check / db-reset / seed / account-deletion-finalize"
 	@echo "  job-* cleanup targets / jobs-dry-run / perf-profile"
 	@echo "  backup-postgres / restore-postgres BACKUP=path"
 	@echo "  api-validate / api-generate-ios / api-check-generated"
@@ -75,6 +75,16 @@ backend-typecheck:
 
 db-migrate:
 	$(call run_backend,alembic upgrade head)
+
+# Autogenerate next migration from ORM model diff.
+# Usage: make db-revision m=add_foo_column
+# Optional message: make db-revision m=add_foo_column msg="Add foo column"
+db-revision:
+	@test -n "$(m)" || (echo 'Usage: make db-revision m="short_slug" [msg="Human message"]' && exit 1)
+	$(call run_backend,bash scripts/new_migration.sh "$(m)" "$(msg)")
+
+db-check:
+	$(call run_backend,alembic check)
 
 db-reset:
 	@echo "WARNING: This destroys the local Postgres volume and re-applies migrations."

@@ -43,9 +43,20 @@ make backend-test
 make backend-lint
 make backend-typecheck
 make db-migrate
+make db-revision m=add_foo   # autogenerate next Alembic revision from models
+make db-check                # fail if models drift from applied schema
 make logs
 make down
 ```
+
+### Schema migrations
+
+1. Change SQLAlchemy models under `app/models/` (indexes and constraints belong on the models).
+2. Generate a revision: `make db-revision m=short_slug` (optional `msg="Human message"`).
+3. Review the generated file under `migrations/versions/`, then apply with `make db-migrate`.
+4. Keep revision ids ≤32 characters (`NNNN_` + slug) — Postgres `alembic_version.version_num` is `VARCHAR(32)`.
+
+Do not hand-write routine DDL; use autogenerate and only edit the revision when Alembic needs a nudge (data backfills, enum renames, deferred FKs).
 
 Optional host venv (CI and OpenAPI validate without Compose):
 

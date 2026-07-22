@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Text, Uuid, desc, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -32,6 +32,7 @@ class ModerationAction(Base):
     """Immutable audit row for an operator moderation action."""
 
     __tablename__ = "moderation_actions"
+    __table_args__ = (Index("ix_moderation_actions_created_at", desc("created_at")),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     operator_identity: Mapped[str] = mapped_column(Text, nullable=False)

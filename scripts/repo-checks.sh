@@ -31,6 +31,12 @@ for path in $(find backend/migrations/versions -maxdepth 1 -type f -name '*.py' 
     echo "Invalid migration filename (expected NNNN_name.py): ${base}" >&2
     exit 1
   fi
+  rev="${base%.py}"
+  # alembic_version.version_num defaults to VARCHAR(32).
+  if ((${#rev} > 32)); then
+    echo "Revision id too long (${#rev} > 32): ${rev}" >&2
+    exit 1
+  fi
   if [[ -n "${previous}" && "${base}" < "${previous}" ]]; then
     echo "Migrations are not sorted: ${previous} before ${base}" >&2
     exit 1

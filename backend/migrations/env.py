@@ -11,17 +11,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.settings import get_settings
 from app.db.session import Base
 
-# Import models so Alembic metadata includes them.
-from app.models import (  # noqa: F401
-    DailyPrompt,
-    IdempotencyKey,
-    SketchSession,
-    SketchSessionEvent,
-    Submission,
-    Upload,
-    User,
-    UserPreferences,
-)
+# Register every mapper on Base.metadata before autogenerate/compare runs.
+import app.models  # noqa: F401
 
 config = context.config
 
@@ -35,11 +26,19 @@ def get_url() -> str:
     return get_settings().database_url
 
 
+def _configure_context(**kwargs: object) -> None:
+    context.configure(
+        target_metadata=target_metadata,
+        compare_type=True,
+        compare_server_default=True,
+        **kwargs,
+    )
+
+
 def run_migrations_offline() -> None:
     url = get_url()
-    context.configure(
+    _configure_context(
         url=url,
-        target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -49,7 +48,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    _configure_context(connection=connection)
 
     with context.begin_transaction():
         context.run_migrations()

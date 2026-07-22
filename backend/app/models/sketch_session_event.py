@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,7 @@ class SketchSessionEvent(Base):
     """Append-only lifecycle event for a Sketch Session."""
 
     __tablename__ = "sketch_session_events"
+    __table_args__ = (Index("ix_sketch_session_events_sketch_session_id", "sketch_session_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sketch_session_id: Mapped[uuid.UUID] = mapped_column(

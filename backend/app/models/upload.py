@@ -6,7 +6,18 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Integer, Text, Uuid, func
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    Uuid,
+    desc,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -45,6 +56,10 @@ class Upload(Base):
     """Pending or consumed direct-upload slot and media metadata."""
 
     __tablename__ = "uploads"
+    __table_args__ = (
+        Index("ix_uploads_user_id_created_at", "user_id", desc("created_at")),
+        Index("ix_uploads_status_expires_at", "status", "expires_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(

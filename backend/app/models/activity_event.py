@@ -6,7 +6,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Uuid, desc, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -23,6 +23,13 @@ class ActivityEvent(Base):
     """Record of a social action for a Submission owner."""
 
     __tablename__ = "activity_events"
+    __table_args__ = (
+        Index(
+            "ix_activity_events_recipient_user_id_created_at",
+            "recipient_user_id",
+            desc("created_at"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     recipient_user_id: Mapped[uuid.UUID] = mapped_column(
