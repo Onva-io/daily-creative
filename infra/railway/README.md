@@ -11,7 +11,9 @@ Railway hosts a **shared remote test** backend for Daily Creative. It is not pro
 ## Service setup
 
 1. Create a new Railway project and connect this repository.
-2. Leave the service **root directory** at `/` (monorepo root). Deploy config is at the repo-root [`railway.toml`](../../railway.toml) (Railway discovers it automatically). A copy also lives in this folder for docs; keep them in sync. If you prefer config only under `infra/railway/`, set **Config as Code** path in the dashboard to `/infra/railway/railway.toml`.
+2. In service **Settings**:
+   - **Root Directory:** `/backend` — Railway uses this as the Docker build context (required so `COPY app`, `alembic.ini`, etc. resolve).
+   - **Config as Code:** `/railway.toml` (repo root; auto-discovered) **or** `/infra/railway/railway.toml`. This path is absolute from the repo and does **not** follow Root Directory.
 3. Add the **PostgreSQL** plugin. Railway injects `DATABASE_URL`; convert for SQLAlchemy async if needed:
 
    ```
@@ -22,8 +24,8 @@ Railway hosts a **shared remote test** backend for Daily Creative. It is not pro
 
 4. Configure **Dockerfile deploy** via `railway.toml`:
 
-   - `dockerfilePath = "backend/Dockerfile"` (relative to repo root)
-   - Build context is `backend/` (where the Dockerfile lives)
+   - `dockerfilePath = "Dockerfile"` (relative to Root Directory `/backend`)
+   - Build context is Root Directory (`/backend`), same as local `docker compose` (`context: ./backend`)
 
 5. **Release command** (migrations): `alembic upgrade head` — runs on each deploy before traffic shifts (see `releaseCommand` in `railway.toml`).
 

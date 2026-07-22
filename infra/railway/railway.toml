@@ -1,8 +1,12 @@
 # Canonical copy for deploys is at the repo root: /railway.toml
 # Railway only auto-discovers railway.toml at the service root (default `/`).
+#
+# Dashboard: set service Root Directory to /backend (that directory is the
+# Docker build context). Config-as-code path stays absolute from the repo
+# (e.g. /railway.toml or /infra/railway/railway.toml).
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile"
+dockerfilePath = "Dockerfile"
 watchPatterns = ["backend/**"]
 
 [deploy]
