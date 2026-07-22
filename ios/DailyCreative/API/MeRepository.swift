@@ -80,7 +80,7 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDel
         configureClient(accessToken: accessToken)
         do {
             let prefs = try await MeAPI.getMyPreferences(
-                creativeType: FeedMapping.apiCreativeType() ?? .sketch
+                creativeType: FeedMapping.apiCreativeType()
             )
             return mapPreferences(prefs)
         } catch {

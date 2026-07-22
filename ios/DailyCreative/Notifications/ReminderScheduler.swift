@@ -56,14 +56,21 @@ struct SystemReminderScheduler: ReminderScheduling {
     }
 
     func authorizationStatus() async -> ReminderPermissionStatus {
-        let settings = await center.notificationSettings()
-        switch settings.authorizationStatus {
-        case .notDetermined: return .notDetermined
-        case .authorized: return .authorized
-        case .denied: return .denied
-        case .provisional: return .provisional
-        case .ephemeral: return .authorized
-        @unknown default: return .notDetermined
+        // Map to a Sendable status inside the callback so non-Sendable
+        // UNNotificationSettings never crosses isolation boundaries (Swift 6).
+        await withCheckedContinuation { continuation in
+            center.getNotificationSettings { settings in
+                let status: ReminderPermissionStatus
+                switch settings.authorizationStatus {
+                case .notDetermined: status = .notDetermined
+                case .authorized: status = .authorized
+                case .denied: status = .denied
+                case .provisional: status = .provisional
+                case .ephemeral: status = .authorized
+                @unknown default: status = .notDetermined
+                }
+                continuation.resume(returning: status)
+            }
         }
     }
 
