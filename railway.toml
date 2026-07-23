@@ -12,9 +12,10 @@ watchPatterns = ["backend/**", "railway.toml"]
 
 [deploy]
 # Explicit script so any dashboard Start Command is overridden; PORT expands inside the script.
+# Migrations run in start.sh (same pattern as local Compose) — more reliable than releaseCommand
+# on Railway Dockerfile deploys, where the release phase can be skipped or fail silently.
 startCommand = "./scripts/start.sh"
 healthcheckPath = "/health/live"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
-releaseCommand = "alembic upgrade head"

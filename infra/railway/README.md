@@ -27,9 +27,7 @@ Railway hosts a **shared remote test** backend for Daily Creative. It is not pro
    - `dockerfilePath = "Dockerfile"` (relative to Root Directory `/backend`)
    - Build context is Root Directory (`/backend`), same as local `docker compose` (`context: ./backend`)
 
-5. **Release command** (migrations): `alembic upgrade head` — runs on each deploy before traffic shifts (see `releaseCommand` in `railway.toml`). In the production image Alembic is on `PATH`; for local one-offs always use `uv run` (see below).
-
-6. **Start command:** leave unset in the dashboard — the image runs `scripts/start.sh`, which binds to `$PORT` (Railway) or `8000` (local).
+5. **Start command:** leave unset in the dashboard — the image runs `scripts/start.sh`, which applies `alembic upgrade head` then binds to `$PORT` (Railway) or `8000` (local).
 
 ## Environment variables
 
@@ -111,14 +109,14 @@ Suggested schedules match Terraform EventBridge defaults (hourly/daily). Add `--
 1. Postgres plugin attached; `DATABASE_URL` set with asyncpg driver
 2. All required env vars from `.env.example` filled in Railway
 3. S3 bucket + IAM keys configured
-4. Deploy triggers `alembic upgrade head`
+4. Deploy starts `scripts/start.sh`, which runs `alembic upgrade head` then the API
 5. Smoke: `curl -fsS $API_PUBLIC_URL/health/live`
 6. Seed prompts if needed (from `backend/`): `railway run uv run python -m app.seeds.prompts --days 30`
 
-One-off migrations from your laptop (also from `backend/`):
+One-off migrations from your laptop need the **public** Postgres URL (internal `*.railway.internal` hosts do not resolve locally):
 
 ```bash
-railway run uv run alembic upgrade head
+DATABASE_URL='postgresql+asyncpg://…public…' railway run uv run alembic upgrade head
 ```
 
 ## Related docs

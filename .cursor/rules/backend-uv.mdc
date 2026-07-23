@@ -30,5 +30,5 @@ Make targets (`make db-migrate`, `make seed`, etc.) already go through `uv run`.
 
 ## Exceptions
 
-- Production/runtime Docker image (`backend/Dockerfile`): packages are installed on `PATH`; `railway.toml` `releaseCommand` may call `alembic` directly inside the container.
+- Production/runtime Docker image (`backend/Dockerfile`): packages are on `PATH`; `scripts/start.sh` calls `alembic` directly before uvicorn.
 - Dev Compose image already uses `uv` (`Dockerfile.dev` / `dev-entrypoint.sh`).
