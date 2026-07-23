@@ -3,10 +3,11 @@
 # Dashboard:
 # - Root Directory: /backend (Docker build context)
 # - Config as Code: /railway.toml (absolute from repo; does not follow Root Directory)
+# - Use "Deploy Latest Commit" (not Redeploy) after config changes
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["backend/**"]
+watchPatterns = ["backend/**", "railway.toml"]
 
 [deploy]
 startCommand = "sh -c 'uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
