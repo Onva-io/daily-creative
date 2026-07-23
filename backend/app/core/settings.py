@@ -96,12 +96,8 @@ class Settings(BaseSettings):
     reflection_max_length: int = Field(default=500, alias="REFLECTION_MAX_LENGTH")
 
     descope_project_id: str = Field(default="replace-me", alias="DESCOPE_PROJECT_ID")
-    descope_issuer: str = Field(
-        default="https://api.descope.com/v1/apps/replace-me",
-        alias="DESCOPE_ISSUER",
-    )
-    descope_audience: str = Field(default="replace-me", alias="DESCOPE_AUDIENCE")
-    descope_jwks_url: str | None = Field(default=None, alias="DESCOPE_JWKS_URL")
+    # Optional JWT audience override (JWT templates). Defaults to DESCOPE_PROJECT_ID.
+    descope_audience: str | None = Field(default=None, alias="DESCOPE_AUDIENCE")
     moderation_operator_token: str | None = Field(
         default=None,
         alias="MODERATION_OPERATOR_TOKEN",
@@ -182,10 +178,10 @@ class Settings(BaseSettings):
             or "replace-me" in self.descope_project_id
         ):
             raise ValueError("DESCOPE_PROJECT_ID must be configured for staging/production")
-        if self.descope_audience == _PLACEHOLDER_DESCOPE or "replace-me" in self.descope_audience:
-            raise ValueError("DESCOPE_AUDIENCE must be configured for staging/production")
-        if "replace-me" in self.descope_issuer:
-            raise ValueError("DESCOPE_ISSUER must be configured for staging/production")
+        if self.descope_audience is not None and "replace-me" in self.descope_audience:
+            raise ValueError(
+                "DESCOPE_AUDIENCE must not use placeholder values in staging/production"
+            )
         if not self.moderation_operator_token:
             raise ValueError("MODERATION_OPERATOR_TOKEN is required for staging/production")
         if self.storage_access_key in _INSECURE_STORAGE_KEYS:
@@ -223,10 +219,11 @@ class Settings(BaseSettings):
         return self.app_env in {"staging", "production"}
 
     @property
-    def resolved_descope_jwks_url(self) -> str:
-        if self.descope_jwks_url:
-            return self.descope_jwks_url
-        return f"https://api.descope.com/{self.descope_project_id}/.well-known/jwks.json"
+    def resolved_descope_audience(self) -> str:
+        """Audience passed to Descope session validation (project ID unless overridden)."""
+        if self.descope_audience and self.descope_audience.strip():
+            return self.descope_audience.strip()
+        return self.descope_project_id
 
     @property
     def allowed_image_content_type_set(self) -> frozenset[str]:

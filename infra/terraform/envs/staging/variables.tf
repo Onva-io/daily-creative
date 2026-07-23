@@ -95,14 +95,10 @@ variable "descope_project_id" {
   type        = string
 }
 
-variable "descope_issuer" {
-  description = "Descope JWT issuer URL."
-  type        = string
-}
-
 variable "descope_audience" {
-  description = "Descope JWT audience."
+  description = "Optional JWT audience override. Defaults to descope_project_id when unset."
   type        = string
+  default     = ""
 }
 
 variable "prompt_date_timezone" {

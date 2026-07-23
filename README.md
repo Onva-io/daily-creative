@@ -193,7 +193,7 @@ Remote hostnames and Descope project IDs are placeholders until real values are 
 ## Phase 2 — Authentication
 
 - **Contract:** `GET /api/v1/me` returns the current local user (id, username, display name, profile completion, account status, preferences summary). Requires `Authorization: Bearer <Descope JWT>`.
-- **Backend:** Verifies Descope JWTs via JWKS (`DESCOPE_JWKS_URL`, defaulting from `DESCOPE_PROJECT_ID`), provisions a local `users` row on first login (idempotent by `descope_subject`), and rejects suspended/deleted accounts.
+- **Backend:** Verifies Descope session JWTs with the official `descope` Python SDK (`DESCOPE_PROJECT_ID`; optional `DESCOPE_AUDIENCE`), provisions a local `users` row on first login (idempotent by `descope_subject`), and rejects suspended/deleted accounts.
 - **Local mock auth:** When `DESCOPE_PROJECT_ID=replace-me` (the committed placeholder), the iOS app uses `MockAuthService` and the backend accepts matching HS256 local-dev JWTs so guest → sign-in → `GET /me` works without real Descope credentials. Replace placeholders with a development Descope project ID to use Descope Flows.
 - **iOS:** Guest launch is unchanged. Profile offers Create Free Account / Sign In. Sessions persist in Keychain. Settings offers Sign Out (local Drafts are preserved).
 - **Secrets:** Never commit real Descope management secrets. Project ID is public configuration only.

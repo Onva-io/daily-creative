@@ -217,7 +217,7 @@ Each environment must have unique values for:
 - database host and credentials;
 - storage endpoint and bucket;
 - Descope project ID;
-- Descope issuer/audience configuration;
+- optional Descope audience override (defaults to project ID);
 - logging destination;
 - error-monitoring project;
 - analytics environment;
@@ -410,9 +410,7 @@ Configuration groups:
 ### Descope
 
 - project ID;
-- issuer;
-- audience;
-- JWKS URL if required;
+- optional audience override (defaults to project ID; issuer/JWKS handled by the official SDK);
 - management credentials only where operationally required.
 
 ### Storage

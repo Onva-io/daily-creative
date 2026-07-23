@@ -13,8 +13,8 @@ release_version         = "0.1.0-staging"
 commit_sha              = "local"
 build_timestamp         = "local"
 descope_project_id      = "Pxxxxxxxxxxxxxxxxxxxxxx"
-descope_issuer          = "https://api.descope.com/v1/apps/Pxxxxxxxxxxxxxxxxxxxxxx"
-descope_audience        = "staging-audience"
+# Optional: only needed when JWT templates set a custom aud (defaults to project ID).
+# descope_audience        = "staging-audience"
 
 # Sensitive values — copy to terraform.tfvars locally; never commit.
 # moderation_operator_token = "..."

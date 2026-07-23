@@ -46,8 +46,7 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 | `DATABASE_URL` | 🔒 From Postgres plugin (`postgresql+asyncpg://...`) |
 | `DB_SSL_REQUIRE` | `true` for Railway Postgres |
 | `DESCOPE_PROJECT_ID` | Test project ID |
-| `DESCOPE_ISSUER` | Test issuer URL |
-| `DESCOPE_AUDIENCE` | Test audience |
+| `DESCOPE_AUDIENCE` | Optional audience override (defaults to project ID) |
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |
 | `STORAGE_ENDPOINT` | `https://s3.REGION.amazonaws.com` |
 | `STORAGE_PUBLIC_ENDPOINT` | CloudFront or S3 URL for signed reads |

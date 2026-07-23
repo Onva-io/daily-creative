@@ -476,12 +476,8 @@ Cursor must be opaque to the client.
    ```text
    Authorization: Bearer <token>
    ```
-4. FastAPI verifies:
-   - signature;
-   - issuer;
-   - audience;
-   - expiry;
-   - required claims.
+4. FastAPI verifies the session JWT with the official Descope Python SDK
+   (signature, issuer, audience, expiry, and subject).
 5. Backend resolves local application user by immutable Descope subject.
 6. Backend checks:
    - account status;

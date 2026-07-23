@@ -233,7 +233,6 @@ module "ecs" {
     DB_SSL_REQUIRE                = "true"
     METRICS_ENABLED               = "true"
     DESCOPE_PROJECT_ID            = var.descope_project_id
-    DESCOPE_ISSUER                = var.descope_issuer
     DESCOPE_AUDIENCE              = var.descope_audience
     STORAGE_ENDPOINT              = local.storage_endpoint
     STORAGE_PUBLIC_ENDPOINT       = var.cdn_domain_name != "" ? "https://${var.cdn_domain_name}" : local.storage_endpoint

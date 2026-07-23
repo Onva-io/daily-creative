@@ -426,9 +426,7 @@ Fields and constraints follow `architecture.md`.
 
 Implement:
 
-- Descope JWT verification;
-- JWKS caching;
-- issuer/audience validation;
+- Descope JWT verification via the official Python SDK;
 - authenticated-user dependency;
 - first-login provisioning;
 - suspended/deleted user handling;

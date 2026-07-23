@@ -107,7 +107,7 @@ terraform fmt -recursive infra/terraform
 | `cdn_domain_name` | Optional CloudFront alias |
 | `cdn_acm_certificate_arn` | us-east-1 CDN certificate |
 | `backend_image` | ECR image URI with tag |
-| `descope_project_id` / `issuer` / `audience` | Auth configuration |
+| `descope_project_id` / optional `descope_audience` | Auth configuration (issuer/JWKS handled by Descope SDK) |
 | `media_bucket_name` | Private S3 bucket |
 
 Never commit `terraform.tfvars` containing tokens, DSNs, or webhook URLs.

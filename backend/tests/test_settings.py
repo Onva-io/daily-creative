@@ -49,14 +49,13 @@ def test_settings_reject_invalid_log_level(monkeypatch: pytest.MonkeyPatch) -> N
         Settings(_env_file=None)  # type: ignore[call-arg]
 
 
-def test_settings_resolved_descope_jwks_url() -> None:
+def test_settings_resolved_descope_audience_defaults_to_project_id() -> None:
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
-    assert settings.resolved_descope_jwks_url.endswith(
-        f"/{settings.descope_project_id}/.well-known/jwks.json"
-    )
+    assert settings.resolved_descope_audience == settings.descope_project_id
 
 
-def test_settings_descope_jwks_url_override(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DESCOPE_JWKS_URL", "https://example.test/jwks.json")
+def test_settings_descope_audience_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DESCOPE_PROJECT_ID", "P123")
+    monkeypatch.setenv("DESCOPE_AUDIENCE", "custom-audience")
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
-    assert settings.resolved_descope_jwks_url == "https://example.test/jwks.json"
+    assert settings.resolved_descope_audience == "custom-audience"
