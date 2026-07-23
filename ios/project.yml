@@ -73,6 +73,11 @@ targets:
       Debug-Development: Config/Debug-Development.xcconfig
       Release-Staging: Config/Release-Staging.xcconfig
       Release-Production: Config/Release-Production.xcconfig
+    entitlements:
+      path: DailySketch/Resources/DailySketch.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
@@ -141,6 +146,11 @@ targets:
       Debug-Development: Config/DailyStory/Debug-Development.xcconfig
       Release-Staging: Config/DailyStory/Release-Staging.xcconfig
       Release-Production: Config/DailyStory/Release-Production.xcconfig
+    entitlements:
+      path: DailyStory/Resources/DailyStory.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit

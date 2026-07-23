@@ -53,6 +53,18 @@ final class MockAuthService: AuthServing {
         try await mintAndPersist(displayName: displayName.isEmpty ? "Returning sketcher" : displayName)
     }
 
+    func sendEmailOTP(email: String) async throws {
+        throw AuthServiceError.notConfigured
+    }
+
+    func verifyEmailOTP(email: String, code: String) async throws -> AuthSession {
+        throw AuthServiceError.notConfigured
+    }
+
+    func signInWithApple() async throws -> AuthSession {
+        throw AuthServiceError.notConfigured
+    }
+
     func signOut() async {
         KeychainStore.delete(account: keychainAccount)
         memorySession = nil

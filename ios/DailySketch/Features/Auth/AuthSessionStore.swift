@@ -71,6 +71,30 @@ final class AuthSessionStore {
         }
     }
 
+    /// Sends an email OTP without changing auth state to authenticated.
+    func sendEmailOTP(email: String) async throws {
+        try await authService.sendEmailOTP(email: email)
+    }
+
+    func verifyEmailOTP(email: String, code: String) async {
+        await authenticate {
+            try await authService.verifyEmailOTP(email: email, code: code)
+        }
+    }
+
+    func signInWithApple() async {
+        state = .authenticating
+        do {
+            let session = try await authService.signInWithApple()
+            await applyAuthenticated(session: session)
+        } catch AuthServiceError.cancelled {
+            state = .guest
+        } catch {
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            state = .failed(message: message)
+        }
+    }
+
     func applyExternalSession(_ session: AuthSession) async {
         await applyAuthenticated(session: session)
     }

@@ -7,7 +7,6 @@ final class AppDependencies {
     let environment: AppEnvironment
     let navigation: AppNavigationStore
     let auth: AuthSessionStore
-    let descopeAuthService: DescopeAuthService?
     let preferencesService: any PreferencesServing
     let profileUpdater: any ProfileUpdating
     let profileRepository: any ProfileFetching
@@ -38,7 +37,6 @@ final class AppDependencies {
         environment: AppEnvironment,
         navigation: AppNavigationStore = AppNavigationStore(),
         auth: AuthSessionStore,
-        descopeAuthService: DescopeAuthService? = nil,
         preferencesService: any PreferencesServing,
         profileUpdater: any ProfileUpdating,
         profileRepository: any ProfileFetching,
@@ -68,7 +66,6 @@ final class AppDependencies {
         self.environment = environment
         self.navigation = navigation
         self.auth = auth
-        self.descopeAuthService = descopeAuthService
         self.preferencesService = preferencesService
         self.profileUpdater = profileUpdater
         self.profileRepository = profileRepository
@@ -193,7 +190,6 @@ final class AppDependencies {
                 environment: environment,
                 navigation: navigation,
                 auth: auth,
-                descopeAuthService: nil,
                 preferencesService: repository,
                 profileUpdater: repository,
                 profileRepository: profileRepository,
@@ -225,7 +221,6 @@ final class AppDependencies {
             environment: environment,
             navigation: navigation,
             auth: auth,
-            descopeAuthService: descope,
             preferencesService: repository,
             profileUpdater: repository,
             profileRepository: profileRepository,
