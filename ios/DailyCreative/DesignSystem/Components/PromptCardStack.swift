@@ -13,10 +13,10 @@ struct PromptCardFanTransform: Equatable {
 }
 
 enum PromptCardFanGeometry {
-    static let stackHeight: CGFloat = 220
+    static let stackHeight: CGFloat = 170
     static let fanOutSpring = Animation.spring(response: 0.45, dampingFraction: 0.78)
     static let settleSpring = Animation.spring(response: 0.55, dampingFraction: 0.82)
-    static let holdDuration: Duration = .milliseconds(150)
+    static let holdDuration: Duration = .milliseconds(700)
 
     static func transform(index: Int, phase: PromptCardFanPhase) -> PromptCardFanTransform {
         switch phase {
@@ -41,11 +41,11 @@ enum PromptCardFanGeometry {
     private static func restingTransform(for index: Int) -> PromptCardFanTransform {
         switch index {
         case 0:
-            PromptCardFanTransform(rotation: -14, xOffset: -28, zIndex: 1)
+            PromptCardFanTransform(rotation: -18, xOffset: -48, zIndex: 1)
         case 1:
             PromptCardFanTransform(rotation: 0, xOffset: 0, zIndex: 3)
         case 2:
-            PromptCardFanTransform(rotation: 14, xOffset: 28, zIndex: 2)
+            PromptCardFanTransform(rotation: 18, xOffset: 48, zIndex: 2)
         default:
             PromptCardFanTransform(rotation: 0, xOffset: 0, zIndex: 0)
         }
@@ -54,11 +54,11 @@ enum PromptCardFanGeometry {
     private static func fannedOutTransform(for index: Int) -> PromptCardFanTransform {
         switch index {
         case 0:
-            PromptCardFanTransform(rotation: -28, xOffset: -56, zIndex: 1)
+            PromptCardFanTransform(rotation: -42, xOffset: -118, zIndex: 1)
         case 1:
             PromptCardFanTransform(rotation: 0, xOffset: 0, zIndex: 3)
         case 2:
-            PromptCardFanTransform(rotation: 28, xOffset: 56, zIndex: 2)
+            PromptCardFanTransform(rotation: 42, xOffset: 118, zIndex: 2)
         default:
             PromptCardFanTransform(rotation: 0, xOffset: 0, zIndex: 0)
         }

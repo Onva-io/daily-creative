@@ -12,7 +12,7 @@ struct PromptWordCard: View {
         case stack
     }
 
-    static let stackCardWidth: CGFloat = 200
+    static let stackCardWidth: CGFloat = 140
 
     let word: String
     var style: Style = .hero
