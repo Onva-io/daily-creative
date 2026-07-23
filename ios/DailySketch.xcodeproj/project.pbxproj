@@ -253,7 +253,7 @@
 		23B54DAB17056D6C53E2881B /* PromptGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptGroup.swift; sourceTree = "<group>"; };
 		24188F2C9E72CB129E93CCDD /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
 		248EF0FB544FC0DB1DCEE13F /* CameraPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPickerView.swift; sourceTree = "<group>"; };
-		272E0857AB135839AC719E55 /* DailySketchTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DailySketchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		272E0857AB135839AC719E55 /* DailySketchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailySketchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		29E0309294A393FB5695D2FF /* AppSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSpacing.swift; sourceTree = "<group>"; };
 		2ABA42CBE803CC1F9B56EAFC /* ReportReasonSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportReasonSheet.swift; sourceTree = "<group>"; };
 		2AD70FC0C2D994EF5CBB81C5 /* SocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialRepository.swift; sourceTree = "<group>"; };
@@ -271,7 +271,7 @@
 		4910778943A10EC2E77EFEC5 /* EnvironmentBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentBadge.swift; sourceTree = "<group>"; };
 		4B7758C2099EED205BE25D68 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4C12E3504F971DF8E2CDB019 /* CaptureSourceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSourceView.swift; sourceTree = "<group>"; };
-		5097E7E1021ECD475053BC19 /* DailySketch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DailySketch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5097E7E1021ECD475053BC19 /* DailySketch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailySketch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51F7DB2E23E2988C018694B0 /* DeleteAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountView.swift; sourceTree = "<group>"; };
 		563BC9C98672AAA664ABDCA8 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		5821C8D7B32E0471B25847D4 /* DescopeAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescopeAuthService.swift; sourceTree = "<group>"; };
@@ -315,9 +315,9 @@
 		9F11A9F1D1C5269EF48FEA5F /* AuthSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionStoreTests.swift; sourceTree = "<group>"; };
 		A0F729CC0C38FF10E77ACB3A /* BlockedUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedUsersView.swift; sourceTree = "<group>"; };
 		A13CEF33F5B3157A0080B74A /* DateProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateProviding.swift; sourceTree = "<group>"; };
-		A18AF1E95F1936B7398F50F5 /* DailySketchUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DailySketchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A18AF1E95F1936B7398F50F5 /* DailySketchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailySketchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3C5BDA13DAC0926560F5559 /* EditProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileViewModel.swift; sourceTree = "<group>"; };
-		A81A8BAE51E1CFC74A474F97 /* DailyStory.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DailyStory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A81A8BAE51E1CFC74A474F97 /* DailyStory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyStory.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A8EDA810599C18565404077E /* HomeViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModelTests.swift; sourceTree = "<group>"; };
 		A9035D34B8B615F74117277C /* ActiveSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionStore.swift; sourceTree = "<group>"; };
 		A922D00777E2AF712A1E0BBA /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
@@ -340,7 +340,7 @@
 		B8A918F876A23279A1C84606 /* AuthServing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthServing.swift; sourceTree = "<group>"; };
 		BB4E0F0D8B87207797659DA1 /* SafetyRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyRepository.swift; sourceTree = "<group>"; };
 		BCBCA9C3DB6CE618CCEBA71A /* GuestTimerPreferenceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestTimerPreferenceStore.swift; sourceTree = "<group>"; };
-		BD62E6132907D42AD1BF6A5A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BD62E6132907D42AD1BF6A5A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BFD6CA37B3EFC0C150BF721F /* Debug-Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Debug-Development.xcconfig"; sourceTree = "<group>"; };
 		C0D0DC61A1273C14A3E858BA /* AppEnvironmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironmentTests.swift; sourceTree = "<group>"; };
 		C3F9E71CDBEB66910EC0D71F /* AppNavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigationStore.swift; sourceTree = "<group>"; };
@@ -1268,7 +1268,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1276,6 +1278,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1417,7 +1420,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1425,6 +1430,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1461,7 +1467,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1469,6 +1477,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1802,7 +1811,9 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1810,6 +1821,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
