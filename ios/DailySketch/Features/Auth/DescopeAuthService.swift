@@ -8,7 +8,8 @@ import Foundation
 /// Console setup required:
 /// - Enable Email OTP in the Descope project and configure OTP email templates.
 /// - Enable the Apple social provider; set Client ID to each app’s Bundle Identifier.
-/// - In Apple Developer, enable the Sign in with Apple capability on both App IDs.
+/// - Sign in with Apple needs a paid Apple Developer Program team (not a Personal Team),
+///   plus the `com.apple.developer.applesignin` entitlement on both App IDs.
 @MainActor
 final class DescopeAuthService: AuthServing {
     private let projectID: String

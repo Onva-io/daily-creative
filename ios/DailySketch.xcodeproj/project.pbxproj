@@ -946,7 +946,19 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					23B725F4B70BE1D951521D95 = {
+						DevelopmentTeam = TGX22822SP;
+						ProvisioningStyle = Automatic;
+					};
+					901C2E3D6A8DB92B268F15D7 = {
+						DevelopmentTeam = TGX22822SP;
+						ProvisioningStyle = Automatic;
+					};
+					C6FA589AC70A5CE6317C5E29 = {
+						DevelopmentTeam = TGX22822SP;
+					};
 					DCDD11CB817358AEB7A805AB = {
+						DevelopmentTeam = TGX22822SP;
 						TestTargetID = 23B725F4B70BE1D951521D95;
 					};
 				};
@@ -1267,7 +1279,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailySketch/Resources/DailySketch.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1275,6 +1289,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1417,7 +1432,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailySketch/Resources/DailySketch.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1425,6 +1442,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1440,7 +1458,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailyStory/Resources/DailyStory.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyStory/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1448,6 +1468,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailyStory;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1463,7 +1484,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailySketch/Resources/DailySketch.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1471,6 +1494,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1564,7 +1588,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailyStory/Resources/DailyStory.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyStory/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1572,6 +1598,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailyStory;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1587,7 +1614,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailyStory/Resources/DailyStory.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyStory/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1595,6 +1624,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailyStory;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1785,7 +1815,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailyStory/Resources/DailyStory.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailyStory/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1793,6 +1825,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailyStory;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1808,7 +1841,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = DailySketch/Resources/DailySketch.entitlements;
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TGX22822SP;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = DailySketch/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1816,6 +1851,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_NAME = DailySketch;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = "1,2";

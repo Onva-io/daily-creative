@@ -73,11 +73,10 @@ targets:
       Debug-Development: Config/Debug-Development.xcconfig
       Release-Staging: Config/Release-Staging.xcconfig
       Release-Production: Config/Release-Production.xcconfig
+    # Sign in with Apple entitlement requires a paid Apple Developer Program team.
+    # Personal teams cannot provision com.apple.developer.applesignin — omit until enrolled.
     entitlements:
       path: DailySketch/Resources/DailySketch.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
@@ -89,8 +88,11 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_STRICT_CONCURRENCY: complete
         CODE_SIGNING_ALLOWED: "YES"
-        CODE_SIGN_IDENTITY: "-"
         CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: TGX22822SP
+        PROVISIONING_PROFILE_SPECIFIER: ""
   DailyStory:
     type: application
     platform: iOS
@@ -146,11 +148,9 @@ targets:
       Debug-Development: Config/DailyStory/Debug-Development.xcconfig
       Release-Staging: Config/DailyStory/Release-Staging.xcconfig
       Release-Production: Config/DailyStory/Release-Production.xcconfig
+    # Sign in with Apple entitlement requires a paid Apple Developer Program team.
     entitlements:
       path: DailyStory/Resources/DailyStory.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
@@ -162,8 +162,11 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_STRICT_CONCURRENCY: complete
         CODE_SIGNING_ALLOWED: "YES"
-        CODE_SIGN_IDENTITY: "-"
         CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: TGX22822SP
+        PROVISIONING_PROFILE_SPECIFIER: ""
   DailySketchTests:
     type: bundle.unit-test
     platform: iOS

@@ -4,8 +4,7 @@ SWIFT_VERSION = 6.0
 MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
 
-// Owner must supply Apple Developer Team ID before signed device/TestFlight builds.
-// DEVELOPMENT_TEAM =
+DEVELOPMENT_TEAM = TGX22822SP
 
 SUPPORT_URL = https:/$()/example.com/daily-sketch/support
 PRIVACY_URL = https:/$()/example.com/daily-sketch/privacy
