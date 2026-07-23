@@ -41,12 +41,14 @@ Compose uses local Postgres and MinIO — no AWS credentials required.
 
 Use Railway when you need a **stable HTTPS URL** for iOS Release Staging builds, webhooks, or collaborators who cannot run Compose.
 
+- **API:** `https://daily-creative-production.up.railway.app`
+- **Descope:** project `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (wired in `ios/Config/*/Release-Staging.xcconfig`)
 - Postgres: Railway plugin
 - Media: AWS S3 (`dailysketch-railway-media` or shared staging bucket via IAM keys in Railway secrets)
 - Migrations: `alembic upgrade head` release command on deploy
 - Cron jobs: separate Railway cron services or CI — see [infra/railway/README.md](../../infra/railway/README.md)
 
-Keep a **separate Descope test project**, bucket, and secrets from production.
+Keep this Descope test project, bucket, and secrets separate from production.
 
 ## AWS Terraform (staging & production)
 

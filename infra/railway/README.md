@@ -39,13 +39,13 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 |----------|--------|
 | `APP_ENV` | `staging` |
 | `LOG_LEVEL` | `INFO` |
-| `API_PUBLIC_URL` | Railway public URL, e.g. `https://your-service.up.railway.app` |
+| `API_PUBLIC_URL` | `https://daily-creative-production.up.railway.app` |
 | `RELEASE_VERSION` | semver from release |
 | `COMMIT_SHA` | git SHA (CI or manual) |
 | `BUILD_TIMESTAMP` | ISO timestamp |
 | `DATABASE_URL` | 🔒 From Postgres plugin (`postgresql+asyncpg://...`) |
 | `DB_SSL_REQUIRE` | `true` for Railway Postgres |
-| `DESCOPE_PROJECT_ID` | Test project ID |
+| `DESCOPE_PROJECT_ID` | `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (test project) |
 | `DESCOPE_AUDIENCE` | Optional audience override (defaults to project ID) |
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |
 | `STORAGE_ENDPOINT` | `https://s3.REGION.amazonaws.com` |

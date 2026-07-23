@@ -1,9 +1,9 @@
 #include "Base.xcconfig"
 
 PRODUCT_BUNDLE_IDENTIFIER = com.example.dailysketch.staging
-API_BASE_URL = https:/$()/api.staging.dailycreative.example
+API_BASE_URL = https:/$()/daily-creative-production.up.railway.app
 APP_ENVIRONMENT = staging
-DESCOPE_PROJECT_ID = replace-me-staging
+DESCOPE_PROJECT_ID = P3GtbG5aJKoUuefcaA8DfyMzA0nK
 ANALYTICS_ENVIRONMENT = staging
 LOGGING_LEVEL = info
 SHOW_ENVIRONMENT_BADGE = YES

@@ -63,10 +63,10 @@ Each environment is defined in `ios/Config/*.xcconfig` and injected into the app
 | --- | --- | --- |
 | Local | DailySketch / DailyStory | `http://localhost:8000` |
 | Development | DailySketch Development / DailyStory Development | `https://api.development.dailycreative.example` |
-| Staging | DailySketch Staging / DailyStory Staging | `https://api.staging.dailycreative.example` |
+| Staging | DailySketch Staging / DailyStory Staging | `https://daily-creative-production.up.railway.app` |
 | Production | DailySketch Production / DailyStory Production | `https://api.dailycreative.example` |
 
-Remote hostnames and Descope project IDs are placeholders until real values are supplied in the xcconfig files. Non-production builds show an environment badge in the app.
+Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoUuefcaA8DfyMzA0nK`). Development/production hostnames and Descope IDs remain placeholders until real values are supplied. Non-production builds show an environment badge in the app.
 
 ## Repository layout
 
