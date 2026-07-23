@@ -243,11 +243,7 @@ struct ProfileView: View {
             if model.showsOwnControls {
                 EmptyStateView(
                     title: "Your sketchbook starts here",
-                    message: "Create your first response to today’s prompt.",
-                    actionTitle: "Start Sketch",
-                    action: {
-                        dependencies.navigation.homePath = []
-                    }
+                    message: "Create your first response to today’s prompt."
                 )
             } else {
                 EmptyStateView(
