@@ -583,7 +583,7 @@ final class RecordingPublicationRepository: PublicationServing, @unchecked Senda
         if let createError { throw createError }
         if let nextSubmission { return nextSubmission }
         switch content {
-        case .sketch(let uploadId, let caption):
+        case .sketch(_, let caption):
             return SubmissionModel(
                 id: UUID(),
                 creativeType: creativeType,
