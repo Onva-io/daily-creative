@@ -44,7 +44,7 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 | `COMMIT_SHA` | git SHA (CI or manual) |
 | `BUILD_TIMESTAMP` | ISO timestamp |
 | `DATABASE_URL` | 🔒 From Postgres plugin (`postgresql+asyncpg://...`) |
-| `DB_SSL_REQUIRE` | `true` for Railway Postgres |
+| `DB_SSL_REQUIRE` | `true` for Railway Postgres (encrypts; does not verify the self-signed chain) |
 | `DESCOPE_PROJECT_ID` | `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (test project) |
 | `DESCOPE_AUDIENCE` | Optional audience override (defaults to project ID) |
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |

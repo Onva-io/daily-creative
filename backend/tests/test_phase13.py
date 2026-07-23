@@ -58,6 +58,19 @@ def test_staging_settings_accept_valid_config(monkeypatch: pytest.MonkeyPatch) -
     assert settings.resolved_descope_audience == "P123"
 
 
+def test_db_ssl_require_uses_unverified_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    import ssl
+
+    from app.db.session import connect_args
+
+    monkeypatch.setenv("DB_SSL_REQUIRE", "true")
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    args = connect_args(settings)
+    assert isinstance(args["ssl"], ssl.SSLContext)
+    assert args["ssl"].verify_mode == ssl.CERT_NONE
+    assert args["ssl"].check_hostname is False
+
+
 @pytest.mark.asyncio
 async def test_request_body_size_limit_returns_413() -> None:
     app = create_app()

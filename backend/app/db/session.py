@@ -1,5 +1,6 @@
 """Async SQLAlchemy engine and session helpers."""
 
+import ssl
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import MetaData
@@ -29,14 +30,23 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
-def _connect_args(settings: Settings) -> dict[str, object]:
+def connect_args(settings: Settings) -> dict[str, object]:
+    """Connect args for asyncpg (statement timeout + optional SSL).
+
+    ``DB_SSL_REQUIRE`` matches libpq ``sslmode=require``: encrypt the connection
+    without verifying the server certificate. Managed providers such as Railway
+    Postgres use a self-signed chain that fails default verification.
+    """
     args: dict[str, object] = {
         "server_settings": {
             "statement_timeout": str(settings.db_statement_timeout_ms),
         }
     }
     if settings.db_ssl_require:
-        args["ssl"] = True
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        args["ssl"] = context
     return args
 
 
@@ -49,7 +59,7 @@ def create_engine(settings: Settings | None = None) -> AsyncEngine:
         max_overflow=resolved.db_max_overflow,
         pool_timeout=resolved.db_pool_timeout_seconds,
         pool_recycle=resolved.db_pool_recycle_seconds,
-        connect_args=_connect_args(resolved),
+        connect_args=connect_args(resolved),
     )
 
 
