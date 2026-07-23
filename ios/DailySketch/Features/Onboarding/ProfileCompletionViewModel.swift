@@ -6,7 +6,7 @@ import Observation
 final class ProfileCompletionViewModel {
     var username: String = ""
     var displayName: String = ""
-    var enableReminder: Bool = false
+    var enableReminder: Bool = true
     var isSaving: Bool = false
     var errorMessage: String?
     var usernameHint: String?
