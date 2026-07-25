@@ -77,6 +77,10 @@ class StorageAdapter(Protocol):
         """Verify storage connectivity."""
         ...
 
+    async def ensure_bucket(self) -> None:
+        """Create the configured bucket when missing (idempotent)."""
+        ...
+
     def derivative_key(self, *, original_key: str, kind: str) -> str:
         """Derive a stable object key for a display or thumbnail derivative."""
         ...

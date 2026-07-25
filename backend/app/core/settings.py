@@ -244,9 +244,14 @@ class Settings(BaseSettings):
 
     @property
     def resolved_storage_public_endpoint(self) -> str:
-        if self.storage_public_endpoint:
-            return self.storage_public_endpoint
-        return self.storage_endpoint
+        endpoint = self.storage_public_endpoint or self.storage_endpoint
+        # Explicit :443/:80 in the endpoint becomes part of the signed Host header
+        # and can break client PUTs that omit the default port.
+        if endpoint.endswith(":443"):
+            return endpoint[:-4]
+        if endpoint.startswith("http://") and endpoint.endswith(":80"):
+            return endpoint[:-3]
+        return endpoint
 
 
 @lru_cache

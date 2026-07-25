@@ -98,5 +98,8 @@ class InMemoryStorageAdapter:
     async def ping(self) -> bool:
         return True
 
+    async def ensure_bucket(self) -> None:
+        return None
+
     def has_object(self, key: str) -> bool:
         return key in self._objects

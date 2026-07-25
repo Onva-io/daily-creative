@@ -38,8 +38,33 @@ class MinioStorageAdapter:
             aws_secret_access_key=self._settings.storage_secret_key,
             region_name=self._settings.storage_region,
             use_ssl=self._settings.storage_use_ssl,
+            # Path-style matches local MinIO and Railway's legacy bucket proxy.
+            # Newer Railway Buckets (storage.railway.app) require virtual-hosted URLs.
             config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
         )
+
+    async def ensure_bucket(self) -> None:
+        """Create the configured bucket when missing (idempotent).
+
+        Local Compose uses ``mc mb``; Railway bucket proxies do not. Without this,
+        signed client PUTs hit NoSuchBucket and iOS surfaces NSURLError -1005.
+        """
+        try:
+            await asyncio.to_thread(partial(self._client.head_bucket, Bucket=self._bucket))
+            return
+        except ClientError as exc:
+            code = str(exc.response.get("Error", {}).get("Code", ""))
+            http_status = int(exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode") or 0)
+            if code not in {"404", "NoSuchBucket", "NotFound"} and http_status != 404:
+                raise
+
+        try:
+            await asyncio.to_thread(partial(self._client.create_bucket, Bucket=self._bucket))
+        except ClientError as exc:
+            code = str(exc.response.get("Error", {}).get("Code", ""))
+            if code in {"BucketAlreadyOwnedByYou", "BucketAlreadyExists"}:
+                return
+            raise
 
     async def create_signed_upload(
         self,

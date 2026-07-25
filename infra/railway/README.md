@@ -47,7 +47,7 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 | `DESCOPE_AUDIENCE` | Optional audience override (defaults to project ID) |
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |
 | `STORAGE_ENDPOINT` | `https://s3.REGION.amazonaws.com` |
-| `STORAGE_PUBLIC_ENDPOINT` | CloudFront or S3 URL for signed reads |
+| `STORAGE_PUBLIC_ENDPOINT` | Public bucket/S3 URL for signed client PUTs/GETs (not the API host; no `:443`) |
 | `STORAGE_REGION` | e.g. `eu-west-1` |
 | `STORAGE_BUCKET` | See media options below |
 | `STORAGE_ACCESS_KEY` | 🔒 IAM access key |
@@ -61,18 +61,18 @@ Never paste production Descope, moderation, or storage credentials into Railway 
 
 ## Media storage
 
-Railway does not host object storage. Use AWS S3:
+**Option A — Railway Bucket (current shared test setup)**
 
-**Option A — dedicated test bucket (recommended)**
+1. Add a Railway **Bucket** to the project and wire credentials into the API service (`STORAGE_ENDPOINT`, `STORAGE_PUBLIC_ENDPOINT`, `STORAGE_BUCKET`, keys, region).
+2. `STORAGE_PUBLIC_ENDPOINT` must be the **public** bucket URL (e.g. `https://bucket-….up.railway.app`) — **not** the API host. Omit an explicit `:443` port.
+3. Ensure the S3 bucket **name** in `STORAGE_BUCKET` actually exists on that endpoint. The API calls `ensure_bucket` on startup; you can also create it once with the AWS CLI / boto3 against the public endpoint (path-style). A missing bucket makes iOS direct PUTs fail with `NSURLErrorDomain -1005` (“network connection was lost”).
+4. This adapter uses **path-style** addressing, which matches Railway’s legacy bucket proxy. Newer Railway Buckets on `storage.railway.app` require virtual-hosted URLs — switch addressing if you migrate.
 
-- Bucket name e.g. `dailycreative-railway-media`
-- Block public access; IAM user with `s3:PutObject`, `GetObject`, `DeleteObject`, `ListBucket` on `users/*` prefix
+**Option B — AWS S3**
+
+- Bucket e.g. `dailycreative-railway-media`, block public access; IAM user with `s3:PutObject`, `GetObject`, `DeleteObject`, `ListBucket` on `users/*`
 - Store `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` in Railway secrets
-
-**Option B — shared staging bucket**
-
-- Reuse the Terraform staging bucket with a **separate** IAM user limited to a prefix or the whole bucket
-- Keeps media near AWS staging/production patterns but mixes test data with staging — use only if intentional
+- Or reuse the Terraform staging bucket with a separate IAM user (mixes test/staging media)
 
 Originals must not be exposed via public CDN; if using CloudFront for test, apply the same display/thumbnail-only rules as Terraform.
 
