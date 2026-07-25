@@ -250,6 +250,72 @@ final class SketchFlowViewModelTests: XCTestCase {
         XCTAssertNil(flow.reviewViewModel)
     }
 
+    func testReopenDraftDoesNotAutoPublish() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let fileName = try imageStore.write(makeTestJPEGData())
+        let draft = LocalDraft(
+            id: UUID(),
+            localSessionId: UUID(),
+            serverSessionId: UUID(),
+            promptId: prompt.id,
+            promptWords: prompt.words,
+            promptAccessibilityLabel: prompt.accessibilityLabel,
+            promptDate: prompt.promptDate,
+            timerMode: "countdown",
+            selectedTimerSeconds: 180,
+            sessionStartedAt: Date(),
+            imageFileName: fileName,
+            caption: "pending",
+            createdAt: Date(),
+            updatedAt: Date(),
+            pendingAuthentication: false,
+            pendingPublication: true
+        )
+        try draftStore.save(draft)
+
+        let profile = CurrentUserProfile(
+            id: UUID(),
+            username: "sketchy",
+            displayName: "Sketcher",
+            profileCompleted: true,
+            status: "active"
+        )
+        let auth = AuthSessionStore(
+            authService: MockAuthService(),
+            meFetcher: RecordingMeFetcher(profile: profile)
+        )
+        await auth.signIn(displayName: "Sketcher")
+        XCTAssertTrue(auth.isAuthenticated)
+        XCTAssertFalse(auth.needsProfileCompletion)
+
+        let flow = SketchFlowViewModel(
+            auth: auth,
+            preferencesService: RecordingMeFetcher(profile: profile),
+            guestTimerStore: InMemoryGuestTimerPreferenceStore(),
+            activeSessionStore: InMemoryActiveSessionStore(),
+            sessionService: RecordingSketchSessionRepository(),
+            draftStore: draftStore,
+            imageStore: imageStore,
+            cameraAuthorizer: FakeCameraAuthorizer()
+        )
+        flow.reopenDraft(draft)
+
+        XCTAssertTrue(flow.showsReviewSubmission)
+        XCTAssertNotNil(flow.reviewViewModel)
+        XCTAssertFalse(flow.reviewViewModel?.isPublishing ?? true)
+        XCTAssertNil(flow.reviewViewModel?.publishErrorMessage)
+
+        // Give a publish Task a chance to start if reopenDraft wrongly called retryPublish.
+        let deadline = Date().addingTimeInterval(0.2)
+        while Date() < deadline {
+            await Task.yield()
+        }
+        XCTAssertFalse(flow.reviewViewModel?.isPublishing ?? true)
+        XCTAssertNil(flow.reviewViewModel?.publishErrorMessage)
+        XCTAssertTrue(flow.showsReviewSubmission)
+    }
+
     private func makeTestJPEGData() -> Data {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
         let image = renderer.image { context in

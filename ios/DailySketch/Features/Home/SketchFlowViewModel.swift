@@ -334,10 +334,8 @@ final class SketchFlowViewModel {
         guard let target else { return }
         do {
             let data = try imageStore.readData(fileName: target.imageFileName)
+            // Present Review only; auth/profile resume uses resumePendingPublishIfNeeded().
             presentReview(for: target, imageData: data)
-            if target.pendingPublication, auth.isAuthenticated, !auth.needsProfileCompletion {
-                reviewViewModel?.retryPublish()
-            }
         } catch {
             syncBannerMessage = "Couldn’t open that Draft."
         }
