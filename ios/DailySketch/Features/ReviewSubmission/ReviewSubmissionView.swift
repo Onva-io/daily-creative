@@ -140,7 +140,7 @@ struct ReviewSubmissionView: View {
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.textTertiary)
 
-            PromptGroup(
+            PromptCardStack(
                 words: model.draft.promptWords,
                 accessibilityLabel: model.draft.promptAccessibilityLabel
             )
