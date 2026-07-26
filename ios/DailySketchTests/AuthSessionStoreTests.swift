@@ -105,6 +105,24 @@ final class AuthSessionStoreTests: XCTestCase {
         XCTAssertEqual(second.currentUser?.displayName, "Persisted")
     }
 
+    func testValidAccessTokenReturnsRefreshedTokenWhileAuthenticated() async {
+        let meFetcher = RecordingMeFetcher(
+            profile: CurrentUserProfile(
+                id: UUID(),
+                username: nil,
+                displayName: "Ada",
+                profileCompleted: true,
+                status: "active"
+            )
+        )
+        let store = AuthSessionStore(authService: MockAuthService(), meFetcher: meFetcher)
+        await store.signIn(displayName: "Ada")
+
+        let token = await store.validAccessToken()
+        XCTAssertEqual(token, store.accessToken)
+        XCTAssertNotNil(token)
+    }
+
     func testApplyExternalSessionSuccessMarksAuthenticatedAndNeedsProfileCompletion() async throws {
         let meFetcher = RecordingMeFetcher(
             profile: CurrentUserProfile(

@@ -42,7 +42,7 @@ final class ReviewSubmissionViewModel {
     private let sessionService: (any SketchSessionServing)?
     private let directUploader: (any DirectUploadTransporting)?
     private let publishedStore: (any PublishedSubmissionStoring)?
-    private let accessTokenProvider: () -> String?
+    private let accessTokenProvider: () async -> String?
     private let isAuthenticated: () -> Bool
     private let canPublish: () -> Bool
     private let dateProvider: any DateProviding
@@ -61,7 +61,7 @@ final class ReviewSubmissionViewModel {
         sessionService: (any SketchSessionServing)? = nil,
         directUploader: (any DirectUploadTransporting)? = nil,
         publishedStore: (any PublishedSubmissionStoring)? = nil,
-        accessTokenProvider: @escaping () -> String? = { nil },
+        accessTokenProvider: @escaping () async -> String? = { nil },
         isAuthenticated: @escaping () -> Bool,
         canPublish: @escaping () -> Bool = { true },
         dateProvider: any DateProviding = SystemDateProvider(),
@@ -199,7 +199,7 @@ final class ReviewSubmissionViewModel {
                 onFinished(.needsProfileCompletion)
                 return
             }
-            guard let token = accessTokenProvider(),
+            guard let token = await accessTokenProvider(),
                   let uploadService,
                   let submissionService else {
                 throw PublicationAPIError.underlying("Publishing is not configured.")

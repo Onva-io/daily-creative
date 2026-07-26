@@ -376,7 +376,7 @@ final class SketchFlowViewModel {
             sessionService: sessionService,
             directUploader: directUploader,
             publishedStore: publishedStore,
-            accessTokenProvider: { [weak self] in self?.auth.accessToken },
+            accessTokenProvider: { [weak self] in await self?.auth.validAccessToken() },
             isAuthenticated: { [weak self] in self?.auth.isAuthenticated ?? false },
             canPublish: { [weak self] in
                 guard let self else { return false }
@@ -457,7 +457,8 @@ final class SketchFlowViewModel {
         analytics?.track(.sketchSessionStarted, properties: ["timer_mode": option.mode])
         model.startTicking()
 
-        guard !isGuest, let token = auth.accessToken else { return }
+        guard !isGuest else { return }
+        guard let token = await auth.validAccessToken() else { return }
 
         do {
             let created = try await sessionService.createSession(
@@ -500,7 +501,7 @@ final class SketchFlowViewModel {
             lifecycle: lifecycle,
             syncPending: syncPending,
             isGuest: isGuest,
-            accessTokenProvider: { [weak self] in self?.auth.accessToken },
+            accessTokenProvider: { [weak self] in await self?.auth.validAccessToken() },
             sessionService: sessionService,
             activeSessionStore: activeSessionStore,
             dateProvider: dateProvider,

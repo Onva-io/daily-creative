@@ -5,7 +5,7 @@
 
 | Control | Status | Evidence |
 | --- | --- | --- |
-| Descope configuration | Pass (local placeholders) / Owner gate (staging/prod) | `Settings.validate_remote_environment` rejects any `replace-me` substring in staging/production |
+| Descope configuration | Pass (local placeholders) / Owner gate (staging/prod) | `Settings.validate_remote_environment` rejects any `replace-me` substring in staging/production. Owner should set **Refresh Token Timeout = 30 days** in Descope Project Settings → Session Management (see `docs/ops/staging.md`). |
 | JWT validation | Pass | `app/auth/jwt.py`; optional auth soft-fails to anonymous for public reads |
 | Storage policy | Pass | Private bucket, signed PUT/GET only, no credentials in iOS |
 | Signed URL expiry | Pass | Create + `POST .../refresh-signed-upload`; expiry settings validated ≥60s |

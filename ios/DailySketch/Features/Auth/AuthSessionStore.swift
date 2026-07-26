@@ -50,6 +50,30 @@ final class AuthSessionStore {
         authService.usesMockAuthentication
     }
 
+    /// Refreshes the session JWT when needed and returns a usable access token.
+    /// Returns `nil` (and clears auth) when the refresh token itself has expired.
+    func validAccessToken() async -> String? {
+        guard case .authenticated(let session) = state else { return nil }
+        do {
+            let refreshed = try await authService.refreshIfNeeded(session)
+            if refreshed.accessToken != session.accessToken {
+                state = .authenticated(session: refreshed)
+                DailyCreativeAPITokenBridge.setBearerToken(refreshed.accessToken)
+            }
+            return refreshed.accessToken
+        } catch let error as AuthServiceError where error == .sessionExpired {
+            await handleExpiredSession()
+            return nil
+        } catch {
+            return session.accessToken
+        }
+    }
+
+    /// Quietly refreshes an authenticated session (e.g. when returning to the foreground).
+    func refreshSessionIfNeeded() async {
+        _ = await validAccessToken()
+    }
+
     func bootstrap() async {
         guard let session = await authService.restoreSession() else {
             state = .guest

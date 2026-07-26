@@ -43,6 +43,7 @@ Use Railway when you need a **stable HTTPS URL** for iOS Release Staging builds,
 
 - **API:** `https://daily-creative-production.up.railway.app`
 - **Descope:** project `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (wired in `ios/Config/*/Release-Staging.xcconfig`)
+  - In the Descope Console for this project (and production when configured): **Project Settings → Session Management → Refresh Token Timeout = 30 days**. Session token timeout can stay short (e.g. 10–60 minutes); the iOS app refreshes it on foreground and before authenticated sketch/story API calls.
 - Postgres: Railway plugin
 - Media: AWS S3 (`dailysketch-railway-media` or shared staging bucket via IAM keys in Railway secrets)
 - Migrations: `scripts/start.sh` runs `alembic upgrade head` before uvicorn; local one-offs need the public DB URL (see Railway README)

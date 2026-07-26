@@ -4,6 +4,7 @@ import UserNotifications
 @main
 struct DailySketchApp: App {
     @State private var dependencies = AppDependencies.live
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let memoryCapacity = 32 * 1024 * 1024
@@ -26,6 +27,10 @@ struct DailySketchApp: App {
                     dependencies.analytics.track(.appOpened)
                     await dependencies.auth.bootstrap()
                     await dependencies.hydrateUserPreferences()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+                    Task { await dependencies.auth.refreshSessionIfNeeded() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
                     Task { await dependencies.hydrateUserPreferences() }

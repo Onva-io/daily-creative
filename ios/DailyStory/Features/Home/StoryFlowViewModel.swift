@@ -182,7 +182,7 @@ final class StoryFlowViewModel {
         option: TimerPreferenceOption,
         remember: Bool
     ) async {
-        guard let token = auth.accessToken else {
+        guard let token = await auth.validAccessToken() else {
             authSheetMode = .signUp
             showsAuthSheet = true
             return

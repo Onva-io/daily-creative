@@ -34,7 +34,7 @@ final class SketchSessionViewModel {
     private var tickTask: Task<Void, Never>?
     private var didEmitTimerCompleted = false
 
-    private let accessTokenProvider: () -> String?
+    private let accessTokenProvider: () async -> String?
     private let sessionService: any SketchSessionServing
     private let activeSessionStore: any ActiveSessionStoring
     private let dateProvider: any DateProviding
@@ -55,7 +55,7 @@ final class SketchSessionViewModel {
         lifecycle: ActiveSessionLifecycle = .active,
         syncPending: Bool = false,
         isGuest: Bool,
-        accessTokenProvider: @escaping () -> String?,
+        accessTokenProvider: @escaping () async -> String?,
         sessionService: any SketchSessionServing,
         activeSessionStore: any ActiveSessionStoring,
         dateProvider: any DateProviding = SystemDateProvider(),
@@ -294,7 +294,7 @@ final class SketchSessionViewModel {
     }
 
     private func postEvent(_ eventType: String) async {
-        guard let serverSessionId, let token = accessTokenProvider() else { return }
+        guard let serverSessionId, let token = await accessTokenProvider() else { return }
         do {
             _ = try await sessionService.postEvent(
                 accessToken: token,
@@ -308,7 +308,7 @@ final class SketchSessionViewModel {
     }
 
     private func abandonRemote() async {
-        guard let serverSessionId, let token = accessTokenProvider() else { return }
+        guard let serverSessionId, let token = await accessTokenProvider() else { return }
         do {
             _ = try await sessionService.abandonSession(
                 accessToken: token,

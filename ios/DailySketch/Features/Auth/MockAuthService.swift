@@ -89,7 +89,8 @@ final class MockAuthService: AuthServing {
         return session
     }
 
-    static func mintToken(subject: String, name: String, expiresIn: TimeInterval = 60 * 60 * 24 * 7) throws -> String {
+    /// Local-dev access tokens last 30 days so mock sessions match the Descope refresh-token target.
+    static func mintToken(subject: String, name: String, expiresIn: TimeInterval = 60 * 60 * 24 * 30) throws -> String {
         let header = base64URL(["alg": "HS256", "typ": "JWT"])
         let now = Int(Date().timeIntervalSince1970)
         let payload = base64URL([

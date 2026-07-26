@@ -45,6 +45,8 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 | `DB_SSL_REQUIRE` | `true` for Railway Postgres (encrypts; does not verify the self-signed chain) |
 | `DESCOPE_PROJECT_ID` | `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (test project) |
 | `DESCOPE_AUDIENCE` | Optional audience override (defaults to project ID) |
+
+In the Descope Console for this test project, set **Project Settings → Session Management → Refresh Token Timeout** to **30 days** so signed-in sessions survive multi-week gaps between opens.
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |
 | `STORAGE_ENDPOINT` | `https://s3.REGION.amazonaws.com` |
 | `STORAGE_PUBLIC_ENDPOINT` | Public bucket/S3 URL for signed client PUTs/GETs (not the API host; no `:443`) |
