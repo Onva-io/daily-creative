@@ -54,6 +54,9 @@ final class HomeViewModelTests: XCTestCase {
         fetcher: RecordingPromptFetcher,
         publishedStore: any PublishedSubmissionStoring = InMemoryPublishedSubmissionStore(),
         socialService: any SocialServing = RecordingSocialRepository(),
+        homeCacheStore: any HomeCacheStoring = InMemoryHomeCacheStore(),
+        networkMonitor: any NetworkMonitoring = FixedNetworkMonitor(isOnline: true),
+        dateProvider: any DateProviding = SystemDateProvider(),
         isAuthenticated: @escaping () -> Bool = { false },
         accessTokenProvider: @escaping () -> String? = { nil }
     ) -> HomeViewModel {
@@ -62,10 +65,11 @@ final class HomeViewModelTests: XCTestCase {
             feedFetcher: fetcher,
             socialService: socialService,
             publishedStore: publishedStore,
-            homeCacheStore: InMemoryHomeCacheStore(),
-            networkMonitor: FixedNetworkMonitor(isOnline: true),
+            homeCacheStore: homeCacheStore,
+            networkMonitor: networkMonitor,
             analytics: InMemoryAnalyticsClient(),
             sketchFlow: makeSketchFlow(),
+            dateProvider: dateProvider,
             isAuthenticated: isAuthenticated,
             accessTokenProvider: accessTokenProvider
         )
@@ -408,6 +412,178 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(
             RelativeTimestampFormatter.string(from: now.addingTimeInterval(-7_200), now: now),
             "2h ago"
+        )
+    }
+
+    func testFreshCacheShowsWordsImmediately() throws {
+        let now = Date(timeIntervalSince1970: 1_784_376_000)
+        let clock = ControllableDateProvider(now: now)
+        let cache = InMemoryHomeCacheStore()
+        try cache.save(
+            CachedHomeSnapshot(
+                prompt: samplePrompt(),
+                feedItems: [],
+                nextFeedCursor: nil,
+                cachedAt: now.addingTimeInterval(-5 * 60)
+            )
+        )
+        let model = makeModel(
+            fetcher: RecordingPromptFetcher(),
+            homeCacheStore: cache,
+            dateProvider: clock
+        )
+
+        guard case .loaded(let prompt) = model.promptState else {
+            return XCTFail("Fresh cache should show words immediately")
+        }
+        XCTAssertEqual(prompt.words, ["Chocolate", "Coffee", "Banana"])
+        XCTAssertTrue(model.canStartSketch)
+    }
+
+    func testStaleCacheHidesWordsUntilRefresh() async throws {
+        let now = Date(timeIntervalSince1970: 1_784_376_000)
+        let clock = ControllableDateProvider(now: now)
+        let cache = InMemoryHomeCacheStore()
+        try cache.save(
+            CachedHomeSnapshot(
+                prompt: samplePrompt(),
+                feedItems: [],
+                nextFeedCursor: nil,
+                cachedAt: now.addingTimeInterval(-16 * 60)
+            )
+        )
+        let fetcher = RecordingPromptFetcher()
+        fetcher.prompt = samplePrompt(words: ("Moon", "River", "Lantern"))
+        let model = makeModel(
+            fetcher: fetcher,
+            homeCacheStore: cache,
+            dateProvider: clock
+        )
+
+        XCTAssertEqual(model.promptState, .loading)
+        XCTAssertFalse(model.canStartSketch)
+        XCTAssertEqual(model.cachedPrompt?.word1, "Chocolate")
+
+        await model.load()
+
+        guard case .loaded(let prompt) = model.promptState else {
+            return XCTFail("Expected refreshed prompt")
+        }
+        XCTAssertEqual(prompt.words, ["Moon", "River", "Lantern"])
+        XCTAssertEqual(fetcher.todaysPromptCallCount, 1)
+    }
+
+    func testUTCDayBoundaryHidesCachedWords() throws {
+        // 23:50 UTC on day D, cache written; now is 00:10 UTC next day.
+        let cachedAt = Date(timeIntervalSince1970: 1_784_332_800 - 10 * 60)
+        let now = Date(timeIntervalSince1970: 1_784_332_800 + 10 * 60)
+        let clock = ControllableDateProvider(now: now)
+        let cache = InMemoryHomeCacheStore()
+        try cache.save(
+            CachedHomeSnapshot(
+                prompt: samplePrompt(),
+                feedItems: [],
+                nextFeedCursor: nil,
+                cachedAt: cachedAt
+            )
+        )
+        let model = makeModel(
+            fetcher: RecordingPromptFetcher(),
+            homeCacheStore: cache,
+            dateProvider: clock
+        )
+
+        XCTAssertEqual(model.promptState, .loading)
+        XCTAssertFalse(model.canStartSketch)
+    }
+
+    func testOfflineKeepsStaleCachedWords() throws {
+        let now = Date(timeIntervalSince1970: 1_784_376_000)
+        let clock = ControllableDateProvider(now: now)
+        let cache = InMemoryHomeCacheStore()
+        try cache.save(
+            CachedHomeSnapshot(
+                prompt: samplePrompt(),
+                feedItems: [],
+                nextFeedCursor: nil,
+                cachedAt: now.addingTimeInterval(-60 * 60)
+            )
+        )
+        let model = makeModel(
+            fetcher: RecordingPromptFetcher(),
+            homeCacheStore: cache,
+            networkMonitor: FixedNetworkMonitor(isOnline: false),
+            dateProvider: clock
+        )
+
+        guard case .loaded(let prompt) = model.promptState else {
+            return XCTFail("Offline should keep showing cached inspiration")
+        }
+        XCTAssertEqual(prompt.word1, "Chocolate")
+        XCTAssertTrue(model.canStartSketch)
+    }
+
+    func testForegroundResumeHidesStaleWordsAndRefreshes() async {
+        let clock = ControllableDateProvider(now: Date(timeIntervalSince1970: 1_784_376_000))
+        let fetcher = RecordingPromptFetcher()
+        fetcher.prompt = samplePrompt()
+        let model = makeModel(fetcher: fetcher, dateProvider: clock)
+
+        await model.load()
+        XCTAssertEqual(fetcher.todaysPromptCallCount, 1)
+        guard case .loaded = model.promptState else {
+            return XCTFail("Expected loaded prompt after initial load")
+        }
+
+        clock.advance(by: 16 * 60)
+        fetcher.prompt = samplePrompt(words: ("Oak", "Ink", "Sky"))
+
+        await model.handleSceneBecameActive()
+
+        guard case .loaded(let prompt) = model.promptState else {
+            return XCTFail("Expected refreshed prompt after foreground")
+        }
+        XCTAssertEqual(prompt.words, ["Oak", "Ink", "Sky"])
+        XCTAssertEqual(fetcher.todaysPromptCallCount, 2)
+    }
+
+    func testForegroundResumeSkipsFreshPrompt() async {
+        let clock = ControllableDateProvider(now: Date(timeIntervalSince1970: 1_784_376_000))
+        let fetcher = RecordingPromptFetcher()
+        fetcher.prompt = samplePrompt()
+        let model = makeModel(fetcher: fetcher, dateProvider: clock)
+
+        await model.load()
+        clock.advance(by: 5 * 60)
+        await model.handleSceneBecameActive()
+
+        XCTAssertEqual(fetcher.todaysPromptCallCount, 1)
+    }
+
+    func testPromptFreshnessRules() {
+        let now = Date(timeIntervalSince1970: 1_784_376_000)
+        XCTAssertFalse(
+            PromptFreshness.shouldHideCachedPrompt(
+                cachedAt: now.addingTimeInterval(-5 * 60),
+                promptDate: now,
+                now: now
+            )
+        )
+        XCTAssertTrue(
+            PromptFreshness.shouldHideCachedPrompt(
+                cachedAt: now.addingTimeInterval(-15 * 60),
+                promptDate: now,
+                now: now
+            )
+        )
+        let beforeMidnight = Date(timeIntervalSince1970: 1_784_332_800 - 60)
+        let afterMidnight = Date(timeIntervalSince1970: 1_784_332_800 + 60)
+        XCTAssertTrue(
+            PromptFreshness.shouldHideCachedPrompt(
+                cachedAt: beforeMidnight,
+                promptDate: beforeMidnight,
+                now: afterMidnight
+            )
         )
     }
 }

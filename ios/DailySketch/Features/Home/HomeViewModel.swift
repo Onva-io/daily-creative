@@ -25,11 +25,14 @@ final class HomeViewModel {
     private let homeCacheStore: any HomeCacheStoring
     private let networkMonitor: any NetworkMonitoring
     private let analytics: any AnalyticsTracking
+    private let dateProvider: any DateProviding
     private let isAuthenticated: () -> Bool
     private let accessTokenProvider: () -> String?
     let sketchFlow: SketchFlowViewModel
     private let feedPageSize = 20
     private var likeInFlightIDs: Set<UUID> = []
+    private var lastPromptSyncedAt: Date?
+    private var didCompleteInitialLoad = false
 
     init(
         promptFetcher: any PromptFetching,
@@ -40,6 +43,7 @@ final class HomeViewModel {
         networkMonitor: any NetworkMonitoring,
         analytics: any AnalyticsTracking,
         sketchFlow: SketchFlowViewModel,
+        dateProvider: any DateProviding = SystemDateProvider(),
         isAuthenticated: @escaping () -> Bool = { false },
         accessTokenProvider: @escaping () -> String? = { nil }
     ) {
@@ -51,13 +55,18 @@ final class HomeViewModel {
         self.networkMonitor = networkMonitor
         self.analytics = analytics
         self.sketchFlow = sketchFlow
+        self.dateProvider = dateProvider
         self.isAuthenticated = isAuthenticated
         self.accessTokenProvider = accessTokenProvider
         restoreCachedHomeSnapshot()
     }
 
     var canStartSketch: Bool {
-        loadedPrompt != nil
+        if case .loaded = promptState {
+            return true
+        }
+        // Offline: allow sketching from a restored cache even when online refresh hid it.
+        return isOffline && cachedPrompt != nil
     }
 
     var hasSketchedToday: Bool {
@@ -106,6 +115,7 @@ final class HomeViewModel {
         async let promptLoad: Void = loadPrompt()
         async let feedLoad: Void = loadFeed(reset: true)
         _ = await (promptLoad, feedLoad)
+        didCompleteInitialLoad = true
         analytics.track(.feedViewed)
     }
 
@@ -115,6 +125,18 @@ final class HomeViewModel {
         async let promptLoad: Void = loadPrompt()
         async let feedLoad: Void = loadFeed(reset: true)
         _ = await (promptLoad, feedLoad)
+    }
+
+    /// Called when the app returns to the foreground. Hides stale inspiration immediately
+    /// (15+ minutes asleep or UTC Prompt Date boundary crossed), then refreshes.
+    func handleSceneBecameActive() async {
+        guard didCompleteInitialLoad else { return }
+        guard shouldHideCachedPromptWhileRefreshing() else { return }
+        if networkMonitor.isOnline {
+            promptState = .loading
+            isRefreshingPrompt = false
+        }
+        await refresh()
     }
 
     func refreshPublishedToday() {
@@ -235,8 +257,20 @@ final class HomeViewModel {
     private func restoreCachedHomeSnapshot() {
         guard let snapshot = try? homeCacheStore.load() else { return }
         cachedPrompt = snapshot.prompt
+        lastPromptSyncedAt = snapshot.cachedAt
         if let prompt = snapshot.prompt {
-            promptState = .loaded(prompt)
+            let hideStale = PromptFreshness.shouldHideCachedPrompt(
+                cachedAt: snapshot.cachedAt,
+                promptDate: prompt.promptDate,
+                now: dateProvider.now()
+            )
+            // Online + stale: keep cache for offline fallback but show the loading skeleton
+            // so yesterday's (or aged) words never flash before refresh.
+            if hideStale && networkMonitor.isOnline {
+                promptState = .loading
+            } else {
+                promptState = .loaded(prompt)
+            }
         }
         if !snapshot.feedItems.isEmpty {
             feedItems = snapshot.feedItems
@@ -250,21 +284,33 @@ final class HomeViewModel {
             prompt: cachedPrompt,
             feedItems: feedItems,
             nextFeedCursor: nextFeedCursor,
-            cachedAt: Date()
+            cachedAt: lastPromptSyncedAt ?? dateProvider.now()
         )
         try? homeCacheStore.save(snapshot)
     }
 
+    private func shouldHideCachedPromptWhileRefreshing() -> Bool {
+        guard networkMonitor.isOnline else { return false }
+        guard let lastPromptSyncedAt else { return cachedPrompt != nil }
+        return PromptFreshness.shouldHideCachedPrompt(
+            cachedAt: lastPromptSyncedAt,
+            promptDate: cachedPrompt?.promptDate,
+            now: dateProvider.now()
+        )
+    }
+
     private func loadPrompt() async {
         syncOfflineState()
-        if let cachedPrompt {
+        let hideStale = shouldHideCachedPromptWhileRefreshing()
+        if let cachedPrompt, !hideStale {
             promptState = .loaded(cachedPrompt)
-        } else {
+        } else if hideStale || cachedPrompt == nil {
             promptState = .loading
         }
 
         guard networkMonitor.isOnline else {
-            if cachedPrompt != nil {
+            if let cachedPrompt {
+                promptState = .loaded(cachedPrompt)
                 isRefreshingPrompt = false
             } else {
                 promptState = .failed("Couldn’t load today’s prompt while offline.")
@@ -272,23 +318,29 @@ final class HomeViewModel {
             return
         }
 
-        isRefreshingPrompt = cachedPrompt != nil
+        // Soft refresh banner only when we keep showing the current words.
+        isRefreshingPrompt = !hideStale && cachedPrompt != nil
         defer { isRefreshingPrompt = false }
 
         do {
             let prompt = try await promptFetcher.fetchTodaysPrompt()
             cachedPrompt = prompt
+            lastPromptSyncedAt = dateProvider.now()
             promptState = .loaded(prompt)
             refreshPublishedToday()
             analytics.track(.promptViewed, properties: ["prompt_id": prompt.id.uuidString])
             persistHomeCache()
         } catch let error as PromptAPIError where error == .promptNotFound {
             cachedPrompt = nil
+            lastPromptSyncedAt = dateProvider.now()
             promptState = .missing
             todaysPublished = []
             persistHomeCache()
         } catch {
-            if cachedPrompt == nil {
+            if let cachedPrompt {
+                // Fetch failed after clearing stale words — restore cache rather than empty.
+                promptState = .loaded(cachedPrompt)
+            } else {
                 promptState = .failed(error.localizedDescription)
             }
         }

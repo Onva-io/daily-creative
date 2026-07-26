@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: HomeViewModel?
     @State private var showsDiscardDraftConfirmation = false
 
@@ -36,6 +37,10 @@ struct HomeView: View {
         }
         .onChange(of: dependencies.networkMonitor.isOnline) { _, _ in
             viewModel?.syncOfflineState()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await viewModel?.handleSceneBecameActive() }
         }
     }
 

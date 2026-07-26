@@ -21,10 +21,13 @@ final class StoryHomeViewModel {
     private let homeCacheStore: any HomeCacheStoring
     private let networkMonitor: any NetworkMonitoring
     private let analytics: any AnalyticsTracking
+    private let dateProvider: any DateProviding
     private let isAuthenticated: () -> Bool
     private let accessTokenProvider: () -> String?
     private let feedPageSize = 20
     private var likeInFlightIDs: Set<UUID> = []
+    private var lastPromptSyncedAt: Date?
+    private var didCompleteInitialLoad = false
 
     init(
         promptFetcher: any PromptFetching,
@@ -34,6 +37,7 @@ final class StoryHomeViewModel {
         homeCacheStore: any HomeCacheStoring,
         networkMonitor: any NetworkMonitoring,
         analytics: any AnalyticsTracking,
+        dateProvider: any DateProviding = SystemDateProvider(),
         isAuthenticated: @escaping () -> Bool = { false },
         accessTokenProvider: @escaping () -> String? = { nil }
     ) {
@@ -44,6 +48,7 @@ final class StoryHomeViewModel {
         self.homeCacheStore = homeCacheStore
         self.networkMonitor = networkMonitor
         self.analytics = analytics
+        self.dateProvider = dateProvider
         self.isAuthenticated = isAuthenticated
         self.accessTokenProvider = accessTokenProvider
         restoreCachedHomeSnapshot()
@@ -78,10 +83,26 @@ final class StoryHomeViewModel {
         async let promptLoad: Void = loadPrompt()
         async let feedLoad: Void = loadFeed(reset: true)
         _ = await (promptLoad, feedLoad)
+        didCompleteInitialLoad = true
     }
 
     func refresh() async {
-        await load()
+        syncOfflineState()
+        refreshPublishedToday()
+        async let promptLoad: Void = loadPrompt()
+        async let feedLoad: Void = loadFeed(reset: true)
+        _ = await (promptLoad, feedLoad)
+    }
+
+    /// Called when the app returns to the foreground. Hides stale inspiration immediately
+    /// (15+ minutes asleep or UTC Prompt Date boundary crossed), then refreshes.
+    func handleSceneBecameActive() async {
+        guard didCompleteInitialLoad else { return }
+        guard shouldHideCachedPromptWhileRefreshing() else { return }
+        if networkMonitor.isOnline {
+            promptState = .loading
+        }
+        await refresh()
     }
 
     func retryPrompt() async {
@@ -173,18 +194,37 @@ final class StoryHomeViewModel {
     }
 
     private func loadPrompt() async {
-        if loadedPrompt == nil {
+        let hideStale = shouldHideCachedPromptWhileRefreshing()
+        if let cached = cachedPrompt, !hideStale {
+            promptState = .loaded(cached)
+        } else if hideStale || cachedPrompt == nil {
             promptState = .loading
         }
+
+        guard networkMonitor.isOnline else {
+            if let cachedPrompt {
+                promptState = .loaded(cachedPrompt)
+            } else if loadedPrompt == nil {
+                promptState = .failed("Couldn’t load today’s prompt while offline.")
+            }
+            return
+        }
+
         do {
             let prompt = try await promptFetcher.fetchTodaysPrompt()
             cachedPrompt = prompt
+            lastPromptSyncedAt = dateProvider.now()
             promptState = .loaded(prompt)
             persistHomeCache()
         } catch let error as PromptAPIError where error == .promptNotFound {
+            cachedPrompt = nil
+            lastPromptSyncedAt = dateProvider.now()
             promptState = .missing
+            persistHomeCache()
         } catch {
-            if loadedPrompt == nil {
+            if let cachedPrompt {
+                promptState = .loaded(cachedPrompt)
+            } else if loadedPrompt == nil {
                 promptState = .failed(error.localizedDescription)
             }
         }
@@ -239,8 +279,18 @@ final class StoryHomeViewModel {
     private func restoreCachedHomeSnapshot() {
         guard let snapshot = try? homeCacheStore.load() else { return }
         cachedPrompt = snapshot.prompt
+        lastPromptSyncedAt = snapshot.cachedAt
         if let prompt = snapshot.prompt {
-            promptState = .loaded(prompt)
+            let hideStale = PromptFreshness.shouldHideCachedPrompt(
+                cachedAt: snapshot.cachedAt,
+                promptDate: prompt.promptDate,
+                now: dateProvider.now()
+            )
+            if hideStale && networkMonitor.isOnline {
+                promptState = .loading
+            } else {
+                promptState = .loaded(prompt)
+            }
         }
         feedItems = snapshot.feedItems
         nextFeedCursor = snapshot.nextFeedCursor
@@ -254,8 +304,18 @@ final class StoryHomeViewModel {
             prompt: cachedPrompt,
             feedItems: feedItems,
             nextFeedCursor: nextFeedCursor,
-            cachedAt: Date()
+            cachedAt: lastPromptSyncedAt ?? dateProvider.now()
         )
         try? homeCacheStore.save(snapshot)
+    }
+
+    private func shouldHideCachedPromptWhileRefreshing() -> Bool {
+        guard networkMonitor.isOnline else { return false }
+        guard let lastPromptSyncedAt else { return cachedPrompt != nil }
+        return PromptFreshness.shouldHideCachedPrompt(
+            cachedAt: lastPromptSyncedAt,
+            promptDate: cachedPrompt?.promptDate,
+            now: dateProvider.now()
+        )
     }
 }
