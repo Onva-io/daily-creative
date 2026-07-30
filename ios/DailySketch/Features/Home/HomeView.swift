@@ -318,6 +318,14 @@ struct HomeView: View {
                     : "Starts today’s timed sketch session"
             )
 
+            if !dependencies.auth.isAuthenticated {
+                SecondaryButton(title: "Sign In") {
+                    model.authSheetMode = .signIn
+                    model.showsAuthSheet = true
+                }
+                .accessibilityLabel("Sign In")
+            }
+
             if let draft = model.sketchFlow.recoverableDraft {
                 DraftCardView(
                     draft: draft,

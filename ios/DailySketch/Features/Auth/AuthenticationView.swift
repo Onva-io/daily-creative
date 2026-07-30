@@ -8,8 +8,9 @@ struct AuthenticationView: View {
     @State private var step: DescopeStep = .email
     @State private var isSendingOTP = false
     @State private var otpError: String?
+    @State private var mode: Mode
 
-    var mode: Mode = .signUp
+    private let initialMode: Mode
 
     enum Mode: Hashable {
         case signUp
@@ -19,6 +20,11 @@ struct AuthenticationView: View {
     private enum DescopeStep {
         case email
         case code
+    }
+
+    init(mode: Mode = .signUp) {
+        initialMode = mode
+        _mode = State(initialValue: mode)
     }
 
     var body: some View {
@@ -88,6 +94,9 @@ struct AuthenticationView: View {
         .navigationTitle(mode == .signUp ? "Create Account" : "Sign In")
         .navigationBarTitleDisplayMode(.inline)
         .disabled(isBusy)
+        .onAppear {
+            mode = initialMode
+        }
     }
 
     private var isBusy: Bool {
@@ -114,6 +123,10 @@ struct AuthenticationView: View {
         }
     }
 
+    private var alternateModeButtonTitle: String {
+        mode == .signUp ? "Sign In" : "Create Account"
+    }
+
     @ViewBuilder
     private var mockAuthContent: some View {
         VStack(spacing: AppSpacing.md) {
@@ -131,6 +144,10 @@ struct AuthenticationView: View {
                 Task { await retryAuthentication() }
             }
             .accessibilityLabel(mode == .signUp ? "Create Free Account" : "Sign In")
+
+            TertiaryTextButton(title: alternateModeButtonTitle) {
+                switchToAlternateMode()
+            }
         }
     }
 
@@ -166,6 +183,10 @@ struct AuthenticationView: View {
             Task { await signInWithApple() }
         }, systemImage: "apple.logo")
         .accessibilityLabel("Continue with Apple")
+
+        TertiaryTextButton(title: alternateModeButtonTitle) {
+            switchToAlternateMode()
+        }
     }
 
     @ViewBuilder
@@ -213,6 +234,13 @@ struct AuthenticationView: View {
     private var isValidOTPCode: Bool {
         let digits = otpCode.filter(\.isNumber)
         return digits.count >= 6
+    }
+
+    private func switchToAlternateMode() {
+        mode = mode == .signUp ? .signIn : .signUp
+        step = .email
+        otpCode = ""
+        otpError = nil
     }
 
     private func sendOTP() async {
