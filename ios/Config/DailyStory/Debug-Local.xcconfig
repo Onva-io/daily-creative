@@ -1,6 +1,6 @@
 #include "../Base.xcconfig"
 
-PRODUCT_BUNDLE_IDENTIFIER = com.example.dailystory.dev
+PRODUCT_BUNDLE_IDENTIFIER = com.codebrewery.dailycreative.story.dev
 API_BASE_URL = http:/$()/localhost:8000
 APP_ENVIRONMENT = local
 DESCOPE_PROJECT_ID = replace-me

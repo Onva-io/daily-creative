@@ -1,6 +1,6 @@
 #include "../Base.xcconfig"
 
-PRODUCT_BUNDLE_IDENTIFIER = com.example.dailystory.staging
+PRODUCT_BUNDLE_IDENTIFIER = com.codebrewery.dailycreative.story.staging
 API_BASE_URL = https:/$()/daily-creative-staging.up.railway.app
 APP_ENVIRONMENT = staging
 DESCOPE_PROJECT_ID = P3GtbG5aJKoUuefcaA8DfyMzA0nK

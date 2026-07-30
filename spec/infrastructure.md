@@ -974,17 +974,17 @@ Canonical project settings:
 - primary Xcode product/module name: `DailySketch`;
 - minimum supported operating system: **iOS 18.0**.
 
-The production bundle identifier and Apple Developer Team ID remain deployment-specific values and must not be invented or hard-coded throughout the project. Until the owner supplies final values:
+Bundle identifiers and the Apple Developer Team ID are defined centrally through `.xcconfig` and XcodeGen settings:
 
-- define bundle identifiers centrally through `.xcconfig` or equivalent build settings;
-- use clearly marked non-production placeholders such as `com.example.dailysketch.dev`;
+- Daily Sketch production: `com.codebrewery.dailycreative.sketch`
+- Daily Sketch non-production: `com.codebrewery.dailycreative.sketch.dev`, `.development`, `.staging`
+- Daily Story production: `com.codebrewery.dailycreative.story` (with matching env suffixes)
 - keep Development, Staging, and Production bundle identifiers distinct;
 - inject the Apple Team ID through local or CI signing configuration;
 - never commit signing certificates, provisioning profiles, private keys, or App Store Connect secrets.
 
 Before production release, the owner must provide and verify:
 
-- final production bundle identifier;
 - Apple Developer Team ID;
 - App Store Connect application record;
 - support URL;

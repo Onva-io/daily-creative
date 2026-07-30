@@ -13,7 +13,7 @@ final class NetworkPathMonitorService: NetworkMonitoring {
     private(set) var isOnline = true
 
     private let monitor: NWPathMonitor
-    private let queue = DispatchQueue(label: "com.example.dailysketch.network-path")
+    private let queue = DispatchQueue(label: "com.codebrewery.dailycreative.network-path")
 
     init(monitor: NWPathMonitor = NWPathMonitor()) {
         self.monitor = monitor

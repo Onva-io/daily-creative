@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 enum CrashReportingClient {
-    private static let logger = Logger(subsystem: "com.example.dailysketch", category: "crash")
+    private static let logger = Logger(subsystem: "com.codebrewery.dailycreative", category: "crash")
 
     static func start() {
         guard let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,

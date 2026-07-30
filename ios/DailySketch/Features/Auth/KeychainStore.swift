@@ -3,7 +3,7 @@ import Security
 
 /// Minimal Keychain wrapper for persisting auth session material.
 enum KeychainStore {
-    private static let service = "com.example.dailysketch.dev.auth"
+    private static let service = "com.codebrewery.dailycreative.sketch.dev.auth"
 
     static func save(account: String, data: Data) throws {
         let query: [String: Any] = [
