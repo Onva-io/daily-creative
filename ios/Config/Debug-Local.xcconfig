@@ -1,6 +1,6 @@
 #include "Base.xcconfig"
 
-PRODUCT_BUNDLE_IDENTIFIER = com.codebrewery.dailycreative.sketch.dev
+PRODUCT_BUNDLE_IDENTIFIER = com.codebrewery.dailycreatives.sketch.dev
 API_BASE_URL = http:/$()/localhost:8000
 APP_ENVIRONMENT = local
 DESCOPE_PROJECT_ID = replace-me

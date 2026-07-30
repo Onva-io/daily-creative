@@ -4,7 +4,7 @@ SWIFT_VERSION = 6.0
 MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
 
-DEVELOPMENT_TEAM = TGX22822SP
+DEVELOPMENT_TEAM = 547PA5L58A
 
 // Policy HTML is served by the backend so App Store / in-app links match gated copy.
 // Replace hostnames per environment xcconfig. Support email is required by Guideline 1.2.

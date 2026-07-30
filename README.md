@@ -241,7 +241,7 @@ Credentials are local placeholders only — see `.env.example`. Never commit rea
 - Display name: **Daily Sketch**
 - Module: `DailySketch`
 - Minimum iOS: **18.0**
-- Bundle ID: `com.codebrewery.dailycreative.sketch.dev` (local); production is `com.codebrewery.dailycreative.sketch`
+- Bundle ID: `com.codebrewery.dailycreatives.sketch.dev` (local); production is `com.codebrewery.dailycreatives.sketch`
 - Apple Team ID is not committed; set `DEVELOPMENT_TEAM` locally when needed
 - Debug builds use `API_BASE_URL=http://localhost:8000`, `APP_ENVIRONMENT=local`, and `DESCOPE_PROJECT_ID=replace-me`
 

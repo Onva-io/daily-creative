@@ -976,9 +976,9 @@ Canonical project settings:
 
 Bundle identifiers and the Apple Developer Team ID are defined centrally through `.xcconfig` and XcodeGen settings:
 
-- Daily Sketch production: `com.codebrewery.dailycreative.sketch`
-- Daily Sketch non-production: `com.codebrewery.dailycreative.sketch.dev`, `.development`, `.staging`
-- Daily Story production: `com.codebrewery.dailycreative.story` (with matching env suffixes)
+- Daily Sketch production: `com.codebrewery.dailycreatives.sketch`
+- Daily Sketch non-production: `com.codebrewery.dailycreatives.sketch.dev`, `.development`, `.staging`
+- Daily Story production: `com.codebrewery.dailycreatives.story` (with matching env suffixes)
 - keep Development, Staging, and Production bundle identifiers distinct;
 - inject the Apple Team ID through local or CI signing configuration;
 - never commit signing certificates, provisioning profiles, private keys, or App Store Connect secrets.

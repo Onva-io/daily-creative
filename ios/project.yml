@@ -1,6 +1,6 @@
 name: DailySketch
 options:
-  bundleIdPrefix: com.codebrewery.dailycreative
+  bundleIdPrefix: com.codebrewery.dailycreatives
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -74,10 +74,12 @@ targets:
       Debug-Development: Config/Debug-Development.xcconfig
       Release-Staging: Config/Release-Staging.xcconfig
       Release-Production: Config/Release-Production.xcconfig
-    # Sign in with Apple entitlement requires a paid Apple Developer Program team.
-    # Personal teams cannot provision com.apple.developer.applesignin — omit until enrolled.
     entitlements:
       path: DailySketch/Resources/DailySketch.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        com.apple.security.application-groups:
+          - group.com.codebrewery.dailycreatives.sketch
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
@@ -92,7 +94,7 @@ targets:
         CODE_SIGNING_REQUIRED: "NO"
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: TGX22822SP
+        DEVELOPMENT_TEAM: 547PA5L58A
         PROVISIONING_PROFILE_SPECIFIER: ""
   DailyStory:
     type: application
@@ -150,9 +152,12 @@ targets:
       Debug-Development: Config/DailyStory/Debug-Development.xcconfig
       Release-Staging: Config/DailyStory/Release-Staging.xcconfig
       Release-Production: Config/DailyStory/Release-Production.xcconfig
-    # Sign in with Apple entitlement requires a paid Apple Developer Program team.
     entitlements:
       path: DailyStory/Resources/DailyStory.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+        com.apple.security.application-groups:
+          - group.com.codebrewery.dailycreatives.story
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
@@ -167,7 +172,7 @@ targets:
         CODE_SIGNING_REQUIRED: "NO"
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: TGX22822SP
+        DEVELOPMENT_TEAM: 547PA5L58A
         PROVISIONING_PROFILE_SPECIFIER: ""
   DailySketchTests:
     type: bundle.unit-test
@@ -183,7 +188,7 @@ targets:
       Release-Production: Config/Release-Production.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreative.sketch.dev.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreatives.sketch.dev.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DailySketch.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/DailySketch"
         BUNDLE_LOADER: "$(TEST_HOST)"
@@ -201,7 +206,7 @@ targets:
       Release-Production: Config/Release-Production.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreative.sketch.dev.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreatives.sketch.dev.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: DailySketch
 schemes:

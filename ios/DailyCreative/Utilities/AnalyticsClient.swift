@@ -86,7 +86,7 @@ final class AnalyticsClient: AnalyticsTracking, @unchecked Sendable {
 
     private let lock = NSLock()
     nonisolated(unsafe) private var buffer: [AnalyticsRecord] = []
-    private let logger = Logger(subsystem: "com.codebrewery.dailycreative", category: "analytics")
+    private let logger = Logger(subsystem: "com.codebrewery.dailycreatives", category: "analytics")
     private let maxRecords = 500
 
     func track(_ name: AnalyticsEventName, properties: [String: String] = [:]) {
