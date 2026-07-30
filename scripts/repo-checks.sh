@@ -79,4 +79,6 @@ while IFS= read -r -d '' file; do
   exit 1
 done
 
+bash "${ROOT}/scripts/check-ios-config.sh"
+
 echo "Repository checks passed."

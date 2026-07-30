@@ -3,7 +3,8 @@
 PRODUCT_BUNDLE_IDENTIFIER = com.codebrewery.dailycreatives.sketch
 API_BASE_URL = https:/$()/daily-creative-production.up.railway.app
 APP_ENVIRONMENT = production
-DESCOPE_PROJECT_ID = replace-me-production
+// Temporary: reuse staging Descope project until a dedicated production project exists.
+DESCOPE_PROJECT_ID = P3GtbG5aJKoUuefcaA8DfyMzA0nK
 ANALYTICS_ENVIRONMENT = production
 LOGGING_LEVEL = warning
 SHOW_ENVIRONMENT_BADGE = NO

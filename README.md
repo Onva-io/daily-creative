@@ -194,7 +194,7 @@ Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoU
 
 - **Contract:** `GET /api/v1/me` returns the current local user (id, username, display name, profile completion, account status, preferences summary). Requires `Authorization: Bearer <Descope JWT>`.
 - **Backend:** Verifies Descope session JWTs with the official `descope` Python SDK (`DESCOPE_PROJECT_ID`; optional `DESCOPE_AUDIENCE`), provisions a local `users` row on first login (idempotent by `descope_subject`), and rejects suspended/deleted accounts.
-- **Local mock auth:** When `DESCOPE_PROJECT_ID=replace-me` (the committed placeholder), the iOS app uses `MockAuthService` and the backend accepts matching HS256 local-dev JWTs so guest → sign-in → `GET /me` works without real Descope credentials. Replace placeholders with a development Descope project ID to use Descope Flows.
+- **Local mock auth:** When `DESCOPE_PROJECT_ID=replace-me` (the committed placeholder) **and** `APP_ENVIRONMENT` is `local` or `development`, the iOS app uses `MockAuthService` and the backend accepts matching HS256 local-dev JWTs so guest → sign-in → `GET /me` works without real Descope credentials. Staging/production builds refuse placeholders (`make ios-config-check` / Xcode pre-build script, plus a launch-time precondition). Replace Debug placeholders with a development Descope project ID to use Descope Flows.
 - **iOS:** Guest launch is unchanged. Profile offers Create Free Account / Sign In. Sessions persist in Keychain. Settings offers Sign Out (local Drafts are preserved).
 - **Secrets:** Never commit real Descope management secrets. Project ID is public configuration only.
 
@@ -221,7 +221,8 @@ Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoU
 | `make api-validate` | Validate OpenAPI (needs host `backend-install` once) |
 | `make api-generate-ios` | Regenerate Swift client |
 | `make api-check-generated` | Fail if generated client is stale |
-| `make repo-checks` | Spec presence, migration names, large-file policy |
+| `make repo-checks` | Spec presence, migration names, large-file policy, iOS release config |
+| `make ios-config-check` | Fail if Release-* xcconfigs use placeholders or localhost URLs |
 | `make docker-build` | Build production backend image |
 | `make ios-generate` / `ios-build` / `ios-test` | XcodeGen + simulator (`IOS_ENV`, `IOS_APP`) |
 | `make clean-local` | Remove Compose volumes and local caches |
@@ -244,6 +245,7 @@ Credentials are local placeholders only — see `.env.example`. Never commit rea
 - Bundle ID: `com.codebrewery.dailycreatives.sketch.dev` (local); production is `com.codebrewery.dailycreatives.sketch`
 - Apple Team ID is not committed; set `DEVELOPMENT_TEAM` locally when needed
 - Debug builds use `API_BASE_URL=http://localhost:8000`, `APP_ENVIRONMENT=local`, and `DESCOPE_PROJECT_ID=replace-me`
+- Release Staging/Production builds require real `DESCOPE_PROJECT_ID` (and non-localhost HTTPS URLs); `make ios-config-check` and the Xcode “Check Release Config” build phase reject placeholders before archive
 
 ## OpenAPI workflow
 

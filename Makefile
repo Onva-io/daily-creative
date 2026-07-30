@@ -1,6 +1,6 @@
 .PHONY: help up down logs backend-install backend-run backend-test backend-lint backend-typecheck \
 	backend-shell db-migrate db-revision db-check db-reset seed api-validate api-generate-ios api-check-generated test clean-local \
-	repo-checks docker-build ios-generate ios-build ios-test \
+	repo-checks ios-config-check docker-build ios-generate ios-build ios-test \
 	ios-build-local ios-build-development ios-build-staging ios-build-production \
 	ios-test-local ios-test-development ios-test-staging ios-test-production \
 	account-deletion-finalize \
@@ -36,7 +36,7 @@ help:
 	@echo "  job-* cleanup targets / jobs-dry-run / perf-profile"
 	@echo "  backup-postgres / restore-postgres BACKUP=path"
 	@echo "  api-validate / api-generate-ios / api-check-generated"
-	@echo "  repo-checks / docker-build / ios-generate / ios-build / ios-test / test"
+	@echo "  repo-checks / ios-config-check / docker-build / ios-generate / ios-build / ios-test / test"
 	@echo "  ios-build|test with IOS_ENV=local|development|staging|production (IOS_APP=DailySketch|DailyStory)"
 
 up:
@@ -166,6 +166,9 @@ api-check-generated:
 
 repo-checks:
 	bash $(ROOT)/scripts/repo-checks.sh
+
+ios-config-check:
+	bash $(ROOT)/scripts/check-ios-config.sh
 
 docker-build:
 	$(PROD_COMPOSE) build backend

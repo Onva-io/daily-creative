@@ -20,6 +20,14 @@ struct AppEnvironment: Equatable, Sendable {
         case development
         case staging
         case production
+
+        /// Mock auth is a local development affordance and must never reach a shipped build.
+        var allowsMockAuthentication: Bool {
+            switch self {
+            case .local, .development: return true
+            case .staging, .production: return false
+            }
+        }
     }
 
     let kind: Kind
@@ -43,6 +51,12 @@ struct AppEnvironment: Equatable, Sendable {
         let descopeProjectID = Bundle.main.object(forInfoDictionaryKey: "DESCOPE_PROJECT_ID") as? String
             ?? ProcessInfo.processInfo.environment["DESCOPE_PROJECT_ID"]
             ?? DescopeConfig.placeholderProjectID
+
+        if !kind.allowsMockAuthentication, DescopeConfig.isPlaceholderProjectID(descopeProjectID) {
+            preconditionFailure(
+                "DESCOPE_PROJECT_ID must be configured for \(kind.rawValue) builds (got '\(descopeProjectID)'). Mock authentication is not allowed outside local/development."
+            )
+        }
 
         return AppEnvironment(kind: kind, apiBaseURL: url, descopeProjectID: descopeProjectID)
     }

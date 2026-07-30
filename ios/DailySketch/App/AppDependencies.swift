@@ -182,7 +182,7 @@ final class AppDependencies {
         let cameraAuthorizer = SystemCameraAuthorizer()
         let projectID = environment.descopeProjectID
 
-        if DescopeConfig.isPlaceholderProjectID(projectID) {
+        if environment.kind.allowsMockAuthentication, DescopeConfig.isPlaceholderProjectID(projectID) {
             let authService = MockAuthService()
             let auth = AuthSessionStore(
                 authService: authService,
@@ -213,6 +213,12 @@ final class AppDependencies {
                 draftTextStore: draftTextStore,
                 publishedSubmissionStore: publishedSubmissionStore,
                 cameraAuthorizer: cameraAuthorizer
+            )
+        }
+
+        if DescopeConfig.isPlaceholderProjectID(projectID) {
+            preconditionFailure(
+                "DESCOPE_PROJECT_ID must be configured for \(environment.kind.rawValue) builds. Mock authentication is not allowed."
             )
         }
 

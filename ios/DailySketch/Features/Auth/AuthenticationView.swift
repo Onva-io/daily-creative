@@ -122,7 +122,7 @@ struct AuthenticationView: View {
                 .textInputAutocapitalization(.words)
                 .accessibilityLabel("Display name")
 
-            Text("Local mock authentication is active because DESCOPE_PROJECT_ID is unset.")
+            Text("Local development authentication is active (DESCOPE_PROJECT_ID is a placeholder).")
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)

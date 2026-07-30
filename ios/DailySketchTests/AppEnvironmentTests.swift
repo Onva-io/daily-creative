@@ -13,4 +13,20 @@ final class AppEnvironmentTests: XCTestCase {
         XCTAssertEqual(environment.apiBaseURL.port, 8000)
         XCTAssertEqual(environment.descopeProjectID, "replace-me")
     }
+
+    func testAllowsMockAuthenticationOnlyForLocalAndDevelopment() {
+        XCTAssertTrue(AppEnvironment.Kind.local.allowsMockAuthentication)
+        XCTAssertTrue(AppEnvironment.Kind.development.allowsMockAuthentication)
+        XCTAssertFalse(AppEnvironment.Kind.staging.allowsMockAuthentication)
+        XCTAssertFalse(AppEnvironment.Kind.production.allowsMockAuthentication)
+    }
+
+    func testIsPlaceholderProjectID() {
+        XCTAssertTrue(DescopeConfig.isPlaceholderProjectID(""))
+        XCTAssertTrue(DescopeConfig.isPlaceholderProjectID("   "))
+        XCTAssertTrue(DescopeConfig.isPlaceholderProjectID("replace-me"))
+        XCTAssertTrue(DescopeConfig.isPlaceholderProjectID("replace-me-production"))
+        XCTAssertTrue(DescopeConfig.isPlaceholderProjectID("replace-me-development"))
+        XCTAssertFalse(DescopeConfig.isPlaceholderProjectID("P3GtbG5aJKoUuefcaA8DfyMzA0nK"))
+    }
 }

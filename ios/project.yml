@@ -74,6 +74,11 @@ targets:
       Debug-Development: Config/Debug-Development.xcconfig
       Release-Staging: Config/Release-Staging.xcconfig
       Release-Production: Config/Release-Production.xcconfig
+    preBuildScripts:
+      - name: Check Release Config
+        script: |
+          "$SRCROOT/../scripts/check-ios-config.sh" "$CONFIGURATION"
+        basedOnDependencyAnalysis: false
     entitlements:
       path: DailySketch/Resources/DailySketch.entitlements
       properties:
@@ -152,6 +157,11 @@ targets:
       Debug-Development: Config/DailyStory/Debug-Development.xcconfig
       Release-Staging: Config/DailyStory/Release-Staging.xcconfig
       Release-Production: Config/DailyStory/Release-Production.xcconfig
+    preBuildScripts:
+      - name: Check Release Config
+        script: |
+          "$SRCROOT/../scripts/check-ios-config.sh" "$CONFIGURATION"
+        basedOnDependencyAnalysis: false
     entitlements:
       path: DailyStory/Resources/DailyStory.entitlements
       properties:

@@ -886,6 +886,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B9BD8F72ABFE6D97B895DAB7 /* Build configuration list for PBXNativeTarget "DailySketch" */;
 			buildPhases = (
+				FC513AFD579AA2E31BA4DAA4 /* Check Release Config */,
 				83240C485A95CE1CD14B63D4 /* Sources */,
 				DFBEFD4DEE528E66C6BF5D11 /* Resources */,
 				984DA5E6AFE4E100EC6A1619 /* Frameworks */,
@@ -907,6 +908,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5C3CDDF61CB0E53C47EF3248 /* Build configuration list for PBXNativeTarget "DailyStory" */;
 			buildPhases = (
+				321A44B5090DCF2A45BB636E /* Check Release Config */,
 				585A2A4FDEE1964C522D351D /* Sources */,
 				2F610E38C1897D6F56B18584 /* Resources */,
 				F64875E8B3A8BE1F2D511249 /* Frameworks */,
@@ -1032,6 +1034,47 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		321A44B5090DCF2A45BB636E /* Check Release Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Release Config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/../scripts/check-ios-config.sh\" \"$CONFIGURATION\"\n";
+		};
+		FC513AFD579AA2E31BA4DAA4 /* Check Release Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check Release Config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/../scripts/check-ios-config.sh\" \"$CONFIGURATION\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		585A2A4FDEE1964C522D351D /* Sources */ = {
