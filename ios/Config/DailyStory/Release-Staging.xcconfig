@@ -1,7 +1,7 @@
 #include "../Base.xcconfig"
 
 PRODUCT_BUNDLE_IDENTIFIER = com.example.dailystory.staging
-API_BASE_URL = https:/$()/daily-creative-production.up.railway.app
+API_BASE_URL = https:/$()/daily-creative-staging.up.railway.app
 APP_ENVIRONMENT = staging
 DESCOPE_PROJECT_ID = P3GtbG5aJKoUuefcaA8DfyMzA0nK
 ANALYTICS_ENVIRONMENT = staging
@@ -13,10 +13,10 @@ COMMUNITY_TITLE = Community Stories
 START_ACTION_TITLE = Start Writing
 REQUIRES_CAMERA = NO
 DAILY_REMINDER_NOTIFICATION_ID = daily-story.daily-reminder
-PRIVACY_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/privacy/html
-TERMS_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/terms/html
-COMMUNITY_GUIDELINES_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/community_guidelines/html
-SUPPORT_URL = https:/$()/daily-creative-production.up.railway.app/support
+PRIVACY_URL = https:/$()/daily-creative-staging.up.railway.app/api/v1/policies/privacy/html
+TERMS_URL = https:/$()/daily-creative-staging.up.railway.app/api/v1/policies/terms/html
+COMMUNITY_GUIDELINES_URL = https:/$()/daily-creative-staging.up.railway.app/api/v1/policies/community_guidelines/html
+SUPPORT_URL = https:/$()/daily-creative-staging.up.railway.app/support
 
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = PRODUCT_STORY
 SWIFT_COMPILATION_MODE = wholemodule
