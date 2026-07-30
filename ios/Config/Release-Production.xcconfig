@@ -1,15 +1,15 @@
 #include "Base.xcconfig"
 
 PRODUCT_BUNDLE_IDENTIFIER = com.example.dailysketch
-API_BASE_URL = https:/$()/api.dailycreative.example
+API_BASE_URL = https:/$()/daily-creative-production.up.railway.app
 APP_ENVIRONMENT = production
 DESCOPE_PROJECT_ID = replace-me-production
 ANALYTICS_ENVIRONMENT = production
 LOGGING_LEVEL = warning
 SHOW_ENVIRONMENT_BADGE = NO
-PRIVACY_URL = https:/$()/api.dailycreative.example/api/v1/policies/privacy/html
-TERMS_URL = https:/$()/api.dailycreative.example/api/v1/policies/terms/html
-COMMUNITY_GUIDELINES_URL = https:/$()/api.dailycreative.example/api/v1/policies/community_guidelines/html
+PRIVACY_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/privacy/html
+TERMS_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/terms/html
+COMMUNITY_GUIDELINES_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/community_guidelines/html
 SUPPORT_URL = https:/$()/dailycreative.app/support
 SUPPORT_EMAIL = support@dailycreative.app
 
