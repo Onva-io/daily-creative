@@ -1,20 +1,27 @@
 """Seed draft (and optionally publish) initial policy documents.
 
 Usage:
-  python -m app.seeds.policies
-  python -m app.seeds.policies --publish
+  python -m app.seeds.policies              # draft only
+  python -m app.seeds.policies --publish    # draft and force-publish (fresh database)
+  python -m app.seeds.policies --bootstrap  # idempotent; run on every deploy
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.settings import get_settings
 from app.models.policy import PolicyKind
-from app.services.policies import PolicyService
+from app.observability.metrics import send_alert
+from app.services.policies import PolicySeedDocument, PolicyService
+
+# Serializes bootstrap across replicas booting at the same time.
+_BOOTSTRAP_LOCK_KEY = 815_432_101
 
 TERMS_BODY = """# Terms of Service (Draft — legal review required)
 
@@ -70,55 +77,102 @@ Violations may result in content removal, temporary suspension, or permanent acc
 """
 
 
+SEED_DOCUMENTS: tuple[PolicySeedDocument, ...] = (
+    PolicySeedDocument(
+        kind=PolicyKind.terms,
+        version="1.0.0",
+        title="Terms of Service",
+        body_markdown=TERMS_BODY,
+        minimum_age=13,
+        is_significant_change=True,
+        change_summary="Initial public terms including acceptable use and age eligibility.",
+    ),
+    PolicySeedDocument(
+        kind=PolicyKind.privacy,
+        version="1.0.0",
+        title="Privacy Policy",
+        body_markdown=PRIVACY_BODY,
+        minimum_age=13,
+        is_significant_change=True,
+        change_summary="Initial privacy policy covering account, content, and age data.",
+    ),
+    PolicySeedDocument(
+        kind=PolicyKind.community_guidelines,
+        version="1.0.0",
+        title="Community Guidelines",
+        body_markdown=GUIDELINES_BODY,
+        minimum_age=13,
+        is_significant_change=True,
+        change_summary="Initial community guidelines and reporting expectations.",
+    ),
+)
+
+
 async def seed_policies(*, publish: bool) -> None:
     settings = get_settings()
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     async with session_factory() as session:
         service = PolicyService(session, settings=settings)
-        drafts = [
-            (
-                PolicyKind.terms,
-                "1.0.0",
-                "Terms of Service",
-                TERMS_BODY,
-                13,
-                "Initial public terms including acceptable use and age eligibility.",
-            ),
-            (
-                PolicyKind.privacy,
-                "1.0.0",
-                "Privacy Policy",
-                PRIVACY_BODY,
-                13,
-                "Initial privacy policy covering account, content, and age data.",
-            ),
-            (
-                PolicyKind.community_guidelines,
-                "1.0.0",
-                "Community Guidelines",
-                GUIDELINES_BODY,
-                13,
-                "Initial community guidelines and reporting expectations.",
-            ),
-        ]
-        for kind, version, title, body, minimum_age, summary in drafts:
+        for seed in SEED_DOCUMENTS:
             document = await service.create_draft(
-                kind=kind,
-                version=version,
-                title=title,
-                body_markdown=body,
-                minimum_age=minimum_age,
-                is_significant_change=True,
-                change_summary=summary,
+                kind=seed.kind,
+                version=seed.version,
+                title=seed.title,
+                body_markdown=seed.body_markdown,
+                minimum_age=seed.minimum_age,
+                is_significant_change=seed.is_significant_change,
+                change_summary=seed.change_summary,
                 operator_identity="seed",
             )
             if publish:
                 await service.publish(document.id, operator_identity="seed")
-                print(f"Published {kind.value} v{version}")
+                print(f"Published {seed.kind.value} v{seed.version}")
             else:
-                print(f"Drafted {kind.value} v{version} (id={document.id})")
+                print(f"Drafted {seed.kind.value} v{seed.version} (id={document.id})")
     await engine.dispose()
+
+
+async def bootstrap_policies() -> bool:
+    """Publish the seed policy set in environments that have nothing published yet.
+
+    Returns False when bootstrap could not complete, so callers can surface the
+    failure without blocking API startup.
+    """
+    settings = get_settings()
+    if not settings.policy_bootstrap_enabled:
+        print("[policies] POLICY_BOOTSTRAP_ENABLED is false; skipping bootstrap.")
+        return True
+
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    try:
+        async with engine.begin() as lock_connection:
+            await lock_connection.execute(
+                text("SELECT pg_advisory_xact_lock(:key)"),
+                {"key": _BOOTSTRAP_LOCK_KEY},
+            )
+            session_factory = async_sessionmaker(engine, expire_on_commit=False)
+            async with session_factory() as session:
+                outcomes = await PolicyService(session, settings=settings).bootstrap(
+                    SEED_DOCUMENTS,
+                    operator_identity="deploy-bootstrap",
+                )
+        for outcome in outcomes:
+            print(f"[policies] {outcome.kind.value} v{outcome.version}: {outcome.action.value}")
+    except Exception as exc:  # noqa: BLE001 - startup must not fail on bootstrap errors
+        print(f"[policies] Bootstrap failed: {exc}", file=sys.stderr)
+        await send_alert(
+            settings,
+            title="Policy bootstrap failed",
+            detail=(
+                "Consent and age gating stay inactive while no policy documents are "
+                f"published. Error: {exc}"
+            ),
+        )
+        return False
+    finally:
+        await engine.dispose()
+    return True
 
 
 def main() -> None:
@@ -126,9 +180,18 @@ def main() -> None:
     parser.add_argument(
         "--publish",
         action="store_true",
-        help="Publish drafts immediately after create/update",
+        help="Publish drafts immediately after create/update (fresh database only)",
+    )
+    parser.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="Idempotently publish seed policies only for kinds with nothing published",
     )
     args = parser.parse_args()
+    if args.bootstrap:
+        if not asyncio.run(bootstrap_policies()):
+            sys.exit(1)
+        return
     asyncio.run(seed_policies(publish=args.publish))
 
 

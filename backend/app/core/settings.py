@@ -107,6 +107,9 @@ class Settings(BaseSettings):
         alias="MODERATION_OPERATOR_TOKEN",
     )
     moderation_provider: str = Field(default="heuristic", alias="MODERATION_PROVIDER")
+    # Publishes the seed policy set on deploy when a kind has nothing published, so
+    # consent and age gating can never be silently inactive in an environment.
+    policy_bootstrap_enabled: bool = Field(default=True, alias="POLICY_BOOTSTRAP_ENABLED")
     support_email: str = Field(
         default="support@dailycreative.example",
         alias="SUPPORT_EMAIL",

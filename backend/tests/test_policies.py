@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import AsyncGenerator
+from dataclasses import replace
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -21,7 +22,14 @@ from app.db.session import Base, get_db_session
 from app.main import create_app
 from app.models.policy import PolicyKind
 from app.moderation.base import HeuristicModerationAdapter, ModerationTier
-from app.services.policies import PolicyService, age_on
+from app.seeds.policies import SEED_DOCUMENTS
+from app.services.policies import (
+    PolicyBootstrapAction,
+    PolicyBootstrapOutcome,
+    PolicySeedDocument,
+    PolicyService,
+    age_on,
+)
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -241,6 +249,79 @@ async def test_stale_policy_version_conflict(client: AsyncClient) -> None:
     )
     assert stale.status_code == 409
     assert stale.json()["error"]["code"] == "policy_version_stale"
+
+
+async def _bootstrap(
+    session: AsyncSession,
+    documents: tuple[PolicySeedDocument, ...] = SEED_DOCUMENTS,
+) -> list[PolicyBootstrapOutcome]:
+    return await PolicyService(session).bootstrap(documents, operator_identity="test-bootstrap")
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_bootstrap_publishes_seed_policies_on_empty_environment(client: AsyncClient) -> None:
+    session_factory = client.app.state.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        outcomes = await _bootstrap(session)
+
+    assert {outcome.action for outcome in outcomes} == {PolicyBootstrapAction.published}
+
+    response = await client.get("/api/v1/policies/current")
+    assert response.status_code == 200
+    assert len(response.json()["documents"]) == 3
+
+    private_key = client.app.state.test_private_key  # type: ignore[attr-defined]
+    token = mint_token(private_key, subject=f"descope|{uuid.uuid4()}")
+    me = await client.get(
+        "/api/v1/me",
+        params={"creative_type": "sketch"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me.status_code == 200
+    # An environment that skipped bootstrap reported consent_required false, which let
+    # first-time users through without ever seeing the consent gate.
+    assert me.json()["consent"]["consent_required"] is True
+    assert me.json()["consent"]["age_required"] is True
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_bootstrap_is_idempotent_across_restarts(client: AsyncClient) -> None:
+    session_factory = client.app.state.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        await _bootstrap(session)
+    async with session_factory() as session:
+        outcomes = await _bootstrap(session)
+
+    assert {outcome.action for outcome in outcomes} == {PolicyBootstrapAction.unchanged}
+    response = await client.get("/api/v1/policies/current")
+    assert len(response.json()["documents"]) == 3
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_bootstrap_drafts_new_versions_without_publishing_them(client: AsyncClient) -> None:
+    session_factory = client.app.state.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        await _bootstrap(session)
+
+    bumped = tuple(
+        replace(document, version="2.0.0") if document.kind == PolicyKind.terms else document
+        for document in SEED_DOCUMENTS
+    )
+    async with session_factory() as session:
+        outcomes = await _bootstrap(session, bumped)
+
+    actions = {outcome.kind: outcome.action for outcome in outcomes}
+    assert actions[PolicyKind.terms] == PolicyBootstrapAction.drafted
+    assert actions[PolicyKind.privacy] == PolicyBootstrapAction.unchanged
+
+    response = await client.get("/api/v1/policies/current")
+    published_terms = [
+        document for document in response.json()["documents"] if document["kind"] == "terms"
+    ]
+    assert [document["version"] for document in published_terms] == ["1.0.0"]
 
 
 def test_age_on_helper() -> None:

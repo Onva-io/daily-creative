@@ -109,7 +109,7 @@ db-reset:
 seed:
 	$(call run_backend,python -m app.seeds.prompts --days 30)
 	$(call run_backend,python -m app.seeds.safety)
-	$(call run_backend,python -m app.seeds.policies --publish)
+	$(call run_backend,python -m app.seeds.policies --bootstrap)
 
 account-deletion-finalize:
 	$(call run_backend,python -m app.jobs.account_deletion)

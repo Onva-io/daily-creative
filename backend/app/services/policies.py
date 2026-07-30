@@ -5,7 +5,10 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
+from enum import Enum
 from html import escape
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +39,34 @@ from app.core.settings import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 DEFAULT_MINIMUM_AGE = 13
+
+
+@dataclass(frozen=True)
+class PolicySeedDocument:
+    """A policy version that an environment is expected to have available."""
+
+    kind: PolicyKind
+    version: str
+    title: str
+    body_markdown: str
+    minimum_age: int = DEFAULT_MINIMUM_AGE
+    is_significant_change: bool = False
+    change_summary: str | None = None
+
+
+class PolicyBootstrapAction(str, Enum):
+    """What bootstrap did with a single seed document."""
+
+    published = "published"
+    drafted = "drafted"
+    unchanged = "unchanged"
+
+
+@dataclass(frozen=True)
+class PolicyBootstrapOutcome:
+    kind: PolicyKind
+    version: str
+    action: PolicyBootstrapAction
 
 
 def content_hash(body: str) -> str:
@@ -300,6 +331,53 @@ class PolicyService:
         await self._session.commit()
         await self._session.refresh(published)
         return published
+
+    async def bootstrap(
+        self,
+        documents: Sequence[PolicySeedDocument],
+        *,
+        operator_identity: str,
+    ) -> list[PolicyBootstrapOutcome]:
+        """Ensure every seed document exists, publishing only kinds with nothing live.
+
+        Safe to run on every deploy. A kind that already has a published version is
+        never republished, so bumping a seed version leaves a draft for an operator to
+        publish deliberately — significant changes require notifying app stores first
+        (see docs/ops/moderation-sla.md).
+        """
+        outcomes: list[PolicyBootstrapOutcome] = []
+        for seed in documents:
+            existing = await self._documents.get_by_kind_and_version(seed.kind, seed.version)
+            if existing is not None and existing.status != PolicyStatus.draft:
+                outcomes.append(
+                    PolicyBootstrapOutcome(
+                        kind=seed.kind,
+                        version=seed.version,
+                        action=PolicyBootstrapAction.unchanged,
+                    )
+                )
+                continue
+
+            document = await self.create_draft(
+                kind=seed.kind,
+                version=seed.version,
+                title=seed.title,
+                body_markdown=seed.body_markdown,
+                minimum_age=seed.minimum_age,
+                is_significant_change=seed.is_significant_change,
+                change_summary=seed.change_summary,
+                operator_identity=operator_identity,
+            )
+
+            if await self._documents.get_published(seed.kind) is None:
+                await self.publish(document.id, operator_identity=operator_identity)
+                action = PolicyBootstrapAction.published
+            else:
+                action = PolicyBootstrapAction.drafted
+            outcomes.append(
+                PolicyBootstrapOutcome(kind=seed.kind, version=seed.version, action=action)
+            )
+        return outcomes
 
     async def list_documents(self, *, kind: PolicyKind | None = None) -> list[PolicyDocument]:
         return await self._documents.list_all(kind=kind)

@@ -48,10 +48,18 @@ Condensed from `spec/infrastructure.md` §40.
 **SLA:** act on reports within **24 hours**. See [`docs/ops/moderation-sla.md`](moderation-sla.md).
 **Alerts:** `NewContentReport`, `ContentQueuedForReview` when `ALERT_WEBHOOK_URL` is configured.
 
+## Consent gate inactive / no published policies
+
+**Symptoms:** first-time sign-in never shows the consent gate; no date of birth is requested; `/api/v1/policies/{kind}/html` returns 404, breaking App Store legal links.
+**Checks:** `GET /api/v1/policies/current` returns an empty `documents` array. Consent is derived entirely from published documents, so an environment with none reports `consent_required: false` for every user.
+**Mitigation:** `scripts/start.sh` runs `python -m app.seeds.policies --bootstrap` on every boot, which publishes the seed set for any kind with nothing published. Redeploy, or run it manually with `railway run uv run python -m app.seeds.policies --bootstrap`. Confirm `POLICY_BOOTSTRAP_ENABLED` is not set to false.
+**Alerts:** `Policy bootstrap failed` when `ALERT_WEBHOOK_URL` is configured. Bootstrap is deliberately non-fatal, so the API still serves traffic while degraded.
+
 ## Significant policy publish
 
 **Checks:** operator publish with `is_significant_change=true` emits a webhook warning.
 **Mitigation:** notify Apple (and other app stores) **before** users continue, then publish. See moderation-sla.md.
+**Note:** bootstrap never republishes a kind that already has a live version. Bumping a version in `app/seeds/policies.py` only leaves a draft, so going live stays a deliberate operator action via `POST /internal/moderation/policies/{id}/publish`.
 
 ## Credential exposure
 

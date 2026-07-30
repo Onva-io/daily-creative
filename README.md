@@ -213,7 +213,7 @@ Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoU
 | Target | Description |
 | --- | --- |
 | `make up` / `down` / `logs` | Local Docker Compose (hot-reload API, migrate-on-start) |
-| `make seed` | Seed today + future Daily Prompts (and safety samples) |
+| `make seed` | Seed today + future Daily Prompts, safety samples, and bootstrap policy documents |
 | `make backend-shell` | Shell into the running backend container |
 | `make backend-test` / `lint` / `typecheck` | Backend quality gates (Compose, or host `.venv` if present) |
 | `make db-migrate` / `db-revision` / `db-check` / `db-reset` | Alembic upgrade / autogenerate / drift check (reset destroys local volume) |
