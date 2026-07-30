@@ -14,7 +14,7 @@ from app.models.report import ReportTargetType
 
 
 class ModerationActionType(str, enum.Enum):
-    """Operator moderation action kinds."""
+    """Operator and automated moderation action kinds."""
 
     hide_submission = "hide_submission"
     remove_submission = "remove_submission"
@@ -26,6 +26,9 @@ class ModerationActionType(str, enum.Enum):
     restore_user = "restore_user"
     resolve_report = "resolve_report"
     dismiss_report = "dismiss_report"
+    auto_block_content = "auto_block_content"
+    auto_queue_review = "auto_queue_review"
+    publish_policy = "publish_policy"
 
 
 class ModerationAction(Base):

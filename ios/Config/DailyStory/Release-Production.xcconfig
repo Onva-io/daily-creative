@@ -13,6 +13,11 @@ COMMUNITY_TITLE = Community Stories
 START_ACTION_TITLE = Start Writing
 REQUIRES_CAMERA = NO
 DAILY_REMINDER_NOTIFICATION_ID = daily-story.daily-reminder
+PRIVACY_URL = https:/$()/api.dailycreative.example/api/v1/policies/privacy/html
+TERMS_URL = https:/$()/api.dailycreative.example/api/v1/policies/terms/html
+COMMUNITY_GUIDELINES_URL = https:/$()/api.dailycreative.example/api/v1/policies/community_guidelines/html
+SUPPORT_URL = https:/$()/dailycreative.app/support
+SUPPORT_EMAIL = support@dailycreative.app
 
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = PRODUCT_STORY
 SWIFT_COMPILATION_MODE = wholemodule

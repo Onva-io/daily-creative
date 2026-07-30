@@ -7,26 +7,36 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.core.settings import Settings, get_settings
 from app.models.reflection import ReflectionStatus
 from app.models.report import ReportReason, ReportTargetType
 from app.models.creative_publication import PublicationStatus
 from app.models.user import User, UserStatus
+from app.observability.metrics import send_alert
 from app.repositories.reflections import ReflectionRepository
 from app.repositories.reports import ReportRepository
 from app.repositories.publications import PublicationRepository
 from app.repositories.users import UserRepository
 from app.schemas.safety import CreateReportRequest, ReportResponse
 
-CONFIRMATION_MESSAGE = "Thank you. Your report has been received."
+CONFIRMATION_MESSAGE = (
+    "Thank you. Your report has been received. Our team aims to review reports within 24 hours."
+)
 
 
 class ReportService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        settings: Settings | None = None,
+    ) -> None:
         self._session = session
         self._reports = ReportRepository(session)
         self._publications = PublicationRepository(session)
         self._reflections = ReflectionRepository(session)
         self._users = UserRepository(session)
+        self._settings = settings or get_settings()
 
     async def create(self, *, reporter: User, payload: CreateReportRequest) -> ReportResponse:
         target_type = ReportTargetType(payload.target_type.value)
@@ -57,6 +67,14 @@ class ReportService:
             target_id=payload.target_id,
             reason=reason,
             notes=notes,
+        )
+        await send_alert(
+            self._settings,
+            title="New content report",
+            detail=(
+                f"report_id={report.id} type={target_type.value} "
+                f"target={payload.target_id} reason={reason.value}"
+            ),
         )
         return ReportResponse(id=report.id, message=CONFIRMATION_MESSAGE)
 

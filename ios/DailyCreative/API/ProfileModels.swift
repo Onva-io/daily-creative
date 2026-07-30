@@ -88,6 +88,10 @@ enum ProfileAPIError: LocalizedError, Equatable {
     case usernameReserved
     case invalidTimerPreference
     case sessionExpired
+    case underMinimumAge(String)
+    case policyVersionStale
+    case consentRequired
+    case contentRejected(String)
     case underlying(String)
 
     var errorDescription: String? {
@@ -102,6 +106,14 @@ enum ProfileAPIError: LocalizedError, Equatable {
             return "Timer preference mode and seconds are inconsistent."
         case .sessionExpired:
             return AuthServiceError.sessionExpired.localizedDescription
+        case .underMinimumAge(let message):
+            return message
+        case .policyVersionStale:
+            return "A newer policy version is available. Please review it again."
+        case .consentRequired:
+            return "Please review and accept the latest policies to continue."
+        case .contentRejected(let message):
+            return message
         case .underlying(let message):
             return message
         }

@@ -14,6 +14,8 @@ from app.models.daily_prompt import DailyPrompt, PromptStatus
 from app.models.enums import CreativeType, TimerMode
 from app.models.idempotency_key import IdempotencyKey
 from app.models.moderation_action import ModerationAction, ModerationActionType
+from app.models.moderation_review import ModerationReviewItem, ModerationReviewStatus
+from app.models.policy import PolicyAcceptance, PolicyDocument, PolicyKind, PolicyStatus
 from app.models.publication_like import PublicationLike, SubmissionLike
 from app.models.reflection import Reflection, ReflectionStatus
 from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
@@ -40,6 +42,12 @@ __all__ = [
     "IdempotencyKey",
     "ModerationAction",
     "ModerationActionType",
+    "ModerationReviewItem",
+    "ModerationReviewStatus",
+    "PolicyAcceptance",
+    "PolicyDocument",
+    "PolicyKind",
+    "PolicyStatus",
     "PromptStatus",
     "PublicationLike",
     "PublicationStatus",

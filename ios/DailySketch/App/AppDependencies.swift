@@ -18,6 +18,7 @@ final class AppDependencies {
     let socialRepository: any SocialServing
     let safetyRepository: any SafetyServing
     let accountDeleter: any AccountDeleting
+    let policyService: any PolicyServing
     let directUploader: any DirectUploadTransporting
     let activeSessionStore: any ActiveSessionStoring
     let guestTimerPreferenceStore: any GuestTimerPreferenceStoring
@@ -48,6 +49,7 @@ final class AppDependencies {
         socialRepository: any SocialServing,
         safetyRepository: any SafetyServing,
         accountDeleter: any AccountDeleting,
+        policyService: any PolicyServing,
         directUploader: any DirectUploadTransporting = URLSessionDirectUploader(),
         activeSessionStore: any ActiveSessionStoring,
         guestTimerPreferenceStore: any GuestTimerPreferenceStoring,
@@ -77,6 +79,7 @@ final class AppDependencies {
         self.socialRepository = socialRepository
         self.safetyRepository = safetyRepository
         self.accountDeleter = accountDeleter
+        self.policyService = policyService
         self.directUploader = directUploader
         self.activeSessionStore = activeSessionStore
         self.guestTimerPreferenceStore = guestTimerPreferenceStore
@@ -184,7 +187,8 @@ final class AppDependencies {
             let auth = AuthSessionStore(
                 authService: authService,
                 meFetcher: repository,
-                profileUpdater: repository
+                profileUpdater: repository,
+                policyService: repository
             )
             return AppDependencies(
                 environment: environment,
@@ -201,6 +205,7 @@ final class AppDependencies {
                 socialRepository: socialRepository,
                 safetyRepository: safetyRepository,
                 accountDeleter: repository,
+                policyService: repository,
                 activeSessionStore: activeSessionStore,
                 guestTimerPreferenceStore: guestTimerPreferenceStore,
                 draftStore: draftStore,
@@ -215,7 +220,8 @@ final class AppDependencies {
         let auth = AuthSessionStore(
             authService: descope,
             meFetcher: repository,
-            profileUpdater: repository
+            profileUpdater: repository,
+            policyService: repository
         )
         return AppDependencies(
             environment: environment,
@@ -232,6 +238,7 @@ final class AppDependencies {
             socialRepository: socialRepository,
             safetyRepository: safetyRepository,
             accountDeleter: repository,
+            policyService: repository,
             activeSessionStore: activeSessionStore,
             guestTimerPreferenceStore: guestTimerPreferenceStore,
             draftStore: draftStore,

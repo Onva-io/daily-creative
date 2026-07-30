@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -34,6 +34,7 @@ class User(Base):
     username_normalized: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     avatar_upload_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey(

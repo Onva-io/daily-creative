@@ -196,6 +196,19 @@ class SocialService:
                 )
 
         submission = await self._require_visible_submission(submission_id, viewer=user)
+
+        from app.models.report import ReportTargetType
+        from app.services.content_moderation import ContentModerationService
+
+        await ContentModerationService(self._session, settings=self._settings).screen_text(
+            text=body,
+            context="reflection",
+            target_type=ReportTargetType.reflection,
+            target_id=submission.id,
+            user_id=user.id,
+            commit=False,
+        )
+
         reflection = await self._reflections.create(
             submission_id=submission.id,
             user_id=user.id,

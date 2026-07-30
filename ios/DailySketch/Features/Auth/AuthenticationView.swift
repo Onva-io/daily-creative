@@ -39,6 +39,24 @@ struct AuthenticationView: View {
                     descopeContent
                 }
 
+                Text("By continuing you agree to our Terms of Service, Privacy Policy, and Community Guidelines. You’ll confirm the latest versions after signing in.")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                HStack(spacing: AppSpacing.md) {
+                    if let terms = LegalLinks.terms {
+                        Link("Terms", destination: terms)
+                    }
+                    if let privacy = LegalLinks.privacy {
+                        Link("Privacy", destination: privacy)
+                    }
+                    if let guidelines = LegalLinks.communityGuidelines {
+                        Link("Guidelines", destination: guidelines)
+                    }
+                }
+                .font(AppTypography.caption)
+
                 if let otpError {
                     ErrorStateView(
                         title: "Couldn’t sign in",

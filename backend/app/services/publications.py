@@ -185,6 +185,20 @@ class PublicationService:
                 status_code=404,
             )
 
+        from app.models.report import ReportTargetType
+        from app.services.content_moderation import ContentModerationService
+
+        moderator = ContentModerationService(self._session, settings=self._settings)
+        if caption:
+            await moderator.screen_text(
+                text=caption,
+                context="sketch_caption",
+                target_type=ReportTargetType.submission,
+                target_id=sketch_session.id,
+                user_id=user.id,
+                commit=False,
+            )
+
         now = self._clock.now()
         publication, _detail = await self._publications.create_sketch(
             user_id=user.id,
@@ -248,6 +262,28 @@ class PublicationService:
                 code="session_already_submitted",
                 message="This story session already has a published submission.",
                 status_code=409,
+            )
+
+        from app.models.report import ReportTargetType
+        from app.services.content_moderation import ContentModerationService
+
+        moderator = ContentModerationService(self._session, settings=self._settings)
+        await moderator.screen_text(
+            text=body,
+            context="story_body",
+            target_type=ReportTargetType.submission,
+            target_id=story_session.id,
+            user_id=user.id,
+            commit=False,
+        )
+        if caption:
+            await moderator.screen_text(
+                text=caption,
+                context="story_caption",
+                target_type=ReportTargetType.submission,
+                target_id=story_session.id,
+                user_id=user.id,
+                commit=False,
             )
 
         if story_session.status in {

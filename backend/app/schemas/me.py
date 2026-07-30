@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.creative_type_preferences import CreativeTypePreferences
 from app.models.user import User
 from app.models.user_preferences import UserPreferences
+from app.schemas.policies import ConsentState
 
 
 class UserStatusSchema(str, Enum):
@@ -106,6 +107,8 @@ class CurrentUserResponse(BaseModel):
     status: UserStatusSchema
     avatar_url: str | None
     preferences: PreferencesSummary
+    consent: ConsentState | None = None
+    date_of_birth_set: bool = False
 
     @classmethod
     def from_user(
@@ -114,6 +117,7 @@ class CurrentUserResponse(BaseModel):
         preferences: PreferencesSummary | None = None,
         *,
         avatar_url: str | None = None,
+        consent: ConsentState | None = None,
     ) -> CurrentUserResponse:
         return cls(
             id=user.id,
@@ -123,6 +127,8 @@ class CurrentUserResponse(BaseModel):
             status=UserStatusSchema(user.status.value),
             avatar_url=avatar_url,
             preferences=preferences or PreferencesSummary(),
+            consent=consent,
+            date_of_birth_set=user.date_of_birth is not None,
         )
 
 

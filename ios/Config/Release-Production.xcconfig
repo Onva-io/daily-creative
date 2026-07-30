@@ -7,6 +7,11 @@ DESCOPE_PROJECT_ID = replace-me-production
 ANALYTICS_ENVIRONMENT = production
 LOGGING_LEVEL = warning
 SHOW_ENVIRONMENT_BADGE = NO
+PRIVACY_URL = https:/$()/api.dailycreative.example/api/v1/policies/privacy/html
+TERMS_URL = https:/$()/api.dailycreative.example/api/v1/policies/terms/html
+COMMUNITY_GUIDELINES_URL = https:/$()/api.dailycreative.example/api/v1/policies/community_guidelines/html
+SUPPORT_URL = https:/$()/dailycreative.app/support
+SUPPORT_EMAIL = support@dailycreative.app
 
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 SWIFT_COMPILATION_MODE = wholemodule

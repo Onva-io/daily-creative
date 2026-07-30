@@ -15,5 +15,8 @@ Delivery uses optional `ALERT_WEBHOOK_URL`. Without it, alerts are logged only.
 | MissingPrompt | missing_prompt_check failed | Prompt table, seed |
 | JobFailure | job outcome error counter | Job logs |
 | AuthFailureSpike | auth failure counter | Descope/JWT config |
+| NewContentReport | user submitted a report | `/internal/moderation/reports`, act within 24h |
+| ContentQueuedForReview | medium-confidence filter hit | `/internal/moderation/review-queue` |
+| SignificantPolicyChange | operator publishing significant policy | notify app stores before users continue |
 
 Configure provider paging (PagerDuty/Opsgenie/etc.) to consume the webhook in staging/production.

@@ -3,7 +3,11 @@
 from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.deps import get_current_user, get_current_user_allowing_pending_deletion
+from app.auth.deps import (
+    get_current_user,
+    get_current_user_allowing_pending_deletion,
+    get_current_user_identity,
+)
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
@@ -26,7 +30,7 @@ router = APIRouter(tags=["me"])
 
 @router.get("/me", response_model=CurrentUserResponse)
 async def get_me(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_identity),
     creative_type: CreativeType = Query(...),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),

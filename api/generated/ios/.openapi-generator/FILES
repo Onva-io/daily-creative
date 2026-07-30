@@ -8,6 +8,7 @@ DailyCreativeAPI/Classes/OpenAPIs/APIs.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/FeedAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/HealthAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/MeAPI.swift
+DailyCreativeAPI/Classes/OpenAPIs/APIs/PoliciesAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/PromptsAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/ReflectionsAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/ReportsAPI.swift
@@ -22,11 +23,16 @@ DailyCreativeAPI/Classes/OpenAPIs/Extensions.swift
 DailyCreativeAPI/Classes/OpenAPIs/JSONDataEncoding.swift
 DailyCreativeAPI/Classes/OpenAPIs/JSONEncodingHelper.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/AcceptPoliciesRequest.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/AcceptPoliciesResponse.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/AcceptPolicyItem.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/AcceptedPolicyItem.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/AccountDeletionResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/AppearancePreference.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/BlockState.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/BlockedUserSummary.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/BlockedUsersResponse.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/ConsentState.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CreateReflectionRequest.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CreateReportRequest.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CreateSketchSessionRequest.swift
@@ -35,6 +41,7 @@ DailyCreativeAPI/Classes/OpenAPIs/Models/CreateSubmissionRequest.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CreateSubmissionRequestContent.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CreateUploadRequest.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CreativeType.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/CurrentPoliciesResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CurrentUser.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/CursorPage.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/DailyPrompt.swift
@@ -46,6 +53,9 @@ DailyCreativeAPI/Classes/OpenAPIs/Models/HealthLiveResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/HealthReadyResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/LikeState.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/ModelError.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PolicyAcceptanceSummary.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PolicyDocument.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PolicyKind.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/PreferencesSummary.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/PreferencesUpdate.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/PromptStatus.swift
@@ -56,6 +66,7 @@ DailyCreativeAPI/Classes/OpenAPIs/Models/ReflectionList.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/ReportReason.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/ReportResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/ReportTargetType.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/SetDateOfBirthRequest.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/SignedUpload.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/SketchSession.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/SketchSessionEventRequest.swift
@@ -82,11 +93,16 @@ DailyCreativeAPI/Classes/OpenAPIs/URLSessionImplementations.swift
 DailyCreativeAPI/Classes/OpenAPIs/Validation.swift
 Package.swift
 README.md
+docs/AcceptPoliciesRequest.md
+docs/AcceptPoliciesResponse.md
+docs/AcceptPolicyItem.md
+docs/AcceptedPolicyItem.md
 docs/AccountDeletionResponse.md
 docs/AppearancePreference.md
 docs/BlockState.md
 docs/BlockedUserSummary.md
 docs/BlockedUsersResponse.md
+docs/ConsentState.md
 docs/CreateReflectionRequest.md
 docs/CreateReportRequest.md
 docs/CreateSketchSessionRequest.md
@@ -95,6 +111,7 @@ docs/CreateSubmissionRequest.md
 docs/CreateSubmissionRequestContent.md
 docs/CreateUploadRequest.md
 docs/CreativeType.md
+docs/CurrentPoliciesResponse.md
 docs/CurrentUser.md
 docs/CursorPage.md
 docs/DailyPrompt.md
@@ -109,6 +126,10 @@ docs/HealthReadyResponse.md
 docs/LikeState.md
 docs/MeAPI.md
 docs/ModelError.md
+docs/PoliciesAPI.md
+docs/PolicyAcceptanceSummary.md
+docs/PolicyDocument.md
+docs/PolicyKind.md
 docs/PreferencesSummary.md
 docs/PreferencesUpdate.md
 docs/PromptStatus.md
@@ -122,6 +143,7 @@ docs/ReportReason.md
 docs/ReportResponse.md
 docs/ReportTargetType.md
 docs/ReportsAPI.md
+docs/SetDateOfBirthRequest.md
 docs/SignedUpload.md
 docs/SketchSession.md
 docs/SketchSessionEventRequest.md

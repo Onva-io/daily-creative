@@ -11,15 +11,18 @@ final class AuthSessionStore {
     private let authService: any AuthServing
     private let meFetcher: any MeFetching
     private let profileUpdater: (any ProfileUpdating)?
+    private let policyService: (any PolicyServing)?
 
     init(
         authService: any AuthServing,
         meFetcher: any MeFetching,
-        profileUpdater: (any ProfileUpdating)? = nil
+        profileUpdater: (any ProfileUpdating)? = nil,
+        policyService: (any PolicyServing)? = nil
     ) {
         self.authService = authService
         self.meFetcher = meFetcher
         self.profileUpdater = profileUpdater
+        self.policyService = policyService ?? (meFetcher as? any PolicyServing)
     }
 
     var isAuthenticated: Bool {
@@ -28,12 +31,17 @@ final class AuthSessionStore {
     }
 
     var needsProfileCompletion: Bool {
-        isAuthenticated && currentUser?.profileCompleted == false
+        isAuthenticated && currentUser?.profileCompleted == false && !needsConsent
+    }
+
+    var needsConsent: Bool {
+        guard isAuthenticated else { return false }
+        return currentUser?.consent?.consentRequired == true
     }
 
     /// Publish-gated flows must call this before starting upload/publication.
     func requireCompleteProfileForPublishing() -> Bool {
-        if needsProfileCompletion {
+        if needsConsent || needsProfileCompletion {
             return false
         }
         return isAuthenticated
@@ -72,6 +80,7 @@ final class AuthSessionStore {
     /// Quietly refreshes an authenticated session (e.g. when returning to the foreground).
     func refreshSessionIfNeeded() async {
         _ = await validAccessToken()
+        await refreshCurrentUser()
     }
 
     func bootstrap() async {
@@ -140,6 +149,40 @@ final class AuthSessionStore {
         currentUser = profile
     }
 
+    func setDateOfBirth(_ date: Date) async throws {
+        guard let token = accessToken else {
+            throw ProfileAPIError.sessionExpired
+        }
+        guard let policyService else {
+            throw ProfileAPIError.underlying("Age verification is unavailable.")
+        }
+        currentUser = try await policyService.setDateOfBirth(accessToken: token, dateOfBirth: date)
+    }
+
+    func acceptOutstandingPolicies() async throws {
+        guard let token = accessToken else {
+            throw ProfileAPIError.sessionExpired
+        }
+        guard let policyService else {
+            throw ProfileAPIError.underlying("Policy acceptance is unavailable.")
+        }
+        let documents = currentUser?.consent?.currentDocuments ?? []
+        let outstanding = Set(currentUser?.consent?.outstandingKinds ?? [])
+        let toAccept = documents
+            .filter { outstanding.contains($0.kind) }
+            .map { (kind: $0.kind, version: $0.version) }
+        guard !toAccept.isEmpty else { return }
+        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        try await policyService.acceptPolicies(
+            accessToken: token,
+            documents: toAccept,
+            appVersion: appVersion,
+            platform: "ios",
+            locale: Locale.current.identifier
+        )
+        await refreshCurrentUser()
+    }
+
     func refreshCurrentUser() async {
         guard let token = accessToken else { return }
         do {
@@ -181,6 +224,10 @@ final class AuthSessionStore {
             let profile = try await meFetcher.fetchMe(accessToken: refreshed.accessToken)
             currentUser = profile
             state = .authenticated(session: refreshed)
+            if let guestDOB = GuestAgeGateStore.shared.declaredDateOfBirth,
+               profile.dateOfBirthSet == false {
+                try? await setDateOfBirth(guestDOB)
+            }
         } catch {
             await authService.signOut()
             currentUser = nil

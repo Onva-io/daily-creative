@@ -44,7 +44,14 @@ Condensed from `spec/infrastructure.md` §40.
 
 ## Moderation incident
 
-**Checks:** report queue via moderation token routes; suspend/remove as needed.
+**Checks:** report queue via `GET /internal/moderation/reports`; automated filter queue via `GET /internal/moderation/review-queue`; suspend/remove as needed.
+**SLA:** act on reports within **24 hours**. See [`docs/ops/moderation-sla.md`](moderation-sla.md).
+**Alerts:** `NewContentReport`, `ContentQueuedForReview` when `ALERT_WEBHOOK_URL` is configured.
+
+## Significant policy publish
+
+**Checks:** operator publish with `is_significant_change=true` emits a webhook warning.
+**Mitigation:** notify Apple (and other app stores) **before** users continue, then publish. See moderation-sla.md.
 
 ## Credential exposure
 

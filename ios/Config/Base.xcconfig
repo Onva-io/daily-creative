@@ -6,10 +6,13 @@ CURRENT_PROJECT_VERSION = 1
 
 DEVELOPMENT_TEAM = TGX22822SP
 
-SUPPORT_URL = https:/$()/example.com/daily-sketch/support
-PRIVACY_URL = https:/$()/example.com/daily-sketch/privacy
-TERMS_URL = https:/$()/example.com/daily-sketch/terms
-COMMUNITY_GUIDELINES_URL = https:/$()/example.com/daily-sketch/community-guidelines
+// Policy HTML is served by the backend so App Store / in-app links match gated copy.
+// Replace hostnames per environment xcconfig. Support email is required by Guideline 1.2.
+SUPPORT_EMAIL = support@dailycreative.app
+SUPPORT_URL = https:/$()/dailycreative.app/support
+PRIVACY_URL = http:/$()/localhost:8000/api/v1/policies/privacy/html
+TERMS_URL = http:/$()/localhost:8000/api/v1/policies/terms/html
+COMMUNITY_GUIDELINES_URL = http:/$()/localhost:8000/api/v1/policies/community_guidelines/html
 SENTRY_DSN =
 ANALYTICS_ENVIRONMENT = local
 LOGGING_LEVEL = debug

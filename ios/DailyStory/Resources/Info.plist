@@ -53,6 +53,8 @@
 	<string>$(START_ACTION_TITLE)</string>
 	<key>SUPPORT_URL</key>
 	<string>$(SUPPORT_URL)</string>
+	<key>SUPPORT_EMAIL</key>
+	<string>$(SUPPORT_EMAIL)</string>
 	<key>TERMS_URL</key>
 	<string>$(TERMS_URL)</string>
 	<key>UIApplicationSceneManifest</key>

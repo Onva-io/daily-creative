@@ -178,6 +178,56 @@ final class AuthSessionStoreTests: XCTestCase {
         }
     }
 
+    func testNeedsConsentBlocksProfileCompletionUntilResolved() async {
+        let consent = ConsentSnapshot(
+            consentRequired: true,
+            outstandingKinds: ["terms"],
+            ageRequired: true,
+            minimumAge: 13,
+            currentDocuments: [
+                PolicyDocumentSummary(
+                    id: UUID(),
+                    kind: "terms",
+                    version: "1.0.0",
+                    title: "Terms",
+                    bodyMarkdown: "Be kind.",
+                    minimumAge: 13,
+                    isSignificantChange: true,
+                    changeSummary: "Initial"
+                )
+            ]
+        )
+        let meFetcher = RecordingMeFetcher(
+            profile: CurrentUserProfile(
+                id: UUID(),
+                username: nil,
+                displayName: "Ada",
+                profileCompleted: false,
+                status: "incomplete",
+                dateOfBirthSet: false,
+                consent: consent
+            )
+        )
+        let store = AuthSessionStore(
+            authService: MockAuthService(),
+            meFetcher: meFetcher,
+            policyService: meFetcher
+        )
+        await store.signIn(displayName: "Ada")
+
+        XCTAssertTrue(store.needsConsent)
+        XCTAssertFalse(store.needsProfileCompletion)
+
+        do {
+            try await store.setDateOfBirth(Calendar.current.date(byAdding: .year, value: -20, to: Date())!)
+            try await store.acceptOutstandingPolicies()
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        XCTAssertFalse(store.needsConsent)
+        XCTAssertTrue(store.needsProfileCompletion)
+    }
+
     private func makeStore() -> AuthSessionStore {
         AuthSessionStore(
             authService: MockAuthService(),

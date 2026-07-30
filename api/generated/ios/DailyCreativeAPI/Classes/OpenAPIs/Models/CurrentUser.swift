@@ -23,8 +23,12 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
     /** Signed avatar display URL when an avatar is set; otherwise null. */
     public var avatarUrl: String?
     public var preferences: PreferencesSummary
+    /** Present on /me responses with outstanding policy/age state. */
+    public var consent: ConsentState?
+    /** True when the user has a stored date of birth. The date itself is never returned. */
+    public var dateOfBirthSet: Bool
 
-    public init(id: UUID, username: String?, displayName: String, profileCompleted: Bool, status: UserStatus, avatarUrl: String?, preferences: PreferencesSummary) {
+    public init(id: UUID, username: String?, displayName: String, profileCompleted: Bool, status: UserStatus, avatarUrl: String?, preferences: PreferencesSummary, consent: ConsentState? = nil, dateOfBirthSet: Bool) {
         self.id = id
         self.username = username
         self.displayName = displayName
@@ -32,6 +36,8 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
         self.status = status
         self.avatarUrl = avatarUrl
         self.preferences = preferences
+        self.consent = consent
+        self.dateOfBirthSet = dateOfBirthSet
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -42,6 +48,8 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
         case status
         case avatarUrl = "avatar_url"
         case preferences
+        case consent
+        case dateOfBirthSet = "date_of_birth_set"
     }
 
     // Encodable protocol methods
@@ -55,6 +63,8 @@ public struct CurrentUser: Codable, JSONEncodable, Hashable {
         try container.encode(status, forKey: .status)
         try container.encode(avatarUrl, forKey: .avatarUrl)
         try container.encode(preferences, forKey: .preferences)
+        try container.encodeIfPresent(consent, forKey: .consent)
+        try container.encode(dateOfBirthSet, forKey: .dateOfBirthSet)
     }
 }
 

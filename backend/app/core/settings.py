@@ -106,6 +106,11 @@ class Settings(BaseSettings):
         default=None,
         alias="MODERATION_OPERATOR_TOKEN",
     )
+    moderation_provider: str = Field(default="heuristic", alias="MODERATION_PROVIDER")
+    support_email: str = Field(
+        default="support@dailycreative.example",
+        alias="SUPPORT_EMAIL",
+    )
 
     @field_validator("request_timeout_seconds")
     @classmethod

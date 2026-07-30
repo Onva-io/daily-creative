@@ -27,7 +27,19 @@ protocol AccountDeleting: Sendable {
     func deleteAccount(accessToken: String, idempotencyKey: String?) async throws
 }
 
-struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDeleting {
+protocol PolicyServing: Sendable {
+    func fetchCurrentPolicies() async throws -> [PolicyDocumentSummary]
+    func acceptPolicies(
+        accessToken: String,
+        documents: [(kind: String, version: String)],
+        appVersion: String?,
+        platform: String?,
+        locale: String?
+    ) async throws
+    func setDateOfBirth(accessToken: String, dateOfBirth: Date) async throws -> CurrentUserProfile
+}
+
+struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDeleting, PolicyServing {
     let baseURL: URL
 
     func fetchMe(accessToken: String) async throws -> CurrentUserProfile {
@@ -115,14 +127,72 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDel
         }
     }
 
+    func fetchCurrentPolicies() async throws -> [PolicyDocumentSummary] {
+        configureClientUnauthenticated()
+        do {
+            let response = try await PoliciesAPI.getCurrentPolicies()
+            return response.documents.map(mapDocument)
+        } catch {
+            throw mapAPIError(error)
+        }
+    }
+
+    func acceptPolicies(
+        accessToken: String,
+        documents: [(kind: String, version: String)],
+        appVersion: String?,
+        platform: String?,
+        locale: String?
+    ) async throws {
+        configureClient(accessToken: accessToken)
+        do {
+            let items = documents.compactMap { item -> AcceptPolicyItem? in
+                guard let kind = PolicyKind(rawValue: item.kind) else { return nil }
+                return AcceptPolicyItem(kind: kind, version: item.version)
+            }
+            let request = AcceptPoliciesRequest(
+                documents: items,
+                appVersion: appVersion,
+                platform: platform,
+                locale: locale
+            )
+            _ = try await PoliciesAPI.acceptPolicies(acceptPoliciesRequest: request)
+        } catch {
+            throw mapAPIError(error)
+        }
+    }
+
+    func setDateOfBirth(accessToken: String, dateOfBirth: Date) async throws -> CurrentUserProfile {
+        configureClient(accessToken: accessToken)
+        do {
+            let formatter = DateFormatter()
+            formatter.calendar = Calendar(identifier: .gregorian)
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = "yyyy-MM-dd"
+            let request = SetDateOfBirthRequest(dateOfBirth: formatter.string(from: dateOfBirth))
+            let user = try await PoliciesAPI.setDateOfBirth(
+                creativeType: FeedMapping.apiCreativeType(),
+                setDateOfBirthRequest: request
+            )
+            return mapProfile(user)
+        } catch {
+            throw mapAPIError(error)
+        }
+    }
+
     private func configureClient(accessToken: String) {
+        configureClientUnauthenticated()
+        DailyCreativeAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
+        DailyCreativeAPITokenBridge.setBearerToken(accessToken)
+    }
+
+    private func configureClientUnauthenticated() {
         var base = baseURL.absoluteString
         if base.hasSuffix("/") {
             base.removeLast()
         }
         DailyCreativeAPIAPI.basePath = base
-        DailyCreativeAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
-        DailyCreativeAPITokenBridge.setBearerToken(accessToken)
     }
 
     private func mapProfile(_ user: CurrentUser) -> CurrentUserProfile {
@@ -132,7 +202,32 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDel
             displayName: user.displayName,
             profileCompleted: user.profileCompleted,
             status: user.status.rawValue,
-            avatarURL: user.avatarUrl.flatMap(URL.init(string:))
+            avatarURL: user.avatarUrl.flatMap(URL.init(string:)),
+            dateOfBirthSet: user.dateOfBirthSet,
+            consent: user.consent.map(mapConsent)
+        )
+    }
+
+    private func mapConsent(_ consent: ConsentState) -> ConsentSnapshot {
+        ConsentSnapshot(
+            consentRequired: consent.consentRequired,
+            outstandingKinds: consent.outstandingKinds.map(\.rawValue),
+            ageRequired: consent.ageRequired,
+            minimumAge: consent.minimumAge,
+            currentDocuments: consent.currentDocuments.map(mapDocument)
+        )
+    }
+
+    private func mapDocument(_ document: PolicyDocument) -> PolicyDocumentSummary {
+        PolicyDocumentSummary(
+            id: document.id,
+            kind: document.kind.rawValue,
+            version: document.version,
+            title: document.title,
+            bodyMarkdown: document.bodyMarkdown,
+            minimumAge: document.minimumAge,
+            isSignificantChange: document.isSignificantChange,
+            changeSummary: document.changeSummary
         )
     }
 
@@ -166,6 +261,14 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDel
                         return ProfileAPIError.usernameReserved
                     case "invalid_timer_preference":
                         return ProfileAPIError.invalidTimerPreference
+                    case "under_minimum_age":
+                        return ProfileAPIError.underMinimumAge(envelope.error.message)
+                    case "policy_version_stale":
+                        return ProfileAPIError.policyVersionStale
+                    case "consent_required":
+                        return ProfileAPIError.consentRequired
+                    case "content_rejected":
+                        return ProfileAPIError.contentRejected(envelope.error.message)
                     default:
                         return ProfileAPIError.underlying(envelope.error.message)
                     }
@@ -186,10 +289,11 @@ private struct APIErrorEnvelope: Decodable {
 }
 
 /// Test double that records the bearer token used for authenticated requests.
-final class RecordingMeFetcher: MeFetching, ProfileUpdating, PreferencesServing, @unchecked Sendable {
+final class RecordingMeFetcher: MeFetching, ProfileUpdating, PreferencesServing, PolicyServing, @unchecked Sendable {
     private(set) var lastAccessToken: String?
     var profile: CurrentUserProfile
     var preferences: UserPreferencesModel = .defaults
+    var policies: [PolicyDocumentSummary] = []
     var error: Error?
     var updateError: Error?
 
@@ -223,7 +327,9 @@ final class RecordingMeFetcher: MeFetching, ProfileUpdating, PreferencesServing,
             displayName: displayName ?? profile.displayName,
             profileCompleted: username != nil || profile.profileCompleted,
             status: username != nil ? "active" : profile.status,
-            avatarURL: profile.avatarURL
+            avatarURL: profile.avatarURL,
+            dateOfBirthSet: profile.dateOfBirthSet,
+            consent: profile.consent
         )
         return profile
     }
@@ -246,5 +352,73 @@ final class RecordingMeFetcher: MeFetching, ProfileUpdating, PreferencesServing,
         }
         self.preferences = preferences
         return preferences
+    }
+
+    func fetchCurrentPolicies() async throws -> [PolicyDocumentSummary] {
+        if let error {
+            throw error
+        }
+        return policies
+    }
+
+    func acceptPolicies(
+        accessToken: String,
+        documents: [(kind: String, version: String)],
+        appVersion: String?,
+        platform: String?,
+        locale: String?
+    ) async throws {
+        lastAccessToken = accessToken
+        _ = (documents, appVersion, platform, locale)
+        if let updateError {
+            throw updateError
+        }
+        if var consent = profile.consent {
+            consent = ConsentSnapshot(
+                consentRequired: false,
+                outstandingKinds: [],
+                ageRequired: consent.ageRequired,
+                minimumAge: consent.minimumAge,
+                currentDocuments: consent.currentDocuments
+            )
+            profile = CurrentUserProfile(
+                id: profile.id,
+                username: profile.username,
+                displayName: profile.displayName,
+                profileCompleted: profile.profileCompleted,
+                status: profile.status,
+                avatarURL: profile.avatarURL,
+                dateOfBirthSet: profile.dateOfBirthSet,
+                consent: consent
+            )
+        }
+    }
+
+    func setDateOfBirth(accessToken: String, dateOfBirth: Date) async throws -> CurrentUserProfile {
+        lastAccessToken = accessToken
+        _ = dateOfBirth
+        if let updateError {
+            throw updateError
+        }
+        let consent = profile.consent.map {
+            ConsentSnapshot(
+                consentRequired: !$0.outstandingKinds.isEmpty,
+                outstandingKinds: $0.outstandingKinds,
+                ageRequired: false,
+                minimumAge: $0.minimumAge,
+                currentDocuments: $0.currentDocuments
+            )
+        }
+        profile = CurrentUserProfile(
+            id: profile.id,
+            username: profile.username,
+            displayName: profile.displayName,
+            profileCompleted: profile.profileCompleted,
+            status: profile.status,
+            avatarURL: profile.avatarURL,
+            dateOfBirthSet: true,
+            consent: consent
+        )
+        return profile
     }
 }

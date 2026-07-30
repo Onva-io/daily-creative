@@ -32,6 +32,7 @@ from app.schemas.me import (
 from app.services.blocks import BlockService
 from app.services.feed_items import build_feed_item
 from app.services.media_urls import resolve_avatar_url
+from app.services.policies import PolicyService
 from app.services.preferences import PreferencesService
 from app.services.streaks import compute_current_streak
 from app.storage.base import StorageAdapter
@@ -73,10 +74,16 @@ class ProfileService:
             creative_type=creative_type,
         )
         avatar_url = await self._resolve_user_avatar_url(user)
+        consent = await PolicyService(
+            self._session,
+            clock=self._clock,
+            settings=self._settings,
+        ).consent_state(user)
         return CurrentUserResponse.from_user(
             user,
             prefs_summary,
             avatar_url=avatar_url,
+            consent=consent,
         )
 
     async def update_me(
@@ -125,9 +132,41 @@ class ProfileService:
                     status_code=422,
                 )
 
+        from app.models.report import ReportTargetType
+        from app.services.content_moderation import ContentModerationService
+
+        moderator = ContentModerationService(self._session, settings=self._settings)
+        if username is not None:
+            await moderator.screen_text(
+                text=username,
+                context="username",
+                target_type=ReportTargetType.profile,
+                target_id=user.id,
+                user_id=user.id,
+                commit=False,
+            )
+        if display_name is not None:
+            await moderator.screen_text(
+                text=display_name,
+                context="display_name",
+                target_type=ReportTargetType.profile,
+                target_id=user.id,
+                user_id=user.id,
+                commit=False,
+            )
+
         bio_sentinel: object = ...
         if "bio" in payload.model_fields_set:
             bio_sentinel = payload.bio
+            if isinstance(payload.bio, str) and payload.bio.strip():
+                await moderator.screen_text(
+                    text=payload.bio,
+                    context="bio",
+                    target_type=ReportTargetType.profile,
+                    target_id=user.id,
+                    user_id=user.id,
+                    commit=False,
+                )
 
         avatar_upload_id_sentinel: object = ...
         if "avatar_upload_id" in payload.model_fields_set:

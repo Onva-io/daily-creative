@@ -36,6 +36,7 @@ class UploadService:
         storage: StorageAdapter,
         settings: Settings | None = None,
     ) -> None:
+        self._session = session
         self._uploads = UploadRepository(session)
         self._idempotency = IdempotencyRepository(session)
         self._clock = clock
@@ -197,6 +198,25 @@ class UploadService:
                 message="That image is too large to upload.",
                 status_code=422,
             )
+
+        from app.models.report import ReportTargetType
+        from app.services.content_moderation import ContentModerationService
+
+        try:
+            await ContentModerationService(self._session, settings=self._settings).screen_image(
+                data=original_bytes,
+                content_type=upload.content_type,
+                target_type=ReportTargetType.submission
+                if upload.purpose == UploadPurpose.submission
+                else ReportTargetType.profile,
+                target_id=upload.id,
+                user_id=user.id,
+                commit=False,
+            )
+        except AppError:
+            upload.status = UploadStatus.pending
+            await self._uploads.save(upload)
+            raise
 
         processed = process_upload_image(
             data=original_bytes,

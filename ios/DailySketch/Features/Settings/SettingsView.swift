@@ -199,6 +199,10 @@ struct SettingsView: View {
                 dependencies.navigation.profilePath.append(.blockedUsers)
             }
             .accessibilityLabel("Blocked Users")
+            if let mailto = LegalLinks.supportMailto {
+                Link("Email Support", destination: mailto)
+                    .accessibilityLabel("Email Support")
+            }
             if let url = LegalLinks.support {
                 Link("Support", destination: url)
                     .accessibilityLabel("Support")

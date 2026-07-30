@@ -45,10 +45,21 @@ struct RootTabView: View {
                 Task { await dependencies.hydrateUserPreferences() }
             }
         }
+        .onChange(of: dependencies.auth.needsConsent) { _, needsConsent in
+            // Consent gate is presented as a fullScreenCover below.
+            _ = needsConsent
+        }
         .onChange(of: dependencies.auth.needsProfileCompletion) { _, needsCompletion in
             guard needsCompletion else { return }
             let preferHome = dependencies.navigation.resumePublicationAfterProfileCompletion
             dependencies.navigation.presentProfileCompletion(preferHome: preferHome)
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { dependencies.auth.needsConsent },
+            set: { _ in }
+        )) {
+            ConsentGateView()
+                .environment(dependencies)
         }
     }
 

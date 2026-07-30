@@ -365,6 +365,133 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/policies/current:
+    get:
+      operationId: getCurrentPolicies
+      tags:
+        - policies
+      summary: Current published policy documents
+      description: |
+        Returns every currently published policy document (terms, privacy,
+        community guidelines). Unauthenticated so signup and App Store listing
+        can both reach the same copy.
+      responses:
+        "200":
+          description: Current published policies
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentPoliciesResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/me/consent:
+    get:
+      operationId: getMyConsent
+      tags:
+        - policies
+      summary: Consent and age gate state for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Consent state
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentState"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/me/policies/accept:
+    post:
+      operationId: acceptPolicies
+      tags:
+        - policies
+      summary: Accept current policy document versions
+      description: |
+        Records append-only acceptance for the specified document versions.
+        Returns 409 when a newer version became current mid-flight.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptPoliciesRequest"
+      responses:
+        "200":
+          description: Acceptances recorded
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptPoliciesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/me/date-of-birth:
+    post:
+      operationId: setDateOfBirth
+      tags:
+        - policies
+      summary: Set self-declared date of birth
+      description: |
+        Stores date of birth for age gating. Rejects under-age users against
+        the current terms minimum age. Never exposed on public profiles.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: creative_type
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/CreativeType"
+          example: sketch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDateOfBirthRequest"
+      responses:
+        "200":
+          description: Updated current user
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/users/{user_id}/block:
     put:
       operationId: blockUser
@@ -1901,7 +2028,7 @@ paths:
                 $ref: "#/components/schemas/ReportResponse"
               example:
                 id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-                message: Thank you. Your report has been received.
+                message: Thank you. Your report has been received. Our team aims to review reports within 24 hours.
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2516,6 +2643,7 @@ components:
         - status
         - avatar_url
         - preferences
+        - date_of_birth_set
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -2543,6 +2671,180 @@ components:
           example: null
         preferences:
           $ref: "#/components/schemas/PreferencesSummary"
+        consent:
+          description: Present on /me responses with outstanding policy/age state.
+          allOf:
+            - $ref: "#/components/schemas/ConsentState"
+        date_of_birth_set:
+          type: boolean
+          description: True when the user has a stored date of birth. The date itself is never returned.
+          example: false
+    PolicyKind:
+      type: string
+      enum:
+        - terms
+        - privacy
+        - community_guidelines
+    PolicyDocument:
+      type: object
+      required:
+        - id
+        - kind
+        - version
+        - title
+        - body_markdown
+        - content_hash
+        - minimum_age
+        - is_significant_change
+        - change_summary
+        - published_at
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        kind:
+          $ref: "#/components/schemas/PolicyKind"
+        version:
+          type: string
+          example: "1.0.0"
+        title:
+          type: string
+          example: Terms of Service
+        body_markdown:
+          type: string
+        content_hash:
+          type: string
+        minimum_age:
+          type: integer
+          minimum: 1
+          maximum: 120
+          example: 13
+        is_significant_change:
+          type: boolean
+        change_summary:
+          type:
+            - string
+            - "null"
+        published_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+    CurrentPoliciesResponse:
+      type: object
+      required:
+        - documents
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyDocument"
+    PolicyAcceptanceSummary:
+      type: object
+      required:
+        - kind
+        - version
+        - accepted_at
+      properties:
+        kind:
+          $ref: "#/components/schemas/PolicyKind"
+        version:
+          type: string
+        accepted_at:
+          type: string
+          format: date-time
+    ConsentState:
+      type: object
+      required:
+        - consent_required
+        - outstanding_kinds
+        - accepted
+        - current_documents
+        - age_required
+        - minimum_age
+      properties:
+        consent_required:
+          type: boolean
+        outstanding_kinds:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyKind"
+        accepted:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyAcceptanceSummary"
+        current_documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyDocument"
+        age_required:
+          type: boolean
+        minimum_age:
+          type: integer
+          example: 13
+    AcceptPolicyItem:
+      type: object
+      required:
+        - kind
+        - version
+      properties:
+        kind:
+          $ref: "#/components/schemas/PolicyKind"
+        version:
+          type: string
+    AcceptPoliciesRequest:
+      type: object
+      required:
+        - documents
+      properties:
+        documents:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AcceptPolicyItem"
+        app_version:
+          type:
+            - string
+            - "null"
+        platform:
+          type:
+            - string
+            - "null"
+        locale:
+          type:
+            - string
+            - "null"
+    AcceptedPolicyItem:
+      type: object
+      required:
+        - kind
+        - version
+        - accepted_at
+      properties:
+        kind:
+          $ref: "#/components/schemas/PolicyKind"
+        version:
+          type: string
+        accepted_at:
+          type: string
+          format: date-time
+    AcceptPoliciesResponse:
+      type: object
+      required:
+        - accepted
+      properties:
+        accepted:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcceptedPolicyItem"
+    SetDateOfBirthRequest:
+      type: object
+      required:
+        - date_of_birth
+      properties:
+        date_of_birth:
+          type: string
+          description: ISO date YYYY-MM-DD
+          example: "2000-01-15"
     PublicUser:
       type: object
       description: Public-safe user projection. Excludes private and moderation fields.
@@ -3516,7 +3818,7 @@ components:
           $ref: "#/components/schemas/UUID"
         message:
           type: string
-          example: Thank you. Your report has been received.
+          example: Thank you. Your report has been received. Our team aims to review reports within 24 hours.
     BlockState:
       type: object
       required:
@@ -3580,6 +3882,8 @@ tags:
     description: Process health probes
   - name: me
     description: Authenticated current-user endpoints
+  - name: policies
+    description: Versioned policy documents, acceptance, and age gating
   - name: users
     description: Public user profile endpoints
   - name: prompts

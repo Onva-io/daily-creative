@@ -7,6 +7,10 @@ DESCOPE_PROJECT_ID = P3GtbG5aJKoUuefcaA8DfyMzA0nK
 ANALYTICS_ENVIRONMENT = staging
 LOGGING_LEVEL = info
 SHOW_ENVIRONMENT_BADGE = YES
+PRIVACY_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/privacy/html
+TERMS_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/terms/html
+COMMUNITY_GUIDELINES_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/community_guidelines/html
+SUPPORT_URL = https:/$()/daily-creative-production.up.railway.app/support
 
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 SWIFT_COMPILATION_MODE = wholemodule

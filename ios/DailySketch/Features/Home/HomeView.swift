@@ -335,7 +335,13 @@ struct HomeView: View {
                 .font(AppTypography.title3)
                 .foregroundStyle(AppColors.textPrimary)
 
-            feedSection(model)
+            if !dependencies.auth.isAuthenticated && !GuestAgeGateStore.shared.canBrowseCommunity {
+                GuestAgeGateView(store: GuestAgeGateStore.shared)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 280)
+            } else {
+                feedSection(model)
+            }
         }
     }
 
