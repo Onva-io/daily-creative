@@ -156,8 +156,29 @@ struct ConsentGateView: View {
 
 struct GuestAgeGateView: View {
     @Bindable var store: GuestAgeGateStore
-    @State private var dateOfBirth = Calendar.current.date(byAdding: .year, value: -18, to: Date()) ?? Date()
+    @State private var dateOfBirth: Date?
+    @State private var pickerDraft = Calendar.current.date(byAdding: .year, value: -18, to: Date()) ?? Date()
+    @State private var isDatePickerPresented = false
     @State private var errorMessage: String?
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    private var calculatedAge: Int? {
+        guard let dateOfBirth else { return nil }
+        return store.age(dateOfBirth: dateOfBirth)
+    }
+
+    private var confirmTitle: String {
+        if let calculatedAge {
+            return "Confirm I am \(calculatedAge) years old"
+        }
+        return "Confirm I am … years old"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.contentGapLarge) {
@@ -167,31 +188,87 @@ struct GuestAgeGateView: View {
             Text("Community content is visible across ages. Enter your date of birth to browse the community. Today’s prompt stays available either way.")
                 .font(AppTypography.body)
                 .foregroundStyle(AppColors.textSecondary)
-            DatePicker(
-                "Date of birth",
-                selection: $dateOfBirth,
-                in: ...Date(),
-                displayedComponents: .date
-            )
-            .labelsHidden()
-            .accessibilityLabel("Date of birth")
+
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                Text("Date of birth")
+                    .font(AppTypography.headline)
+                    .foregroundStyle(AppColors.textPrimary)
+                Button {
+                    if let dateOfBirth {
+                        pickerDraft = dateOfBirth
+                    }
+                    isDatePickerPresented = true
+                } label: {
+                    HStack {
+                        Text(dateOfBirth.map { Self.dateFormatter.string(from: $0) } ?? "Select a date")
+                            .font(AppTypography.body)
+                            .foregroundStyle(dateOfBirth == nil ? AppColors.textSecondary : AppColors.textPrimary)
+                        Spacer()
+                        Image(systemName: "calendar")
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(AppColors.surfaceTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Date of birth")
+                .accessibilityValue(dateOfBirth.map { Self.dateFormatter.string(from: $0) } ?? "Not selected")
+            }
+
             if let errorMessage {
                 Text(errorMessage)
                     .font(AppTypography.caption)
                     .foregroundStyle(AppColors.danger)
             }
-            PrimaryButton(title: "Continue") {
-                do {
-                    try store.declare(dateOfBirth: dateOfBirth)
-                    errorMessage = nil
-                } catch {
-                    errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                }
-            }
+            PrimaryButton(
+                title: confirmTitle,
+                action: {
+                    guard let dateOfBirth else { return }
+                    do {
+                        try store.declare(dateOfBirth: dateOfBirth)
+                        errorMessage = nil
+                    } catch {
+                        errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    }
+                },
+                isDisabled: dateOfBirth == nil
+            )
         }
         .padding(AppSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppColors.surfaceSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .sheet(isPresented: $isDatePickerPresented) {
+            NavigationStack {
+                DatePicker(
+                    "Date of birth",
+                    selection: $pickerDraft,
+                    in: ...Date(),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(maxWidth: .infinity)
+                .padding()
+                .navigationTitle("Date of birth")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            isDatePickerPresented = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            dateOfBirth = pickerDraft
+                            isDatePickerPresented = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 }

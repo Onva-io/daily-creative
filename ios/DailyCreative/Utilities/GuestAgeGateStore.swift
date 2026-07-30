@@ -55,7 +55,11 @@ final class GuestAgeGateStore {
         defaults.set(dob, forKey: dateKey)
     }
 
-    private func age(on today: Date, dateOfBirth: Date) -> Int {
-        Calendar.current.dateComponents([.year], from: dateOfBirth, to: today).year ?? 0
+    func age(on today: Date = Date(), dateOfBirth: Date) -> Int {
+        Calendar.current.dateComponents(
+            [.year],
+            from: Calendar.current.startOfDay(for: dateOfBirth),
+            to: Calendar.current.startOfDay(for: today)
+        ).year ?? 0
     }
 }
