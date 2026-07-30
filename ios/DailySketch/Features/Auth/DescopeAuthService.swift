@@ -59,7 +59,7 @@ final class DescopeAuthService: AuthServing {
         do {
             let response = try await Descope.oauth.native(provider: .apple, options: [])
             return complete(from: response)
-        } catch let error as DescopeError where error == .oauthNativeCancelled {
+        } catch where error == .oauthNativeCancelled {
             throw AuthServiceError.cancelled
         } catch {
             throw mapDescopeError(error)
