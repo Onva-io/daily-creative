@@ -6,7 +6,8 @@
 	account-deletion-finalize \
 	staging-up staging-smoke backup-postgres restore-postgres perf-profile \
 	job-upload-cleanup job-sketch-session-cleanup job-story-session-cleanup job-idempotency-cleanup \
-	job-deleted-media-cleanup job-missing-prompt-check jobs-dry-run
+	job-deleted-media-cleanup job-missing-prompt-check jobs-dry-run \
+	pre-commit-install
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BACKEND := $(ROOT)/backend
@@ -30,6 +31,7 @@ help:
 	@echo "  up / down / logs / clean-local / staging-up / staging-smoke"
 	@echo "  backend-shell / backend-test / backend-lint / backend-typecheck"
 	@echo "  backend-install / backend-run  (optional host venv; CI uses install)"
+	@echo "  pre-commit-install  (install git hooks; run once per clone)"
 	@echo "  db-migrate / db-revision / db-check / db-reset / seed / account-deletion-finalize"
 	@echo "  job-* cleanup targets / jobs-dry-run / perf-profile"
 	@echo "  backup-postgres / restore-postgres BACKUP=path"
@@ -56,7 +58,16 @@ staging-smoke:
 	@echo "Staging smoke checks passed."
 
 backend-install:
-	cd $(BACKEND) && uv venv .venv --python 3.14 && uv pip install -e ".[dev]"
+	# Prefer the lockfile so CI/local get the same Ruff/mypy versions (uv pip install ignores it).
+	cd $(BACKEND) && uv sync --frozen --extra dev
+
+pre-commit-install:
+	@command -v pre-commit >/dev/null 2>&1 || { \
+		echo "pre-commit is not installed. Install with: pipx install pre-commit  (or: brew install pre-commit)" >&2; \
+		exit 1; \
+	}
+	pre-commit install
+	@echo "pre-commit hooks installed. They run ruff on backend/ before each commit."
 
 backend-run:
 	cd $(BACKEND) && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
