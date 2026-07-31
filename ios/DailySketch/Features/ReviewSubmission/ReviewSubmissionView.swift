@@ -17,13 +17,13 @@ struct ReviewSubmissionView: View {
 
                     imagePreview
 
-                    metadataRow
-
                     Text(model.timerLabel)
                         .font(AppTypography.caption)
                         .foregroundStyle(AppColors.textTertiary)
 
                     captionSection
+
+                    metadataRow
 
                     if model.isPublishing {
                         VStack(alignment: .leading, spacing: AppSpacing.sm) {
