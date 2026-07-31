@@ -14,6 +14,17 @@ def test_settings_load_defaults() -> None:
     assert settings.prompt_date_timezone == "UTC"
     assert settings.request_timeout_seconds == 30
     assert settings.log_level == "INFO"
+    assert settings.submission_backdate_days == 1
+
+
+def test_settings_reject_invalid_submission_backdate_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUBMISSION_BACKDATE_DAYS", "8")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)  # type: ignore[call-arg]
+
+    monkeypatch.setenv("SUBMISSION_BACKDATE_DAYS", "-1")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)  # type: ignore[call-arg]
 
 
 def test_settings_accept_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

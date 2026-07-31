@@ -49,11 +49,13 @@ struct ReviewSubmissionView: View {
                                 .font(AppTypography.bodySmall)
                                 .foregroundStyle(AppColors.danger)
                                 .accessibilityLabel("Publish failed. \(publishErrorMessage)")
-                            PrimaryButton(
-                                title: "Retry Publish",
-                                action: { model.retryPublish() },
-                                isDisabled: model.isPublishing || model.isSaving
-                            )
+                            if !model.isPublishBlocked {
+                                PrimaryButton(
+                                    title: "Retry Publish",
+                                    action: { model.retryPublish() },
+                                    isDisabled: model.isPublishing || model.isSaving
+                                )
+                            }
                             TertiaryTextButton(
                                 title: "Save to Drafts",
                                 action: { model.saveToDrafts() },
@@ -72,7 +74,7 @@ struct ReviewSubmissionView: View {
                         PrimaryButton(
                             title: model.isPublishing ? "Publishing…" : "Submit to Community",
                             action: { model.submitToCommunity() },
-                            isDisabled: model.isSaving || model.isPublishing
+                            isDisabled: model.isSaving || model.isPublishing || model.isPublishBlocked
                         )
                         .accessibilityHint("Uploads your sketch and publishes it to the community")
 

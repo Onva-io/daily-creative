@@ -20,6 +20,7 @@ from app.models.user import User
 from app.repositories.idempotency import IdempotencyRepository
 from app.repositories.prompts import PromptRepository
 from app.services.preferences import ALLOWED_TIMER_SECONDS
+from app.services.prompts import assert_prompt_within_window
 
 CreateRequestT = TypeVar("CreateRequestT")
 EventRequestT = TypeVar("EventRequestT")
@@ -80,6 +81,11 @@ class BaseCreativeSessionService(
                 message="The requested prompt could not be found.",
                 status_code=404,
             )
+        assert_prompt_within_window(
+            prompt.prompt_date,
+            today=self._clock.today(),
+            backdate_days=self._settings.submission_backdate_days,
+        )
 
         timer_mode = TimerMode(self._timer_mode_value(payload))
         validate_timer_selection(timer_mode, self._selected_timer_seconds(payload))
@@ -88,10 +94,13 @@ class BaseCreativeSessionService(
         metadata: dict[str, Any] = {}
         client_timezone = self._client_timezone(payload)
         client_session_id = self._client_session_id(payload)
+        client_started_at = self._client_started_at(payload)
         if client_timezone:
             metadata["client_timezone"] = client_timezone
         if client_session_id:
             metadata["client_session_id"] = client_session_id
+        if client_started_at is not None:
+            metadata["client_started_at"] = client_started_at.isoformat()
 
         creative_session = await self._create_session(
             user_id=user.id,
@@ -215,6 +224,9 @@ class BaseCreativeSessionService(
 
     @abstractmethod
     def _client_session_id(self, payload: CreateRequestT) -> str | None: ...
+
+    @abstractmethod
+    def _client_started_at(self, payload: CreateRequestT) -> Any | None: ...
 
     @abstractmethod
     async def _create_session(

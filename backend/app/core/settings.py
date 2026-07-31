@@ -34,6 +34,10 @@ class Settings(BaseSettings):
         default=86400,
         alias="CREATIVE_SESSION_EXPIRY_SECONDS",
     )
+    submission_backdate_days: int = Field(
+        default=1,
+        alias="SUBMISSION_BACKDATE_DAYS",
+    )
 
     db_pool_size: int = Field(default=5, alias="DB_POOL_SIZE")
     db_max_overflow: int = Field(default=5, alias="DB_MAX_OVERFLOW")
@@ -134,6 +138,13 @@ class Settings(BaseSettings):
     def validate_creative_session_expiry(cls, value: int) -> int:
         if value < 60:
             raise ValueError("CREATIVE_SESSION_EXPIRY_SECONDS must be at least 60")
+        return value
+
+    @field_validator("submission_backdate_days")
+    @classmethod
+    def validate_submission_backdate_days(cls, value: int) -> int:
+        if value < 0 or value > 7:
+            raise ValueError("SUBMISSION_BACKDATE_DAYS must be between 0 and 7")
         return value
 
     @field_validator("max_upload_bytes")

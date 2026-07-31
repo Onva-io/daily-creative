@@ -44,6 +44,7 @@ class CreateSketchSessionRequest(BaseModel):
     selected_timer_seconds: int | None = None
     client_timezone: str | None = None
     client_session_id: str | None = Field(default=None, max_length=128)
+    client_started_at: datetime | None = None
 
 
 class SketchSessionEventRequest(BaseModel):

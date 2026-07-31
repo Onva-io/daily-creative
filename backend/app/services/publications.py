@@ -37,6 +37,7 @@ from app.schemas.submissions import (
     SubmissionResponse,
 )
 from app.services.profile import ProfileService
+from app.services.prompts import assert_prompt_within_window
 from app.storage.base import StorageAdapter
 
 CREATE_ENDPOINT = "POST /api/v1/submissions"
@@ -135,6 +136,13 @@ class PublicationService:
                 message="The requested sketch session could not be found.",
                 status_code=404,
             )
+        if payload.prompt_id != sketch_session.prompt_id:
+            raise AppError(
+                code="prompt_mismatch",
+                message="This submission targets a different prompt than its session.",
+                status_code=409,
+                details={"session_prompt_id": str(sketch_session.prompt_id)},
+            )
 
         existing = await self._publications.get_sketch_submission_by_session_id(sketch_session.id)
         if existing is not None:
@@ -184,6 +192,11 @@ class PublicationService:
                 message="The requested prompt could not be found.",
                 status_code=404,
             )
+        assert_prompt_within_window(
+            prompt.prompt_date,
+            today=self._clock.today(),
+            backdate_days=self._settings.submission_backdate_days,
+        )
 
         from app.models.report import ReportTargetType
         from app.services.content_moderation import ContentModerationService
@@ -255,6 +268,13 @@ class PublicationService:
                 message="The requested story session could not be found.",
                 status_code=404,
             )
+        if payload.prompt_id != story_session.prompt_id:
+            raise AppError(
+                code="prompt_mismatch",
+                message="This submission targets a different prompt than its session.",
+                status_code=409,
+                details={"session_prompt_id": str(story_session.prompt_id)},
+            )
 
         existing = await self._publications.get_story_submission_by_session_id(story_session.id)
         if existing is not None:
@@ -305,6 +325,11 @@ class PublicationService:
                 message="The requested prompt could not be found.",
                 status_code=404,
             )
+        assert_prompt_within_window(
+            prompt.prompt_date,
+            today=self._clock.today(),
+            backdate_days=self._settings.submission_backdate_days,
+        )
 
         now = self._clock.now()
         publication, _detail = await self._publications.create_story(

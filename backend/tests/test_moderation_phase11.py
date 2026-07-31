@@ -146,7 +146,9 @@ async def _publish(client: AsyncClient, headers: dict[str, str]) -> dict[str, An
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json=_sketch_submission_json(session_id, upload["id"], caption="moderate me"),
+        json=_sketch_submission_json(
+            session_id, upload["id"], prompt_id=prompt.id, caption="moderate me"
+        ),
     )
     assert created.status_code == 201, created.text
     return created.json()

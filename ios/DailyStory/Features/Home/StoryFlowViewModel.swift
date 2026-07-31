@@ -160,6 +160,7 @@ final class StoryFlowViewModel {
                     accessToken: token,
                     creativeType: ProductConfig.current.creativeTypeID,
                     sessionId: sessionId,
+                    promptId: currentPrompt?.id ?? UUID(),
                     content: .story(body: body, caption: nil),
                     idempotencyKey: UUID().uuidString
                 )
@@ -201,6 +202,7 @@ final class StoryFlowViewModel {
                 promptId: prompt.id,
                 timerMode: option.mode,
                 selectedTimerSeconds: option.seconds,
+                clientStartedAt: Date(),
                 idempotencyKey: UUID().uuidString
             )
             currentSessionId = session.id

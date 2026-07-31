@@ -10,23 +10,27 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Publish a creative submission. Provide the creative type, owned session id, and type-specific content. The content discriminator determines validation rules.  */
+/** Publish a creative submission. Provide the creative type, owned session id, the Prompt the client believes it worked against, and type-specific content. The declared prompt_id must match the session&#39;s prompt and fall within the server submission window (today or yesterday UTC). The content discriminator determines validation rules.  */
 public struct CreateSubmissionRequest: Codable, JSONEncodable, Hashable {
 
     public var creativeType: CreativeType
     /** Canonical UUID string identifier. */
     public var sessionId: UUID
+    /** Canonical UUID string identifier. */
+    public var promptId: UUID
     public var content: CreateSubmissionRequestContent
 
-    public init(creativeType: CreativeType, sessionId: UUID, content: CreateSubmissionRequestContent) {
+    public init(creativeType: CreativeType, sessionId: UUID, promptId: UUID, content: CreateSubmissionRequestContent) {
         self.creativeType = creativeType
         self.sessionId = sessionId
+        self.promptId = promptId
         self.content = content
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case creativeType = "creative_type"
         case sessionId = "session_id"
+        case promptId = "prompt_id"
         case content
     }
 
@@ -36,6 +40,7 @@ public struct CreateSubmissionRequest: Codable, JSONEncodable, Hashable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(creativeType, forKey: .creativeType)
         try container.encode(sessionId, forKey: .sessionId)
+        try container.encode(promptId, forKey: .promptId)
         try container.encode(content, forKey: .content)
     }
 }

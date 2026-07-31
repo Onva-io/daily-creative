@@ -154,14 +154,18 @@ def _auth_headers(client: AsyncClient, *, subject: str | None = None) -> dict[st
 
 
 async def _seed_prompt(client: AsyncClient) -> DailyPrompt:
+    return await _seed_prompt_on(client, date(2026, 7, 18))
+
+
+async def _seed_prompt_on(client: AsyncClient, prompt_date: date) -> DailyPrompt:
     session_factory = client.session_factory  # type: ignore[attr-defined]
     async with session_factory() as session:
         return await PromptRepository(session).upsert_published(
-            prompt_date=date(2026, 7, 18),
+            prompt_date=prompt_date,
             word_1="Chocolate",
             word_2="Coffee",
             word_3="Banana",
-            published_at=datetime(2026, 7, 17, tzinfo=UTC),
+            published_at=datetime.combine(prompt_date, datetime.min.time(), tzinfo=UTC),
         )
 
 
@@ -458,3 +462,42 @@ async def test_timer_completed_sets_ready_for_photo(client: AsyncClient) -> None
     assert completed.status_code == 200
     assert completed.json()["status"] == "ready_for_photo"
     assert completed.json()["timer_completed_at"] is not None
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_session_create_accepts_yesterday_rejects_older_and_future(
+    client: AsyncClient,
+) -> None:
+    headers = _auth_headers(client)
+    today = client.clock.today()  # type: ignore[attr-defined]
+
+    yesterday = await _seed_prompt_on(client, today - timedelta(days=1))
+    ok = await client.post(
+        "/api/v1/sketch-sessions",
+        headers=headers,
+        json={
+            "prompt_id": str(yesterday.id),
+            "timer_mode": "no_timer",
+            "client_started_at": "2026-07-17T23:55:00Z",
+        },
+    )
+    assert ok.status_code == 201
+
+    older = await _seed_prompt_on(client, today - timedelta(days=2))
+    too_old = await client.post(
+        "/api/v1/sketch-sessions",
+        headers=headers,
+        json={"prompt_id": str(older.id), "timer_mode": "no_timer"},
+    )
+    assert too_old.status_code == 422
+    assert too_old.json()["error"]["code"] == "prompt_date_out_of_window"
+
+    future = await _seed_prompt_on(client, today + timedelta(days=1))
+    too_new = await client.post(
+        "/api/v1/sketch-sessions",
+        headers=headers,
+        json={"prompt_id": str(future.id), "timer_mode": "no_timer"},
+    )
+    assert too_new.status_code == 422
+    assert too_new.json()["error"]["code"] == "prompt_date_out_of_window"

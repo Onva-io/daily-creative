@@ -23,13 +23,16 @@ public struct CreateStorySessionRequest: Codable, JSONEncodable, Hashable {
     public var clientTimezone: String?
     /** Optional local session identifier for recovery correlation. */
     public var clientSessionId: String?
+    /** Optional client-local start timestamp for audit only. The server never uses this value for expiry or Prompt Date decisions.  */
+    public var clientStartedAt: Date?
 
-    public init(promptId: UUID, timerMode: TimerMode, selectedTimerSeconds: Int? = nil, clientTimezone: String? = nil, clientSessionId: String? = nil) {
+    public init(promptId: UUID, timerMode: TimerMode, selectedTimerSeconds: Int? = nil, clientTimezone: String? = nil, clientSessionId: String? = nil, clientStartedAt: Date? = nil) {
         self.promptId = promptId
         self.timerMode = timerMode
         self.selectedTimerSeconds = selectedTimerSeconds
         self.clientTimezone = clientTimezone
         self.clientSessionId = clientSessionId
+        self.clientStartedAt = clientStartedAt
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -38,6 +41,7 @@ public struct CreateStorySessionRequest: Codable, JSONEncodable, Hashable {
         case selectedTimerSeconds = "selected_timer_seconds"
         case clientTimezone = "client_timezone"
         case clientSessionId = "client_session_id"
+        case clientStartedAt = "client_started_at"
     }
 
     // Encodable protocol methods
@@ -49,6 +53,7 @@ public struct CreateStorySessionRequest: Codable, JSONEncodable, Hashable {
         try container.encodeIfPresent(selectedTimerSeconds, forKey: .selectedTimerSeconds)
         try container.encodeIfPresent(clientTimezone, forKey: .clientTimezone)
         try container.encodeIfPresent(clientSessionId, forKey: .clientSessionId)
+        try container.encodeIfPresent(clientStartedAt, forKey: .clientStartedAt)
     }
 }
 

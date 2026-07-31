@@ -110,6 +110,10 @@ enum PublicationAPIError: LocalizedError, Equatable {
     case idempotencyKeyConflict
     case sessionExpired
     case signedUploadExpired
+    case promptDateOutOfWindow
+    case promptMismatch
+    case invalidSessionTransition
+    case promptNotFound
     case underlying(String)
 
     var errorDescription: String? {
@@ -142,6 +146,14 @@ enum PublicationAPIError: LocalizedError, Equatable {
             return AuthServiceError.sessionExpired.localizedDescription
         case .signedUploadExpired:
             return "Your upload link expired. Retry to request a fresh upload."
+        case .promptDateOutOfWindow:
+            return "This sketch is too old to publish. Start a new sketch with today's inspiration."
+        case .promptMismatch:
+            return "This sketch no longer matches its inspiration. Start a new sketch."
+        case .invalidSessionTransition:
+            return "That lifecycle event is not valid for the current session state."
+        case .promptNotFound:
+            return "The requested prompt could not be found."
         case .underlying(let message):
             return message
         }
@@ -183,6 +195,7 @@ protocol PublicationServing: Sendable {
         accessToken: String,
         creativeType: String,
         sessionId: UUID,
+        promptId: UUID,
         content: PublicationContent,
         idempotencyKey: String?
     ) async throws -> SubmissionModel
@@ -325,6 +338,7 @@ struct PublicationRepository: PublicationServing {
         accessToken: String,
         creativeType: String,
         sessionId: UUID,
+        promptId: UUID,
         content: PublicationContent,
         idempotencyKey: String?
     ) async throws -> SubmissionModel {
@@ -355,6 +369,7 @@ struct PublicationRepository: PublicationServing {
             let request = CreateSubmissionRequest(
                 creativeType: apiCreativeType,
                 sessionId: sessionId,
+                promptId: promptId,
                 content: contentPayload
             )
             let submission = try await SubmissionsAPI.createSubmission(
@@ -471,6 +486,14 @@ func mapAPIError(_ error: Error) -> Error {
                     return PublicationAPIError.invalidImage
                 case "idempotency_key_conflict":
                     return PublicationAPIError.idempotencyKeyConflict
+                case "prompt_date_out_of_window":
+                    return PublicationAPIError.promptDateOutOfWindow
+                case "prompt_mismatch":
+                    return PublicationAPIError.promptMismatch
+                case "invalid_session_transition":
+                    return PublicationAPIError.invalidSessionTransition
+                case "prompt_not_found":
+                    return PublicationAPIError.promptNotFound
                 default:
                     return PublicationAPIError.underlying(envelope.error.message)
                 }
@@ -563,6 +586,7 @@ final class RecordingPublicationRepository: PublicationServing, @unchecked Senda
     private(set) var lastIdempotencyKey: String?
     private(set) var lastCreativeType: String?
     private(set) var lastSessionId: UUID?
+    private(set) var lastPromptId: UUID?
     private(set) var lastContent: PublicationContent?
     var createError: Error?
     var deleteError: Error?
@@ -572,6 +596,7 @@ final class RecordingPublicationRepository: PublicationServing, @unchecked Senda
         accessToken: String,
         creativeType: String,
         sessionId: UUID,
+        promptId: UUID,
         content: PublicationContent,
         idempotencyKey: String?
     ) async throws -> SubmissionModel {
@@ -579,6 +604,7 @@ final class RecordingPublicationRepository: PublicationServing, @unchecked Senda
         lastIdempotencyKey = idempotencyKey
         lastCreativeType = creativeType
         lastSessionId = sessionId
+        lastPromptId = promptId
         lastContent = content
         if let createError { throw createError }
         if let nextSubmission { return nextSubmission }

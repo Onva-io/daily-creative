@@ -27,6 +27,7 @@ from app.schemas.sketch_sessions import (
     SketchSessionResponse,
 )
 from app.services.base_creative_session import validate_timer_selection
+from app.services.prompts import assert_prompt_within_window
 
 CREATE_ENDPOINT = "POST /api/v1/sketch-sessions"
 
@@ -101,6 +102,11 @@ class SketchSessionService:
                 message="The requested prompt could not be found.",
                 status_code=404,
             )
+        assert_prompt_within_window(
+            prompt.prompt_date,
+            today=self._clock.today(),
+            backdate_days=self._settings.submission_backdate_days,
+        )
 
         timer_mode = TimerMode(payload.timer_mode.value)
         validate_timer_selection(timer_mode, payload.selected_timer_seconds)
@@ -111,6 +117,8 @@ class SketchSessionService:
             metadata["client_timezone"] = payload.client_timezone
         if payload.client_session_id:
             metadata["client_session_id"] = payload.client_session_id
+        if payload.client_started_at is not None:
+            metadata["client_started_at"] = payload.client_started_at.isoformat()
 
         sketch_session = await self._sessions.create_session(
             user_id=user.id,

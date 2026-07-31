@@ -22,6 +22,7 @@ final class ReviewSubmissionViewModel {
     private(set) var previewImage: UIImage?
     private(set) var isSaving = false
     private(set) var isPublishing = false
+    private(set) var isPublishBlocked = false
     private(set) var uploadProgress: Double = 0
     private(set) var bannerMessage: String?
     private(set) var validationErrorMessage: String?
@@ -155,12 +156,14 @@ final class ReviewSubmissionViewModel {
     }
 
     func submitToCommunity() {
+        guard !isPublishBlocked else { return }
         Task {
             await publish()
         }
     }
 
     func retryPublish() {
+        guard !isPublishBlocked else { return }
         Task {
             await publish()
         }
@@ -221,6 +224,7 @@ final class ReviewSubmissionViewModel {
                 accessToken: token,
                 creativeType: ProductConfig.current.creativeTypeID,
                 sessionId: sessionId,
+                promptId: draft.promptId,
                 content: .sketch(uploadId: uploadId, caption: trimmed.isEmpty ? nil : trimmed),
                 idempotencyKey: idempotencyKey
             )
@@ -249,6 +253,14 @@ final class ReviewSubmissionViewModel {
             try? draftStore.save(draft)
             publishErrorMessage = PublicationAPIError.signedUploadExpired.localizedDescription
             try? persistCaption(pendingAuthentication: false, pendingPublication: true)
+        } catch PublicationAPIError.promptDateOutOfWindow {
+            isPublishBlocked = true
+            publishErrorMessage = PublicationAPIError.promptDateOutOfWindow.localizedDescription
+            try? persistCaption(pendingAuthentication: false, pendingPublication: false)
+        } catch SketchSessionAPIError.promptDateOutOfWindow {
+            isPublishBlocked = true
+            publishErrorMessage = SketchSessionAPIError.promptDateOutOfWindow.localizedDescription
+            try? persistCaption(pendingAuthentication: false, pendingPublication: false)
         } catch {
             if let apiError = error as? PublicationAPIError, apiError == .sessionExpired {
                 publishErrorMessage = apiError.localizedDescription
@@ -277,6 +289,7 @@ final class ReviewSubmissionViewModel {
             selectedTimerSeconds: draft.selectedTimerSeconds,
             clientTimezone: TimeZone.current.identifier,
             clientSessionId: draft.localSessionId.uuidString,
+            clientStartedAt: draft.sessionStartedAt,
             idempotencyKey: "draft-session-\(draft.id.uuidString)"
         )
         draft.serverSessionId = created.id

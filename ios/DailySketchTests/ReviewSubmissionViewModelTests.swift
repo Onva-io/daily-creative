@@ -1,5 +1,6 @@
 import UIKit
 import XCTest
+@preconcurrency import DailyCreativeAPI
 @testable import DailySketch
 
 @MainActor
@@ -349,6 +350,147 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
         await waitUntil(uploads.createCallCount >= 2)
 
         XCTAssertGreaterThanOrEqual(uploads.createCallCount, 2)
+    }
+
+    func testPublishSendsDraftPromptId() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let submissions = RecordingSubmissionRepository()
+        let (draft, data) = try makeDraft(imageStore: imageStore, caption: "prompt check")
+        try draftStore.save(draft)
+
+        var outcome: ReviewSubmissionOutcome?
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            uploadService: RecordingUploadRepository(),
+            submissionService: submissions,
+            sessionService: RecordingSketchSessionRepository(),
+            directUploader: RecordingDirectUploader(),
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { true },
+            onFinished: { outcome = $0 },
+            onReplaceRequested: {}
+        )
+        model.submitToCommunity()
+        await waitUntil(outcome != nil)
+
+        XCTAssertEqual(submissions.lastPromptId, draft.promptId)
+        XCTAssertEqual(submissions.lastSessionId, draft.serverSessionId)
+    }
+
+    func testLazySessionCreateSendsClientStartedAt() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let sessions = RecordingSketchSessionRepository()
+        let startedAt = Date(timeIntervalSince1970: 1_784_300_000)
+        let (baseDraft, data) = try makeDraft(imageStore: imageStore, serverSessionId: nil)
+        let draft = LocalDraft(
+            id: baseDraft.id,
+            localSessionId: baseDraft.localSessionId,
+            serverSessionId: nil,
+            promptId: baseDraft.promptId,
+            promptWords: baseDraft.promptWords,
+            promptAccessibilityLabel: baseDraft.promptAccessibilityLabel,
+            promptDate: baseDraft.promptDate,
+            timerMode: baseDraft.timerMode,
+            selectedTimerSeconds: baseDraft.selectedTimerSeconds,
+            sessionStartedAt: startedAt,
+            imageFileName: baseDraft.imageFileName,
+            caption: baseDraft.caption,
+            createdAt: baseDraft.createdAt,
+            updatedAt: baseDraft.updatedAt,
+            pendingAuthentication: false,
+            pendingPublication: false
+        )
+        try draftStore.save(draft)
+
+        var outcome: ReviewSubmissionOutcome?
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            uploadService: RecordingUploadRepository(),
+            submissionService: RecordingSubmissionRepository(),
+            sessionService: sessions,
+            directUploader: RecordingDirectUploader(),
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { true },
+            onFinished: { outcome = $0 },
+            onReplaceRequested: {}
+        )
+        model.submitToCommunity()
+        await waitUntil(outcome != nil)
+
+        XCTAssertEqual(sessions.createCallCount, 1)
+        XCTAssertEqual(sessions.lastClientStartedAt, startedAt)
+    }
+
+    func testPromptDateOutOfWindowBlocksRetry() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let submissions = RecordingSubmissionRepository()
+        submissions.createError = PublicationAPIError.promptDateOutOfWindow
+        let (draft, data) = try makeDraft(imageStore: imageStore)
+        try draftStore.save(draft)
+
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            uploadService: RecordingUploadRepository(),
+            submissionService: submissions,
+            sessionService: RecordingSketchSessionRepository(),
+            directUploader: RecordingDirectUploader(),
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { true },
+            onFinished: { _ in },
+            onReplaceRequested: {}
+        )
+        model.submitToCommunity()
+        await waitUntil(model.isPublishBlocked)
+
+        XCTAssertTrue(model.isPublishBlocked)
+        XCTAssertEqual(
+            model.publishErrorMessage,
+            PublicationAPIError.promptDateOutOfWindow.localizedDescription
+        )
+        XCTAssertEqual(try draftStore.list().first?.pendingPublication, false)
+
+        let callsBeforeRetry = submissions.createCallCount
+        model.retryPublish()
+        await Task.yield()
+        XCTAssertEqual(submissions.createCallCount, callsBeforeRetry)
+    }
+
+    func testPublicationAPIErrorMappingForNewCodes() {
+        func envelope(_ code: String) -> Data {
+            Data(#"{"error":{"code":"\#(code)","message":"x"}}"#.utf8)
+        }
+
+        XCTAssertEqual(
+            mapAPIError(ErrorResponse.error(422, envelope("prompt_date_out_of_window"), nil, NSError(domain: "t", code: 0))) as? PublicationAPIError,
+            .promptDateOutOfWindow
+        )
+        XCTAssertEqual(
+            mapAPIError(ErrorResponse.error(409, envelope("prompt_mismatch"), nil, NSError(domain: "t", code: 0))) as? PublicationAPIError,
+            .promptMismatch
+        )
+        XCTAssertEqual(
+            mapAPIError(ErrorResponse.error(422, envelope("invalid_session_transition"), nil, NSError(domain: "t", code: 0))) as? PublicationAPIError,
+            .invalidSessionTransition
+        )
+        XCTAssertEqual(
+            mapAPIError(ErrorResponse.error(404, envelope("prompt_not_found"), nil, NSError(domain: "t", code: 0))) as? PublicationAPIError,
+            .promptNotFound
+        )
     }
 
     private func makeJPEG(color: UIColor = .red) -> Data {

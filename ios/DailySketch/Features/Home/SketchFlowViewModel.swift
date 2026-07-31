@@ -437,6 +437,7 @@ final class SketchFlowViewModel {
 
         let localId = UUID()
         let isGuest = !auth.isAuthenticated
+        let startedAt = dateProvider.now()
         isCreatingSession = true
         defer { isCreatingSession = false }
 
@@ -445,7 +446,7 @@ final class SketchFlowViewModel {
             option: option,
             localSessionId: localId,
             serverSessionId: nil,
-            startedAt: dateProvider.now(),
+            startedAt: startedAt,
             pausedAt: nil,
             pausedTotalSeconds: 0,
             lifecycle: .active,
@@ -468,6 +469,7 @@ final class SketchFlowViewModel {
                 selectedTimerSeconds: option.seconds,
                 clientTimezone: TimeZone.current.identifier,
                 clientSessionId: localId.uuidString,
+                clientStartedAt: startedAt,
                 idempotencyKey: localId.uuidString
             )
             model.attachServerSessionId(created.id)

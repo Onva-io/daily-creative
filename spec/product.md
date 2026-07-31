@@ -189,6 +189,8 @@ A lightweight positive reaction represented by a heart. An authenticated user ca
 
 The number of consecutive Prompt Dates, ending today or yesterday, for which a user has at least one published Submission. Multiple Submissions on one date count once.
 
+A Submission may only target a Prompt Date of today or yesterday (UTC). Older or future Prompt Dates are rejected so a user cannot retroactively repair a broken streak. Sessions started before UTC midnight may still publish against yesterday's Prompt after the rollover.
+
 ---
 
 ## 8. Version-one product scope

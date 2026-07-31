@@ -191,7 +191,9 @@ async def _publish(
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json=_sketch_submission_json(session_id, upload["id"], caption=caption),
+        json=_sketch_submission_json(
+            session_id, upload["id"], prompt_id=prompt.id, caption=caption
+        ),
     )
     assert created.status_code == 201, created.text
     return created.json()

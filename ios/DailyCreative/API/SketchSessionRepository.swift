@@ -21,6 +21,7 @@ enum SketchSessionAPIError: LocalizedError, Equatable {
     case invalidSessionTransition
     case idempotencyKeyConflict
     case promptNotFound
+    case promptDateOutOfWindow
     case sessionExpired
     case underlying(String)
 
@@ -36,6 +37,8 @@ enum SketchSessionAPIError: LocalizedError, Equatable {
             return "This idempotency key was already used with a different request."
         case .promptNotFound:
             return "The requested prompt could not be found."
+        case .promptDateOutOfWindow:
+            return "This sketch is too old to publish. Start a new sketch with today's inspiration."
         case .sessionExpired:
             return AuthServiceError.sessionExpired.localizedDescription
         case .underlying(let message):
@@ -52,6 +55,7 @@ protocol SketchSessionServing: Sendable {
         selectedTimerSeconds: Int?,
         clientTimezone: String?,
         clientSessionId: String?,
+        clientStartedAt: Date?,
         idempotencyKey: String
     ) async throws -> SketchSessionModel
 
@@ -78,6 +82,7 @@ struct SketchSessionRepository: SketchSessionServing {
         selectedTimerSeconds: Int?,
         clientTimezone: String?,
         clientSessionId: String?,
+        clientStartedAt: Date?,
         idempotencyKey: String
     ) async throws -> SketchSessionModel {
         configureClient(accessToken: accessToken)
@@ -90,7 +95,8 @@ struct SketchSessionRepository: SketchSessionServing {
                 timerMode: mode,
                 selectedTimerSeconds: selectedTimerSeconds,
                 clientTimezone: clientTimezone,
-                clientSessionId: clientSessionId
+                clientSessionId: clientSessionId,
+                clientStartedAt: clientStartedAt
             )
             let session = try await SketchSessionsAPI.createSketchSession(
                 createSketchSessionRequest: request,
@@ -187,6 +193,8 @@ struct SketchSessionRepository: SketchSessionServing {
                         return SketchSessionAPIError.idempotencyKeyConflict
                     case "prompt_not_found":
                         return SketchSessionAPIError.promptNotFound
+                    case "prompt_date_out_of_window":
+                        return SketchSessionAPIError.promptDateOutOfWindow
                     default:
                         return SketchSessionAPIError.underlying(envelope.error.message)
                     }
@@ -212,6 +220,7 @@ final class RecordingSketchSessionRepository: SketchSessionServing, @unchecked S
     private(set) var abandonCallCount = 0
     private(set) var lastAccessToken: String?
     private(set) var lastEventType: String?
+    private(set) var lastClientStartedAt: Date?
     var createError: Error?
     var eventError: Error?
     var abandonError: Error?
@@ -224,10 +233,12 @@ final class RecordingSketchSessionRepository: SketchSessionServing, @unchecked S
         selectedTimerSeconds: Int?,
         clientTimezone: String?,
         clientSessionId: String?,
+        clientStartedAt: Date?,
         idempotencyKey: String
     ) async throws -> SketchSessionModel {
         createCallCount += 1
         lastAccessToken = accessToken
+        lastClientStartedAt = clientStartedAt
         if let createError {
             throw createError
         }

@@ -56,6 +56,7 @@ def _sketch_submission_json(
     session_id: str | uuid.UUID,
     upload_id: str | uuid.UUID,
     *,
+    prompt_id: str | uuid.UUID,
     caption: str | None = None,
 ) -> dict[str, object]:
     content: dict[str, object] = {
@@ -67,6 +68,7 @@ def _sketch_submission_json(
     return {
         "creative_type": CREATIVE_TYPE_SKETCH,
         "session_id": str(session_id),
+        "prompt_id": str(prompt_id),
         "content": content,
     }
 
@@ -74,6 +76,7 @@ def _sketch_submission_json(
 def _story_submission_json(
     session_id: str | uuid.UUID,
     *,
+    prompt_id: str | uuid.UUID,
     body: str,
     caption: str | None = None,
 ) -> dict[str, object]:
@@ -86,6 +89,7 @@ def _story_submission_json(
     return {
         "creative_type": CREATIVE_TYPE_STORY,
         "session_id": str(session_id),
+        "prompt_id": str(prompt_id),
         "content": content,
     }
 
@@ -242,14 +246,18 @@ async def _complete_profile(
 
 
 async def _seed_prompt(client: AsyncClient) -> DailyPrompt:
+    return await _seed_prompt_on(client, date(2026, 7, 18))
+
+
+async def _seed_prompt_on(client: AsyncClient, prompt_date: date) -> DailyPrompt:
     session_factory = client.session_factory  # type: ignore[attr-defined]
     async with session_factory() as session:
         return await PromptRepository(session).upsert_published(
-            prompt_date=date(2026, 7, 18),
+            prompt_date=prompt_date,
             word_1="Chocolate",
             word_2="Coffee",
             word_3="Banana",
-            published_at=datetime(2026, 7, 17, tzinfo=UTC),
+            published_at=datetime.combine(prompt_date, datetime.min.time(), tzinfo=UTC),
         )
 
 
@@ -409,6 +417,7 @@ async def test_upload_cannot_be_consumed_twice(client: AsyncClient) -> None:
         json=_sketch_submission_json(
             session_id,
             upload["id"],
+            prompt_id=prompt.id,
             caption="First publish",
         ),
     )
@@ -423,6 +432,7 @@ async def test_upload_cannot_be_consumed_twice(client: AsyncClient) -> None:
         json=_sketch_submission_json(
             second_session,
             upload["id"],
+            prompt_id=prompt.id,
             caption="Reuse upload",
         ),
     )
@@ -462,7 +472,7 @@ async def test_another_user_cannot_consume_upload(client: AsyncClient) -> None:
     other_submit = await client.post(
         "/api/v1/submissions",
         headers=other_headers,
-        json=_sketch_submission_json(session_id, upload_id),
+        json=_sketch_submission_json(session_id, upload_id, prompt_id=prompt.id),
     )
     assert other_submit.status_code == 404
     assert other_submit.json()["error"]["code"] in {
@@ -484,6 +494,7 @@ async def test_duplicate_submission_idempotency_key_returns_same_result(
     payload = _sketch_submission_json(
         session_id,
         upload["id"],
+        prompt_id=prompt.id,
         caption="Idempotent caption",
     )
 
@@ -588,7 +599,7 @@ async def test_multiple_submissions_for_same_prompt(client: AsyncClient) -> None
     sub_a = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "multi-sub-a"},
-        json=_sketch_submission_json(session_a, upload_a["id"]),
+        json=_sketch_submission_json(session_a, upload_a["id"], prompt_id=prompt.id),
     )
     assert sub_a.status_code == 201
 
@@ -599,7 +610,7 @@ async def test_multiple_submissions_for_same_prompt(client: AsyncClient) -> None
     sub_b = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "multi-sub-b"},
-        json=_sketch_submission_json(session_b, upload_b["id"]),
+        json=_sketch_submission_json(session_b, upload_b["id"], prompt_id=prompt.id),
     )
     assert sub_b.status_code == 201
     assert sub_a.json()["id"] != sub_b.json()["id"]
@@ -617,7 +628,7 @@ async def test_delete_hides_submission(client: AsyncClient) -> None:
     created = await client.post(
         "/api/v1/submissions",
         headers=headers,
-        json=_sketch_submission_json(session_id, upload["id"]),
+        json=_sketch_submission_json(session_id, upload["id"], prompt_id=prompt.id),
     )
     assert created.status_code == 201
     submission_id = created.json()["id"]
@@ -655,7 +666,7 @@ async def test_profile_incomplete_cannot_publish(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/submissions",
         headers=headers,
-        json=_sketch_submission_json(session_id, upload["id"]),
+        json=_sketch_submission_json(session_id, upload["id"], prompt_id=prompt.id),
     )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "profile_incomplete"
@@ -705,6 +716,7 @@ async def test_upload_and_submission_openapi_contract(
         json=_sketch_submission_json(
             session_id,
             upload_body["id"],
+            prompt_id=prompt.id,
             caption="Contract sketch",
         ),
     )
@@ -757,7 +769,9 @@ async def test_story_publication_create_and_feed_filter(client: AsyncClient) -> 
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": "story-pub-1"},
-        json=_story_submission_json(session_id, body="Once upon a coffee bean."),
+        json=_story_submission_json(
+            session_id, prompt_id=prompt.id, body="Once upon a coffee bean."
+        ),
     )
     assert created.status_code == 201
     body = created.json()
@@ -792,7 +806,7 @@ async def test_sketch_session_cannot_publish_as_story(client: AsyncClient) -> No
     response = await client.post(
         "/api/v1/submissions",
         headers=headers,
-        json=_story_submission_json(sketch_session_id, body="Wrong type."),
+        json=_story_submission_json(sketch_session_id, prompt_id=prompt.id, body="Wrong type."),
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "session_not_found"
@@ -824,3 +838,130 @@ async def test_story_session_lifecycle(client: AsyncClient) -> None:
     )
     assert abandoned.status_code == 200
     assert abandoned.json()["status"] == "abandoned"
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_yesterday_prompt_can_create_session_and_publish(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers)
+    today = client.clock.today()  # type: ignore[attr-defined]
+    prompt = await _seed_prompt_on(client, today - timedelta(days=1))
+    session_id = await _create_ready_session(client, headers, prompt.id)
+    upload = await _create_ready_upload(client, headers)
+
+    created = await client.post(
+        "/api/v1/submissions",
+        headers={**headers, "Idempotency-Key": "yesterday-ok"},
+        json=_sketch_submission_json(
+            session_id,
+            upload["id"],
+            prompt_id=prompt.id,
+            caption="Cross-midnight sketch",
+        ),
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["prompt"]["prompt_date"] == (today - timedelta(days=1)).isoformat()
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_two_day_old_prompt_rejected_at_session_create(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers)
+    today = client.clock.today()  # type: ignore[attr-defined]
+    prompt = await _seed_prompt_on(client, today - timedelta(days=2))
+
+    created = await client.post(
+        "/api/v1/sketch-sessions",
+        headers=headers,
+        json={
+            "prompt_id": str(prompt.id),
+            "timer_mode": "countdown",
+            "selected_timer_seconds": 300,
+        },
+    )
+    assert created.status_code == 422
+    body = created.json()["error"]
+    assert body["code"] == "prompt_date_out_of_window"
+    assert body["details"]["prompt_date"] == (today - timedelta(days=2)).isoformat()
+    assert body["details"]["earliest_allowed"] == (today - timedelta(days=1)).isoformat()
+    assert body["details"]["latest_allowed"] == today.isoformat()
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_tomorrow_prompt_rejected_at_session_create(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    today = client.clock.today()  # type: ignore[attr-defined]
+    prompt = await _seed_prompt_on(client, today + timedelta(days=1))
+
+    created = await client.post(
+        "/api/v1/sketch-sessions",
+        headers=headers,
+        json={
+            "prompt_id": str(prompt.id),
+            "timer_mode": "no_timer",
+        },
+    )
+    assert created.status_code == 422
+    assert created.json()["error"]["code"] == "prompt_date_out_of_window"
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_submission_prompt_mismatch_rejected(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers)
+    today = client.clock.today()  # type: ignore[attr-defined]
+    session_prompt = await _seed_prompt_on(client, today)
+    other_prompt = await _seed_prompt_on(client, today - timedelta(days=1))
+    session_id = await _create_ready_session(client, headers, session_prompt.id)
+    upload = await _create_ready_upload(client, headers)
+
+    response = await client.post(
+        "/api/v1/submissions",
+        headers=headers,
+        json=_sketch_submission_json(
+            session_id,
+            upload["id"],
+            prompt_id=other_prompt.id,
+            caption="Wrong prompt",
+        ),
+    )
+    assert response.status_code == 409
+    body = response.json()["error"]
+    assert body["code"] == "prompt_mismatch"
+    assert body["details"]["session_prompt_id"] == str(session_prompt.id)
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_lazy_session_create_rejects_stale_prompt(client: AsyncClient) -> None:
+    """Drafts create the server session at publish time; a stale prompt must still fail."""
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers)
+    today = client.clock.today()  # type: ignore[attr-defined]
+    stale = await _seed_prompt_on(client, today - timedelta(days=2))
+    client_started_at = (
+        datetime.combine(
+            today - timedelta(days=2),
+            datetime.min.time(),
+            tzinfo=UTC,
+        )
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+    created = await client.post(
+        "/api/v1/sketch-sessions",
+        headers={**headers, "Idempotency-Key": "draft-session-stale"},
+        json={
+            "prompt_id": str(stale.id),
+            "timer_mode": "countdown",
+            "selected_timer_seconds": 300,
+            "client_started_at": client_started_at,
+        },
+    )
+    assert created.status_code == 422
+    assert created.json()["error"]["code"] == "prompt_date_out_of_window"

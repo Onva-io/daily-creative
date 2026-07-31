@@ -66,6 +66,7 @@ class CreateSubmissionRequest(BaseModel):
 
     creative_type: CreativeTypeSchema
     session_id: UUID
+    prompt_id: UUID
     content: SubmissionContent
 
 

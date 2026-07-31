@@ -22,6 +22,7 @@ enum StorySessionAPIError: LocalizedError, Equatable {
     case invalidSessionTransition
     case idempotencyKeyConflict
     case promptNotFound
+    case promptDateOutOfWindow
     case sessionExpired
     case underlying(String)
 
@@ -37,6 +38,8 @@ enum StorySessionAPIError: LocalizedError, Equatable {
             return "This idempotency key was already used with a different request."
         case .promptNotFound:
             return "The requested prompt could not be found."
+        case .promptDateOutOfWindow:
+            return "This story is too old to publish. Start a new story with today's inspiration."
         case .sessionExpired:
             return AuthServiceError.sessionExpired.localizedDescription
         case .underlying(let message):
@@ -51,6 +54,7 @@ protocol StorySessionServing: Sendable {
         promptId: UUID,
         timerMode: String,
         selectedTimerSeconds: Int?,
+        clientStartedAt: Date?,
         idempotencyKey: String?
     ) async throws -> StorySessionModel
 
@@ -74,6 +78,7 @@ struct StorySessionRepository: StorySessionServing {
         promptId: UUID,
         timerMode: String,
         selectedTimerSeconds: Int?,
+        clientStartedAt: Date? = nil,
         idempotencyKey: String? = nil
     ) async throws -> StorySessionModel {
         configureClient(accessToken: accessToken)
@@ -84,7 +89,8 @@ struct StorySessionRepository: StorySessionServing {
             let request = CreateStorySessionRequest(
                 promptId: promptId,
                 timerMode: mode,
-                selectedTimerSeconds: selectedTimerSeconds
+                selectedTimerSeconds: selectedTimerSeconds,
+                clientStartedAt: clientStartedAt
             )
             let session = try await StorySessionsAPI.createStorySession(
                 createStorySessionRequest: request,
@@ -181,6 +187,8 @@ struct StorySessionRepository: StorySessionServing {
                         return StorySessionAPIError.idempotencyKeyConflict
                     case "prompt_not_found":
                         return StorySessionAPIError.promptNotFound
+                    case "prompt_date_out_of_window":
+                        return StorySessionAPIError.promptDateOutOfWindow
                     default:
                         return StorySessionAPIError.underlying(envelope.error.message)
                     }

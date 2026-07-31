@@ -187,7 +187,9 @@ async def _publish_for_date(
     created = await client.post(
         "/api/v1/submissions",
         headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
-        json=_sketch_submission_json(session_id, upload["id"], caption=caption),
+        json=_sketch_submission_json(
+            session_id, upload["id"], prompt_id=prompt.id, caption=caption
+        ),
     )
     assert created.status_code == 201, created.text
     return created.json()
@@ -284,13 +286,9 @@ async def test_user_submissions_pagination_and_contract(
     headers = _auth_headers(client)
     await _complete_profile(client, headers, username="gallery_user")
     today = client.clock.today()  # type: ignore[attr-defined]
-    for offset in range(3):
-        await _publish_for_date(
-            client,
-            headers,
-            today - timedelta(days=offset),
-            caption=f"Sketch {offset}",
-        )
+    await _publish_for_date(client, headers, today, caption="Sketch 0")
+    await _publish_for_date(client, headers, today, caption="Sketch 1")
+    await _publish_for_date(client, headers, today - timedelta(days=1), caption="Sketch 2")
 
     first_page = await client.get(
         "/api/v1/users/gallery_user/submissions",

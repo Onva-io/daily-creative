@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,27 @@ from app.models.daily_prompt import DailyPrompt, PromptStatus
 from app.repositories.prompts import PromptRepository
 from app.schemas.prompts import DailyPromptResponse
 from app.seeds.prompts import generate_prompt_words
+
+
+def assert_prompt_within_window(
+    prompt_date: date,
+    *,
+    today: date,
+    backdate_days: int,
+) -> None:
+    """Reject prompts outside the submittable window (future, or older than the backdate limit)."""
+    earliest_allowed = today - timedelta(days=backdate_days)
+    if prompt_date > today or prompt_date < earliest_allowed:
+        raise AppError(
+            code="prompt_date_out_of_window",
+            message="This prompt is outside the allowed submission window.",
+            status_code=422,
+            details={
+                "prompt_date": prompt_date.isoformat(),
+                "earliest_allowed": earliest_allowed.isoformat(),
+                "latest_allowed": today.isoformat(),
+            },
+        )
 
 
 class PromptService:
