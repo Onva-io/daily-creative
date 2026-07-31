@@ -243,9 +243,10 @@ struct HomeView: View {
     private func inspirationSection(_ model: HomeViewModel) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.contentGapLarge) {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text("Today’s Inspiration")
+                Text(inspirationTitle(for: model))
                     .font(AppTypography.display)
                     .foregroundStyle(AppColors.textPrimary)
+                    .accessibilityIdentifier("inspiration-heading")
 
                 Text("Tap a prompt to start your daily practice.")
                     .font(AppTypography.bodyLarge)
@@ -335,6 +336,13 @@ struct HomeView: View {
                 )
             }
         }
+    }
+
+    private func inspirationTitle(for model: HomeViewModel) -> String {
+        if let prompt = model.loadedPrompt {
+            return prompt.inspirationTitle
+        }
+        return "Today’s Inspiration"
     }
 
     private func communitySection(_ model: HomeViewModel) -> some View {

@@ -14,6 +14,45 @@ struct DailyPromptModel: Codable, Equatable, Sendable, Identifiable {
     var accessibilityLabel: String {
         "Today’s prompt: \(word1), \(word2), \(word3)."
     }
+
+    /// Home section title, e.g. "Inspiration for 31st July 2026".
+    var inspirationTitle: String {
+        PromptDateFormatting.inspirationTitle(for: promptDate)
+    }
+}
+
+/// Formats prompt calendar dates for display (UTC day boundary).
+enum PromptDateFormatting {
+    /// e.g. "Inspiration for 31st July 2026".
+    static func inspirationTitle(for date: Date) -> String {
+        "Inspiration for \(ordinalDayMonthYear(date))"
+    }
+
+    /// e.g. "31st July 2026".
+    static func ordinalDayMonthYear(_ date: Date) -> String {
+        let calendar = PromptFreshness.utcCalendar
+        let day = calendar.component(.day, from: date)
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "MMMM yyyy"
+        return "\(day)\(ordinalSuffix(for: day)) \(formatter.string(from: date))"
+    }
+
+    private static func ordinalSuffix(for day: Int) -> String {
+        switch day {
+        case 11, 12, 13:
+            return "th"
+        default:
+            switch day % 10 {
+            case 1: return "st"
+            case 2: return "nd"
+            case 3: return "rd"
+            default: return "th"
+            }
+        }
+    }
 }
 
 struct RecentFeedPage: Equatable, Sendable {

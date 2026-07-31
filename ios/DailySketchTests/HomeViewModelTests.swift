@@ -586,4 +586,35 @@ final class HomeViewModelTests: XCTestCase {
             )
         )
     }
+
+    func testPromptDateFormattingUsesOrdinalDay() {
+        // 2026-07-18 UTC
+        let eighteenth = Date(timeIntervalSince1970: 1_784_332_800)
+        XCTAssertEqual(PromptDateFormatting.ordinalDayMonthYear(eighteenth), "18th July 2026")
+        XCTAssertEqual(
+            PromptDateFormatting.inspirationTitle(for: eighteenth),
+            "Inspiration for 18th July 2026"
+        )
+        XCTAssertEqual(samplePrompt().inspirationTitle, "Inspiration for 18th July 2026")
+
+        // 2026-07-31 UTC
+        let thirtyFirst = Date(timeIntervalSince1970: 1_785_456_000)
+        XCTAssertEqual(PromptDateFormatting.ordinalDayMonthYear(thirtyFirst), "31st July 2026")
+
+        // 2026-07-01 UTC
+        let first = Date(timeIntervalSince1970: 1_782_864_000)
+        XCTAssertEqual(PromptDateFormatting.ordinalDayMonthYear(first), "1st July 2026")
+
+        // 2026-07-02 UTC
+        let second = Date(timeIntervalSince1970: 1_782_950_400)
+        XCTAssertEqual(PromptDateFormatting.ordinalDayMonthYear(second), "2nd July 2026")
+
+        // 2026-07-03 UTC
+        let third = Date(timeIntervalSince1970: 1_783_036_800)
+        XCTAssertEqual(PromptDateFormatting.ordinalDayMonthYear(third), "3rd July 2026")
+
+        // 2026-07-11 UTC (teen exception)
+        let eleventh = Date(timeIntervalSince1970: 1_783_728_000)
+        XCTAssertEqual(PromptDateFormatting.ordinalDayMonthYear(eleventh), "11th July 2026")
+    }
 }

@@ -8,7 +8,7 @@ final class DailySketchUITests: XCTestCase {
 
         let homeTab = app.tabBars.buttons["Home"]
         XCTAssertTrue(homeTab.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Today’s Inspiration"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["inspiration-heading"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Start Sketch"].waitForExistence(timeout: 5))
     }
 
@@ -20,14 +20,14 @@ final class DailySketchUITests: XCTestCase {
         let profileTab = app.tabBars.buttons["Profile"]
 
         XCTAssertTrue(homeTab.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Today’s Inspiration"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["inspiration-heading"].exists)
 
         XCTAssertTrue(profileTab.exists)
         profileTab.tap()
         XCTAssertTrue(app.staticTexts["Keep your creative history"].waitForExistence(timeout: 5))
 
         homeTab.tap()
-        XCTAssertTrue(app.staticTexts["Today’s Inspiration"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["inspiration-heading"].waitForExistence(timeout: 5))
     }
 
     /// Account-deletion entry lives in Settings for authenticated users. Guests see
@@ -62,7 +62,7 @@ final class DailySketchUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Today’s Inspiration"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["inspiration-heading"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Start Sketch"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Home"].exists)
         XCTAssertTrue(app.tabBars.buttons["Profile"].exists)
@@ -73,7 +73,7 @@ final class DailySketchUITests: XCTestCase {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UIAccessibilityExtraExtraExtraLarge"]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Today’s Inspiration"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["inspiration-heading"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Start Sketch"].waitForExistence(timeout: 5))
     }
 

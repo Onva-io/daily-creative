@@ -166,9 +166,10 @@ struct StoryHomeView: View {
     private func inspirationSection(_ model: StoryHomeViewModel, _ flow: StoryFlowViewModel) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.contentGapLarge) {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text("Today’s Inspiration")
+                Text(inspirationTitle(for: model))
                     .font(AppTypography.display)
                     .foregroundStyle(AppColors.textPrimary)
+                    .accessibilityIdentifier("inspiration-heading")
 
                 Text("Tap a prompt to start writing your daily story.")
                     .font(AppTypography.bodyLarge)
@@ -214,6 +215,13 @@ struct StoryHomeView: View {
             )
             .accessibilityHint("Starts today’s timed writing session")
         }
+    }
+
+    private func inspirationTitle(for model: StoryHomeViewModel) -> String {
+        if let prompt = model.loadedPrompt {
+            return prompt.inspirationTitle
+        }
+        return "Today’s Inspiration"
     }
 
     private func publishedTodaySection(_ model: StoryHomeViewModel) -> some View {
