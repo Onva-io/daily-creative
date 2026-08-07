@@ -56,6 +56,9 @@ class ModerationReviewRepository:
         )
         return list(result.scalars().all())
 
+    async def get_by_id(self, item_id: uuid.UUID) -> ModerationReviewItem | None:
+        return await self._session.get(ModerationReviewItem, item_id)
+
     async def resolve(
         self,
         item: ModerationReviewItem,

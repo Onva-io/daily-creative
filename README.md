@@ -94,7 +94,7 @@ Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoU
   - `GET /api/v1/me/blocked-users` — list users you block.
   - `PUT` / `DELETE /api/v1/users/{user_id}/block` — idempotent block/unblock.
   - `DELETE /api/v1/me` — request deletion → `202` / `pending_deletion` (optional `Idempotency-Key`).
-- **Internal (not in public OpenAPI):** `/internal/moderation/*` guarded by `X-Moderation-Token` matching `MODERATION_OPERATOR_TOKEN` — list/inspect reports, hide/remove/restore content, suspend/restore users.
+- **Internal (not in public OpenAPI):** `/internal/moderation/*` guarded by a Descope admin Bearer JWT (`DESCOPE_ADMIN_ROLE`) or `X-Moderation-Token` matching `MODERATION_OPERATOR_TOKEN` — list/inspect reports, review-queue approve/reject, hide/remove/restore content, redact captions, suspend/restore users.
 - **Backend:** Migration `0010_blocks_reports` (`user_blocks`, `reports`, `moderation_actions`). Reciprocal block filtering on feed, detail, reflections, and profiles. Finalize pending deletions with `make account-deletion-finalize` (`python -m app.jobs.account_deletion`). Seeds include sample blocks/reports via the safety seed.
 - **iOS:** Report sheet (private copy + Block User offer), block confirmation, Blocked Users, Delete Account confirmation, Settings Safety section; guest report/block resume auth; content disappears after block.
 - **ADRs:** `spec/decisions/0008-block-semantics.md`, `0009-account-deletion.md`.

@@ -38,6 +38,7 @@ def mint_token(
     audience: str = AUDIENCE,
     expires_in: int = 3600,
     name: str | None = None,
+    roles: list[str] | None = None,
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
     now = int(time.time())
@@ -50,6 +51,8 @@ def mint_token(
     }
     if name is not None:
         claims["name"] = name
+    if roles is not None:
+        claims["roles"] = roles
     if extra_claims:
         claims.update(extra_claims)
     return jwt.encode(claims, private_pem(private_key), algorithm="RS256")

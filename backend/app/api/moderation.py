@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.operator import OperatorPrincipal, require_moderation_operator
 from app.core.clock import Clock, get_clock
 from app.core.errors import AppError
 from app.core.settings import Settings, get_settings
@@ -29,29 +30,18 @@ class ResolveReportRequest(BaseModel):
     dismiss: bool = False
 
 
-def require_moderation_operator(
-    settings: Settings = Depends(get_settings),
-    x_moderation_token: Annotated[str | None, Header(alias="X-Moderation-Token")] = None,
-) -> str:
-    import secrets
+class ApproveRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)
 
-    expected = settings.moderation_operator_token
-    if (
-        not expected
-        or not x_moderation_token
-        or not secrets.compare_digest(x_moderation_token, expected)
-    ):
-        raise AppError(
-            code="moderation_forbidden",
-            message="Moderation access is not permitted.",
-            status_code=403,
-        )
-    return "operator"
+
+class RejectReviewRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)
+    remove: bool = False
 
 
 @router.get("/reports")
 async def list_reports(
-    _operator: str = Depends(require_moderation_operator),
+    _operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     limit: int = 50,
@@ -64,7 +54,7 @@ async def list_reports(
 async def inspect_target(
     target_type: ReportTargetType,
     target_id: UUID,
-    _operator: str = Depends(require_moderation_operator),
+    _operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
@@ -78,12 +68,12 @@ async def inspect_target(
 async def hide_submission(
     submission_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).hide_submission(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         submission_id=submission_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -94,12 +84,12 @@ async def hide_submission(
 async def remove_submission(
     submission_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).remove_submission(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         submission_id=submission_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -110,12 +100,28 @@ async def remove_submission(
 async def restore_submission(
     submission_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).restore_submission(
-        operator_identity=operator,
+        operator_identity=operator.identity,
+        submission_id=submission_id,
+        reason=payload.reason,
+        report_id=payload.report_id,
+    )
+
+
+@router.post("/submissions/{submission_id}/redact-caption")
+async def redact_caption(
+    submission_id: UUID,
+    payload: ModerationActionRequest,
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
+    session: AsyncSession = Depends(get_db_session),
+    clock: Clock = Depends(get_clock),
+) -> dict[str, Any]:
+    return await ModerationService(session, clock).redact_caption(
+        operator_identity=operator.identity,
         submission_id=submission_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -126,12 +132,12 @@ async def restore_submission(
 async def hide_reflection(
     reflection_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).hide_reflection(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         reflection_id=reflection_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -142,12 +148,12 @@ async def hide_reflection(
 async def remove_reflection(
     reflection_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).remove_reflection(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         reflection_id=reflection_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -158,12 +164,12 @@ async def remove_reflection(
 async def restore_reflection(
     reflection_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).restore_reflection(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         reflection_id=reflection_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -174,12 +180,12 @@ async def restore_reflection(
 async def suspend_user(
     user_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).suspend_user(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         user_id=user_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -190,12 +196,12 @@ async def suspend_user(
 async def restore_user(
     user_id: UUID,
     payload: ModerationActionRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).restore_user(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         user_id=user_id,
         reason=payload.reason,
         report_id=payload.report_id,
@@ -206,15 +212,32 @@ async def restore_user(
 async def resolve_report(
     report_id: UUID,
     payload: ResolveReportRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, Any]:
     return await ModerationService(session, clock).resolve_report(
-        operator_identity=operator,
+        operator_identity=operator.identity,
         report_id=report_id,
         resolution_notes=payload.resolution_notes,
         dismiss=payload.dismiss,
+        reviewer_user_id=operator.user_id,
+    )
+
+
+@router.post("/reports/{report_id}/approve")
+async def approve_reported_content(
+    report_id: UUID,
+    payload: ApproveRequest,
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
+    session: AsyncSession = Depends(get_db_session),
+    clock: Clock = Depends(get_clock),
+) -> dict[str, Any]:
+    return await ModerationService(session, clock).approve_reported_content(
+        operator_identity=operator.identity,
+        report_id=report_id,
+        reason=payload.reason,
+        reviewer_user_id=operator.user_id,
     )
 
 
@@ -231,7 +254,7 @@ class CreatePolicyDraftRequest(BaseModel):
 @router.get("/policies")
 async def list_policies(
     kind: str | None = None,
-    _operator: str = Depends(require_moderation_operator),
+    _operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
@@ -265,7 +288,7 @@ async def list_policies(
 @router.post("/policies")
 async def create_policy_draft(
     payload: CreatePolicyDraftRequest,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
@@ -289,7 +312,7 @@ async def create_policy_draft(
         minimum_age=payload.minimum_age,
         is_significant_change=payload.is_significant_change,
         change_summary=payload.change_summary,
-        operator_identity=operator,
+        operator_identity=operator.identity,
     )
     return {
         "id": str(document.id),
@@ -302,7 +325,7 @@ async def create_policy_draft(
 @router.post("/policies/{document_id}/publish")
 async def publish_policy(
     document_id: UUID,
-    operator: str = Depends(require_moderation_operator),
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     settings: Settings = Depends(get_settings),
@@ -311,7 +334,7 @@ async def publish_policy(
 
     document = await PolicyService(session, clock=clock, settings=settings).publish(
         document_id,
-        operator_identity=operator,
+        operator_identity=operator.identity,
     )
     return {
         "id": str(document.id),
@@ -330,25 +353,41 @@ async def publish_policy(
 
 @router.get("/review-queue")
 async def list_review_queue(
-    _operator: str = Depends(require_moderation_operator),
+    _operator: OperatorPrincipal = Depends(require_moderation_operator),
     session: AsyncSession = Depends(get_db_session),
+    clock: Clock = Depends(get_clock),
     limit: int = 50,
 ) -> dict[str, Any]:
-    from app.repositories.moderation_reviews import ModerationReviewRepository
+    items = await ModerationService(session, clock).list_review_queue(limit=limit)
+    return {"items": items}
 
-    items = await ModerationReviewRepository(session).list_open(limit=limit)
-    return {
-        "items": [
-            {
-                "id": str(item.id),
-                "target_type": item.target_type.value,
-                "target_id": str(item.target_id),
-                "user_id": str(item.user_id) if item.user_id else None,
-                "confidence": item.confidence,
-                "categories": item.categories,
-                "provider": item.provider,
-                "created_at": item.created_at.isoformat(),
-            }
-            for item in items
-        ]
-    }
+
+@router.post("/review-queue/{item_id}/approve")
+async def approve_review_item(
+    item_id: UUID,
+    payload: ApproveRequest,
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
+    session: AsyncSession = Depends(get_db_session),
+    clock: Clock = Depends(get_clock),
+) -> dict[str, Any]:
+    return await ModerationService(session, clock).approve_review_item(
+        operator_identity=operator.identity,
+        item_id=item_id,
+        reason=payload.reason,
+    )
+
+
+@router.post("/review-queue/{item_id}/reject")
+async def reject_review_item(
+    item_id: UUID,
+    payload: RejectReviewRequest,
+    operator: OperatorPrincipal = Depends(require_moderation_operator),
+    session: AsyncSession = Depends(get_db_session),
+    clock: Clock = Depends(get_clock),
+) -> dict[str, Any]:
+    return await ModerationService(session, clock).reject_review_item(
+        operator_identity=operator.identity,
+        item_id=item_id,
+        reason=payload.reason,
+        remove=payload.remove,
+    )

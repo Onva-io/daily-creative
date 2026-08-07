@@ -29,6 +29,10 @@ class ModerationActionType(str, enum.Enum):
     auto_block_content = "auto_block_content"
     auto_queue_review = "auto_queue_review"
     publish_policy = "publish_policy"
+    approve_review_item = "approve_review_item"
+    reject_review_item = "reject_review_item"
+    approve_reported_content = "approve_reported_content"
+    redact_caption = "redact_caption"
 
 
 class ModerationAction(Base):

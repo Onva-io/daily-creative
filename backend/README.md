@@ -13,7 +13,7 @@ FastAPI application for Daily Sketch. See the repository root README for local s
 ## Phase 11 — Safety
 
 - **Public:** reports, blocked-users, block/unblock, `DELETE /me` → `pending_deletion`.
-- **Internal:** `/internal/moderation/*` with `X-Moderation-Token` / `MODERATION_OPERATOR_TOKEN`.
+- **Internal:** `/internal/moderation/*` with a Descope admin Bearer JWT (`DESCOPE_ADMIN_ROLE`, default `admin`) or `X-Moderation-Token` / `MODERATION_OPERATOR_TOKEN`.
 - **Finalize:** `make account-deletion-finalize`.
 - **ADRs:** `0008-block-semantics`, `0009-account-deletion`.
 

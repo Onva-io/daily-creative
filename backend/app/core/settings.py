@@ -106,11 +106,31 @@ class Settings(BaseSettings):
     # Optional JWT audience. Only set when Descope JWT templates include a custom aud claim.
     # Leave unset for default Descope session tokens (which omit aud).
     descope_audience: str | None = Field(default=None, alias="DESCOPE_AUDIENCE")
+    # Project-level Descope role granting access to /internal/moderation/* (alongside
+    # MODERATION_OPERATOR_TOKEN). Create and assign this role in the Descope console.
+    descope_admin_role: str = Field(default="admin", alias="DESCOPE_ADMIN_ROLE")
     moderation_operator_token: str | None = Field(
         default=None,
         alias="MODERATION_OPERATOR_TOKEN",
     )
     moderation_provider: str = Field(default="heuristic", alias="MODERATION_PROVIDER")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_moderation_model: str = Field(
+        default="omni-moderation-latest",
+        alias="OPENAI_MODERATION_MODEL",
+    )
+    openai_moderation_block_threshold: float = Field(
+        default=0.8,
+        alias="OPENAI_MODERATION_BLOCK_THRESHOLD",
+        ge=0.0,
+        le=1.0,
+    )
+    openai_moderation_queue_threshold: float = Field(
+        default=0.4,
+        alias="OPENAI_MODERATION_QUEUE_THRESHOLD",
+        ge=0.0,
+        le=1.0,
+    )
     # Publishes the seed policy set on deploy when a kind has nothing published, so
     # consent and age gating can never be silently inactive in an environment.
     policy_bootstrap_enabled: bool = Field(default=True, alias="POLICY_BOOTSTRAP_ENABLED")

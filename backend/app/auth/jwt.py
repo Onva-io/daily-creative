@@ -25,6 +25,14 @@ class VerifiedToken:
             return name.strip()
         return None
 
+    @property
+    def roles(self) -> tuple[str, ...]:
+        """Project-level Descope roles from the session JWT (empty if absent)."""
+        raw = self.claims.get("roles")
+        if not isinstance(raw, list):
+            return ()
+        return tuple(role for role in raw if isinstance(role, str) and role)
+
 
 class TokenVerifier(Protocol):
     """Protocol for JWT verification (real Descope SDK or test double)."""

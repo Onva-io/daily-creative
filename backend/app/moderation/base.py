@@ -126,6 +126,10 @@ def get_moderation_adapter(settings: Settings | None = None) -> ModerationAdapte
     """Return the configured moderation adapter (heuristic by default)."""
     cfg = settings or get_settings()
     provider = (cfg.moderation_provider or "heuristic").lower()
+    if provider == "openai":
+        from app.moderation.openai import OpenAIModerationAdapter
+
+        return OpenAIModerationAdapter(cfg)
     if provider == "heuristic":
         return HeuristicModerationAdapter()
     # Unknown providers fall back to hermetic heuristic so misconfig never bypasses screening.

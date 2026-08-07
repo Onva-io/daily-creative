@@ -44,7 +44,8 @@ Condensed from `spec/infrastructure.md` §40.
 
 ## Moderation incident
 
-**Checks:** report queue via `GET /internal/moderation/reports`; automated filter queue via `GET /internal/moderation/review-queue`; suspend/remove as needed.
+**Auth:** Descope admin Bearer JWT (`DESCOPE_ADMIN_ROLE`, default `admin`) **or** `X-Moderation-Token`. See [`docs/ops/moderation-sla.md`](moderation-sla.md) for role grant steps.
+**Checks:** report queue via `GET /internal/moderation/reports`; automated filter queue via `GET /internal/moderation/review-queue`; approve/reject queue items; approve false-positive reports; redact captions; suspend/remove as needed.
 **SLA:** act on reports within **24 hours**. See [`docs/ops/moderation-sla.md`](moderation-sla.md).
 **Alerts:** `NewContentReport`, `ContentQueuedForReview` when `ALERT_WEBHOOK_URL` is configured.
 
