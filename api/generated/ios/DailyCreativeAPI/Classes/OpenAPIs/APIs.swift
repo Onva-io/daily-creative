@@ -9,8 +9,38 @@ import Foundation
 import FoundationNetworking
 #endif
 open class DailyCreativeAPIAPI {
-    public static var basePath = "http://localhost:8000"
-    public static var customHeaders: [String: String] = [:]
+    private static let _configLock = NSLock()
+    private static var _basePath = "http://localhost:8000"
+    private static var _customHeaders: [String: String] = [:]
+
+    /// Thread-safe: get/set take a snapshot under lock so concurrent callers cannot
+    /// mutate a shared Dictionary buffer (CoW race → EXC_BAD_ACCESS).
+    public static var basePath: String {
+        get {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            return _basePath
+        }
+        set {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            _basePath = newValue
+        }
+    }
+
+    public static var customHeaders: [String: String] {
+        get {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            return _customHeaders
+        }
+        set {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            _customHeaders = newValue
+        }
+    }
+
     public static var credential: URLCredential?
     public static var requestBuilderFactory: RequestBuilderFactory = URLSessionRequestBuilderFactory()
     public static var apiResponseQueue: DispatchQueue = .main

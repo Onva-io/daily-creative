@@ -182,17 +182,11 @@ struct MeRepository: MeFetching, ProfileUpdating, PreferencesServing, AccountDel
     }
 
     private func configureClient(accessToken: String) {
-        configureClientUnauthenticated()
-        DailyCreativeAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
-        DailyCreativeAPITokenBridge.setBearerToken(accessToken)
+        DailyCreativeAPIClientConfig.configure(baseURL: baseURL, accessToken: accessToken)
     }
 
     private func configureClientUnauthenticated() {
-        var base = baseURL.absoluteString
-        if base.hasSuffix("/") {
-            base.removeLast()
-        }
-        DailyCreativeAPIAPI.basePath = base
+        DailyCreativeAPIClientConfig.configure(baseURL: baseURL)
     }
 
     private func mapProfile(_ user: CurrentUser) -> CurrentUserProfile {

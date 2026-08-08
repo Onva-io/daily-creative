@@ -150,13 +150,7 @@ struct SafetyRepository: SafetyServing {
     }
 
     private func configureClient(accessToken: String) {
-        var base = baseURL.absoluteString
-        if base.hasSuffix("/") {
-            base.removeLast()
-        }
-        DailyCreativeAPIAPI.basePath = base
-        DailyCreativeAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
-        DailyCreativeAPITokenBridge.setBearerToken(accessToken)
+        DailyCreativeAPIClientConfig.configure(baseURL: baseURL, accessToken: accessToken)
     }
 }
 

@@ -59,6 +59,61 @@ fi
 APIS="${OUT}/DailyCreativeAPI/Classes/OpenAPIs/APIs.swift"
 if [[ -f "${APIS}" ]]; then
   perl -i -pe 's/open class RequestBuilder<T> \{/open class RequestBuilder<T>: \@unchecked Sendable \{/g' "${APIS}"
+
+  # Make basePath/customHeaders thread-safe. The stock generator uses a plain Dictionary;
+  # concurrent configureClient calls race on CoW and crash in isUniquelyReferenced.
+  python3 - "${APIS}" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+old = '''open class DailyCreativeAPIAPI {
+    public static var basePath = "http://localhost:8000"
+    public static var customHeaders: [String: String] = [:]
+    public static var credential: URLCredential?
+    public static var requestBuilderFactory: RequestBuilderFactory = URLSessionRequestBuilderFactory()
+    public static var apiResponseQueue: DispatchQueue = .main
+}'''
+new = '''open class DailyCreativeAPIAPI {
+    private static let _configLock = NSLock()
+    private static var _basePath = "http://localhost:8000"
+    private static var _customHeaders: [String: String] = [:]
+
+    /// Thread-safe: get/set take a snapshot under lock so concurrent callers cannot
+    /// mutate a shared Dictionary buffer (CoW race → EXC_BAD_ACCESS).
+    public static var basePath: String {
+        get {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            return _basePath
+        }
+        set {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            _basePath = newValue
+        }
+    }
+
+    public static var customHeaders: [String: String] {
+        get {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            return _customHeaders
+        }
+        set {
+            _configLock.lock()
+            defer { _configLock.unlock() }
+            _customHeaders = newValue
+        }
+    }
+
+    public static var credential: URLCredential?
+    public static var requestBuilderFactory: RequestBuilderFactory = URLSessionRequestBuilderFactory()
+    public static var apiResponseQueue: DispatchQueue = .main
+}'''
+if old not in text:
+    raise SystemExit(f"Expected DailyCreativeAPIAPI header block missing in {path}")
+path.write_text(text.replace(old, new, 1))
+PY
 fi
 URLSESSION="${OUT}/DailyCreativeAPI/Classes/OpenAPIs/URLSessionImplementations.swift"
 if [[ -f "${URLSESSION}" ]]; then

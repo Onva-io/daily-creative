@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-@preconcurrency import DailyCreativeAPI
 
 @MainActor
 @Observable
@@ -224,6 +223,7 @@ final class AuthSessionStore {
             let profile = try await meFetcher.fetchMe(accessToken: refreshed.accessToken)
             currentUser = profile
             state = .authenticated(session: refreshed)
+            DailyCreativeAPITokenBridge.setBearerToken(refreshed.accessToken)
             if let guestDOB = GuestAgeGateStore.shared.declaredDateOfBirth,
                profile.dateOfBirthSet == false {
                 try? await setDateOfBirth(guestDOB)
@@ -241,29 +241,5 @@ final class AuthSessionStore {
                 state = .failed(message: message)
             }
         }
-    }
-}
-
-enum DailyCreativeAPITokenBridge {
-    private static let lock = NSLock()
-    nonisolated(unsafe) private static var _token: String?
-
-    static func setBearerToken(_ token: String) {
-        lock.lock()
-        _token = token
-        lock.unlock()
-    }
-
-    static func clear() {
-        lock.lock()
-        _token = nil
-        lock.unlock()
-        DailyCreativeAPIAPI.customHeaders.removeValue(forKey: "Authorization")
-    }
-
-    static var currentToken: String? {
-        lock.lock()
-        defer { lock.unlock() }
-        return _token
     }
 }

@@ -308,13 +308,7 @@ struct UploadRepository: UploadServing {
     }
 
     private func configureClient(accessToken: String) {
-        var base = baseURL.absoluteString
-        if base.hasSuffix("/") {
-            base.removeLast()
-        }
-        DailyCreativeAPIAPI.basePath = base
-        DailyCreativeAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
-        DailyCreativeAPITokenBridge.setBearerToken(accessToken)
+        DailyCreativeAPIClientConfig.configure(baseURL: baseURL, accessToken: accessToken)
     }
 
     private func mapUpload(_ upload: Upload) -> UploadSlotModel {
@@ -408,17 +402,7 @@ struct PublicationRepository: PublicationServing {
     }
 
     private func configureClient(accessToken: String?) {
-        var base = baseURL.absoluteString
-        if base.hasSuffix("/") {
-            base.removeLast()
-        }
-        DailyCreativeAPIAPI.basePath = base
-        if let accessToken {
-            DailyCreativeAPIAPI.customHeaders["Authorization"] = "Bearer \(accessToken)"
-            DailyCreativeAPITokenBridge.setBearerToken(accessToken)
-        } else {
-            DailyCreativeAPIAPI.customHeaders.removeValue(forKey: "Authorization")
-        }
+        DailyCreativeAPIClientConfig.configure(baseURL: baseURL, accessToken: accessToken)
     }
 
     private func mapSubmission(_ submission: Submission) -> SubmissionModel {
