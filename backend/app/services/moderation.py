@@ -414,17 +414,15 @@ class ModerationService:
                 ReflectionStatus.hidden,
                 ReflectionStatus.removed,
             ):
-                previous = reflection.status
                 await self._reflections.set_moderation_status(
                     reflection,
                     status=ReflectionStatus.published,
                     deleted_at=None,
                     commit=False,
                 )
-                if previous != ReflectionStatus.published:
-                    submission = await self._publications.get_by_id(reflection.submission_id)
-                    if submission is not None:
-                        submission.reflection_count = submission.reflection_count + 1
+                submission = await self._publications.get_by_id(reflection.submission_id)
+                if submission is not None:
+                    submission.reflection_count = submission.reflection_count + 1
         result = await self.resolve_report(
             operator_identity=operator_identity,
             report_id=report_id,

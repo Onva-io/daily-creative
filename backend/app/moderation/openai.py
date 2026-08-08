@@ -138,7 +138,10 @@ class OpenAIModerationAdapter:
                 timeout=30.0,
             )
             response.raise_for_status()
-            return response.json()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise TypeError("OpenAI moderation response must be a JSON object")
+            return payload
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
@@ -147,4 +150,7 @@ class OpenAIModerationAdapter:
                 json=body,
             )
             response.raise_for_status()
-            return response.json()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise TypeError("OpenAI moderation response must be a JSON object")
+            return payload

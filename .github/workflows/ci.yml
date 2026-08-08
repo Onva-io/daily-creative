@@ -127,16 +127,85 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate project
         run: make ios-generate
+      - name: Prepare iOS Simulator
+        id: sim
+        run: |
+          # macos-15 runners intermittently ship with no concrete simulators
+          # (only the "Any iOS Simulator Device" placeholder). Recache and create
+          # an iPhone device against the installed runtime when needed.
+          xcrun simctl list >/dev/null || true
+          python3 <<'PY'
+          import json, os, subprocess, sys
+
+          def run(*args: str) -> str:
+              return subprocess.check_output(args, text=True)
+
+          devices = json.loads(run("xcrun", "simctl", "list", "devices", "available", "-j"))["devices"]
+          runtimes = json.loads(run("xcrun", "simctl", "list", "runtimes", "-j"))["runtimes"]
+
+          def pick_iphone() -> str | None:
+              preferred = ("iPhone 16", "iPhone 16 Pro", "iPhone 15", "iPhone 15 Pro")
+              for runtime, sims in devices.items():
+                  if "iOS" not in runtime:
+                      continue
+                  by_name = {
+                      sim["name"]: sim["udid"]
+                      for sim in sims
+                      if sim.get("isAvailable", True) and "iPhone" in sim.get("name", "")
+                  }
+                  for name in preferred:
+                      if name in by_name:
+                          return by_name[name]
+                  if by_name:
+                      return next(iter(by_name.values()))
+              return None
+
+          udid = pick_iphone()
+          if not udid:
+              ios_runtimes = [
+                  rt for rt in runtimes
+                  if rt.get("isAvailable") and "iOS" in rt.get("name", "")
+              ]
+              if not ios_runtimes:
+                  print("No iOS simulator runtimes installed", file=sys.stderr)
+                  sys.exit(1)
+              runtime = sorted(ios_runtimes, key=lambda rt: rt.get("version", ""), reverse=True)[0]
+              device_types = json.loads(run("xcrun", "simctl", "list", "devicetypes", "-j"))["devicetypes"]
+              preferred_types = (
+                  "com.apple.CoreSimulator.SimDeviceType.iPhone-16",
+                  "com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro",
+                  "com.apple.CoreSimulator.SimDeviceType.iPhone-15",
+                  "com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro",
+              )
+              type_ids = {dt["identifier"] for dt in device_types}
+              device_type = next((t for t in preferred_types if t in type_ids), None)
+              if device_type is None:
+                  iphones = [dt for dt in device_types if "iPhone" in dt.get("name", "")]
+                  if not iphones:
+                      print("No iPhone device types available", file=sys.stderr)
+                      sys.exit(1)
+                  device_type = iphones[0]["identifier"]
+              udid = run(
+                  "xcrun", "simctl", "create", "CI iPhone", device_type, runtime["identifier"]
+              ).strip()
+              print(f"Created simulator {udid} ({device_type} / {runtime['identifier']})")
+
+          print(f"Using simulator {udid}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"udid={udid}\n")
+          PY
       - name: Build DailySketch for simulator
         run: |
           xcodebuild \
             -project ios/DailySketch.xcodeproj \
             -scheme DailySketch \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.6' \
+            -destination 'generic/platform=iOS Simulator' \
             -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             build
@@ -145,7 +214,7 @@ jobs:
           xcodebuild \
             -project ios/DailySketch.xcodeproj \
             -scheme DailyStory \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.6' \
+            -destination 'generic/platform=iOS Simulator' \
             -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             build
@@ -154,7 +223,7 @@ jobs:
           xcodebuild \
             -project ios/DailySketch.xcodeproj \
             -scheme DailySketch \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.6' \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             -only-testing:DailySketchTests \
