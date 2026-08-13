@@ -124,6 +124,12 @@ class PolicyService:
                 outstanding.append(PolicyKindSchema(doc.kind.value))
 
         minimum_age = self._minimum_age_from(published)
+        if not published and self._settings.is_remote_environment:
+            raise AppError(
+                code="policies_unavailable",
+                message="Required policies are not published. Please try again later.",
+                status_code=503,
+            )
         # Age is required once policies are published (public launch posture).
         age_required = user.date_of_birth is None and bool(published)
         if user.date_of_birth is not None and published:

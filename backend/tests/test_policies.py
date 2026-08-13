@@ -338,3 +338,43 @@ async def test_heuristic_moderation_tiers() -> None:
     assert queued.tier == ModerationTier.queue
     allowed = await adapter.screen_text(text="a lovely sketch of a tree", context="test")
     assert allowed.tier == ModerationTier.allow
+
+
+@pytest.mark.asyncio
+async def test_remote_consent_fails_closed_without_published_policies() -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.core.errors import AppError
+    from app.core.settings import Settings
+    from app.models.user import User, UserStatus
+
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        APP_ENV="staging",
+        DESCOPE_PROJECT_ID="P123",
+        MODERATION_OPERATOR_TOKEN="token",
+        MODERATION_PROVIDER="openai",
+        OPENAI_API_KEY="sk-test",  # pragma: allowlist secret
+        STORAGE_ACCESS_KEY="remote-key",
+        STORAGE_SECRET_KEY="remote-secret",  # pragma: allowlist secret
+        STORAGE_USE_SSL="true",
+        STORAGE_ENDPOINT="https://storage.example.com",
+        DB_SSL_REQUIRE="true",
+        DATABASE_URL="postgresql+asyncpg://user:pass@db.example.com:5432/dailycreative",  # pragma: allowlist secret
+    )
+    service = PolicyService(MagicMock(), settings=settings)
+    service._documents = MagicMock()
+    service._documents.list_published = AsyncMock(return_value=[])
+    service._acceptances = MagicMock()
+    service._acceptances.accepted_document_ids = AsyncMock(return_value=set())
+    service._acceptances.list_for_user = AsyncMock(return_value=[])
+    user = User(
+        id=uuid.uuid4(),
+        descope_subject="descope|x",
+        display_name="Ada",
+        status=UserStatus.active,
+    )
+    with pytest.raises(AppError) as exc_info:
+        await service.consent_state(user)
+    assert exc_info.value.code == "policies_unavailable"
+    assert exc_info.value.status_code == 503

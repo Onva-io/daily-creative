@@ -9,7 +9,15 @@ alembic upgrade head
 # is worse. Failures log here and page through ALERT_WEBHOOK_URL.
 echo "[start] Bootstrapping policy documents..."
 if ! python -m app.seeds.policies --bootstrap; then
-  echo "[start] WARNING: policy bootstrap failed; consent gating may be inactive." >&2
+  case "${APP_ENV:-local}" in
+    staging|production)
+      echo "[start] FATAL: policy bootstrap failed in ${APP_ENV}; refusing to serve without consent gating." >&2
+      exit 1
+      ;;
+    *)
+      echo "[start] WARNING: policy bootstrap failed; consent gating may be inactive." >&2
+      ;;
+  esac
 fi
 
 echo "[start] Starting API on :${PORT:-8000}..."
