@@ -17,6 +17,7 @@ PRIVACY_URL = https:/$()/daily-creative-staging.up.railway.app/api/v1/policies/p
 TERMS_URL = https:/$()/daily-creative-staging.up.railway.app/api/v1/policies/terms/html
 COMMUNITY_GUIDELINES_URL = https:/$()/daily-creative-staging.up.railway.app/api/v1/policies/community_guidelines/html
 SUPPORT_URL = https:/$()/daily-creative-staging.up.railway.app/support
+SENTRY_DSN = $(SENTRY_DSN)
 
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = PRODUCT_STORY
 SWIFT_COMPILATION_MODE = wholemodule

@@ -26,6 +26,9 @@ packages:
   DescopeKit:
     url: https://github.com/descope/descope-swift
     from: 0.9.0
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: 8.53.0
 targets:
   DailySketch:
     type: application
@@ -88,6 +91,7 @@ targets:
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
+      - package: Sentry
     settings:
       base:
         PRODUCT_NAME: DailySketch
@@ -171,6 +175,7 @@ targets:
     dependencies:
       - package: DailyCreativeAPI
       - package: DescopeKit
+      - package: Sentry
     settings:
       base:
         PRODUCT_NAME: DailyStory

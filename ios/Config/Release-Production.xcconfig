@@ -13,6 +13,7 @@ TERMS_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/
 COMMUNITY_GUIDELINES_URL = https:/$()/daily-creative-production.up.railway.app/api/v1/policies/community_guidelines/html
 SUPPORT_URL = https:/$()/dailycreative.app/support
 SUPPORT_EMAIL = support@dailycreative.app
+SENTRY_DSN = $(SENTRY_DSN)
 
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 SWIFT_COMPILATION_MODE = wholemodule

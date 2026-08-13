@@ -218,10 +218,12 @@
 		F41A21CFD64BF0311C654246 /* ActiveSessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF0E496A85B17630F1AC966 /* ActiveSessionStoreTests.swift */; };
 		F690B0B15CBEF2F4BAB1FE44 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61BC3DF5704FF5257C7B01D /* AvatarView.swift */; };
 		F69132243D7BCAA7DD3B38ED /* DraftTextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A29DE0D85829CBFF9EBE986 /* DraftTextStore.swift */; };
+		F8A7D98F596FCD51C9978108 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 497554C86C865963684058B5 /* Sentry */; };
 		FA8B66E4BDF9953F1CF2D13F /* HomeCacheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6AC442C808217ECD1117425 /* HomeCacheStore.swift */; };
 		FADA117E48662A27A85A7A8E /* ActivityShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14A2B08355BBDC149A5B1CDB /* ActivityShareSheet.swift */; };
 		FB9E187191113EE71C080181 /* PromptChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C4B324188612E71751718B /* PromptChip.swift */; };
 		FBFCC5F9EE359386A9F07E40 /* PromptCardStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B9859DE224EE87687A3E598 /* PromptCardStack.swift */; };
+		FC87A65B5F1046D613268E44 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 791F9D72A314565754E46F63 /* Sentry */; };
 		FEFA3933ADAFD06EDCAD01C7 /* PromptGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23B54DAB17056D6C53E2881B /* PromptGroup.swift */; };
 		FF97D8BC6EF5FCA37D7A52A4 /* CrashReportingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7833F83AC7FB45DFD33B024A /* CrashReportingClient.swift */; };
 		FFF36AB2B1C28E940DD95DAD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4B7758C2099EED205BE25D68 /* Assets.xcassets */; };
@@ -398,6 +400,7 @@
 			files = (
 				8242493D5887BA92647AFA4A /* DailyCreativeAPI in Frameworks */,
 				C00223D6697ED8C2583F625A /* DescopeKit in Frameworks */,
+				F8A7D98F596FCD51C9978108 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,6 +410,7 @@
 			files = (
 				2AFA4965AFE766925EB7214A /* DailyCreativeAPI in Frameworks */,
 				DB1FE396F24D261D15749612 /* DescopeKit in Frameworks */,
+				FC87A65B5F1046D613268E44 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -903,6 +907,7 @@
 			packageProductDependencies = (
 				0F9A4D6985AD2D13953688AD /* DailyCreativeAPI */,
 				E17A9A6C38FCAB22350FAA0C /* DescopeKit */,
+				497554C86C865963684058B5 /* Sentry */,
 			);
 			productName = DailySketch;
 			productReference = 5097E7E1021ECD475053BC19 /* DailySketch.app */;
@@ -925,6 +930,7 @@
 			packageProductDependencies = (
 				AE528EF0BFBFF4AA3828EE44 /* DailyCreativeAPI */,
 				707F9FB332B7F7A14D42278D /* DescopeKit */,
+				791F9D72A314565754E46F63 /* Sentry */,
 			);
 			productName = DailyStory;
 			productReference = A81A8BAE51E1CFC74A474F97 /* DailyStory.app */;
@@ -1003,6 +1009,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B992EB446A8DF69F366FFD6B /* XCRemoteSwiftPackageReference "descope-swift" */,
+				76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 				EE6299076E7C101157F38E17 /* XCLocalSwiftPackageReference "../api/generated/ios" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -2009,6 +2016,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.53.0;
+			};
+		};
 		B992EB446A8DF69F366FFD6B /* XCRemoteSwiftPackageReference "descope-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/descope/descope-swift";
@@ -2024,10 +2039,20 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = DailyCreativeAPI;
 		};
+		497554C86C865963684058B5 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
 		707F9FB332B7F7A14D42278D /* DescopeKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B992EB446A8DF69F366FFD6B /* XCRemoteSwiftPackageReference "descope-swift" */;
 			productName = DescopeKit;
+		};
+		791F9D72A314565754E46F63 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 		AE528EF0BFBFF4AA3828EE44 /* DailyCreativeAPI */ = {
 			isa = XCSwiftPackageProductDependency;
