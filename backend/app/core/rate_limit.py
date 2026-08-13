@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import time
 from collections import defaultdict, deque
@@ -55,19 +56,34 @@ class InMemoryRateLimiter:
             return True, 0
 
 
-def _client_key(scope: Scope) -> str:
-    client = scope.get("client")
-    if isinstance(client, tuple) and len(client) >= 1:
-        host = client[0]
-        return host if isinstance(host, str) else str(host)
-    headers: dict[str, str] = {
+def _headers_map(scope: Scope) -> dict[str, str]:
+    return {
         key.decode("latin-1").lower(): value.decode("latin-1")
         for key, value in scope.get("headers", [])
     }
+
+
+def _client_key(scope: Scope) -> str:
+    """Key authenticated callers by token hash, else the first forwarded hop.
+
+    Railway and other reverse proxies make ``scope['client']`` the edge peer,
+    so every user would share one bucket if we preferred it. The first
+    ``X-Forwarded-For`` hop is the client IP the proxy observed.
+    """
+    headers = _headers_map(scope)
+    authorization = headers.get("authorization", "").strip()
+    if authorization.lower().startswith("bearer ") and authorization[7:].strip():
+        digest = hashlib.sha256(authorization.encode("utf-8")).hexdigest()[:16]
+        return f"token:{digest}"
     forwarded_raw = headers.get("x-forwarded-for", "")
     if forwarded_raw:
-        first_hop = forwarded_raw.split(",", 1)[0]
-        return first_hop.strip()
+        first_hop = forwarded_raw.split(",", 1)[0].strip()
+        if first_hop:
+            return f"fwd:{first_hop}"
+    client = scope.get("client")
+    if isinstance(client, tuple) and len(client) >= 1:
+        host = client[0]
+        return f"ip:{host}" if isinstance(host, str) else f"ip:{host}"
     return "unknown"
 
 
