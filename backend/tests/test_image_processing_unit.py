@@ -59,6 +59,19 @@ def test_process_upload_image_rejects_corrupt_bytes() -> None:
     assert exc_info.value.status_code == 422
 
 
+def test_process_upload_image_rejects_pixel_bomb(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.media.processing as processing
+
+    monkeypatch.setattr(processing, "MAX_IMAGE_PIXELS", 100)
+    with pytest.raises(AppError) as exc_info:
+        processing.process_upload_image(
+            data=_make_jpeg(50, 50),
+            declared_content_type="image/jpeg",
+        )
+    assert exc_info.value.code == "image_too_large"
+    assert exc_info.value.status_code == 413
+
+
 def test_process_upload_image_produces_display_and_thumbnail_bytes() -> None:
     data = _make_jpeg(800, 600)
     processed = process_upload_image(data=data, declared_content_type="image/jpeg")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import uuid
@@ -227,7 +228,8 @@ class UploadService:
             await self._uploads.save(upload)
             raise
 
-        processed = process_upload_image(
+        processed = await asyncio.to_thread(
+            process_upload_image,
             data=original_bytes,
             declared_content_type=upload.content_type,
         )

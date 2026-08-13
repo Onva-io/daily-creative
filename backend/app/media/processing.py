@@ -12,6 +12,9 @@ from app.core.errors import AppError
 DISPLAY_MAX_EDGE = 2048
 THUMBNAIL_MAX_EDGE = 512
 JPEG_QUALITY = 85
+# Fail closed on decompression bombs before a full decode. 20MP is above any
+# derivative we keep (2048px display) and below Pillow's 178MP default.
+MAX_IMAGE_PIXELS = 20_000_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,21 +31,33 @@ class ProcessedImage:
 
 
 def process_upload_image(*, data: bytes, declared_content_type: str) -> ProcessedImage:
-    """Decode, strip EXIF, normalise orientation, and build derivatives."""
+    """Decode, strip EXIF, normalise orientation, and build derivatives.
+
+    CPU-bound; callers must run this off the event loop (``asyncio.to_thread``).
+    """
+    Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
     try:
         with Image.open(BytesIO(data)) as image:
-            image.load()
-            normalised = ImageOps.exif_transpose(image)
-            if normalised is None:
-                normalised = image
-            rgb = _to_rgb(normalised)
-            width, height = rgb.size
+            width, height = image.size
             if width < 1 or height < 1:
                 raise AppError(
                     code="invalid_image",
                     message="The uploaded file is not a valid image.",
                     status_code=422,
                 )
+            if width * height > MAX_IMAGE_PIXELS:
+                raise AppError(
+                    code="image_too_large",
+                    message="The uploaded image is too large.",
+                    status_code=413,
+                    details={"max_pixels": MAX_IMAGE_PIXELS},
+                )
+            image.load()
+            normalised = ImageOps.exif_transpose(image)
+            if normalised is None:
+                normalised = image
+            rgb = _to_rgb(normalised)
+            width, height = rgb.size
             display = _resize_max_edge(rgb, DISPLAY_MAX_EDGE)
             thumbnail = _resize_max_edge(rgb, THUMBNAIL_MAX_EDGE)
             return ProcessedImage(
@@ -54,6 +69,13 @@ def process_upload_image(*, data: bytes, declared_content_type: str) -> Processe
             )
     except AppError:
         raise
+    except Image.DecompressionBombError as exc:
+        raise AppError(
+            code="image_too_large",
+            message="The uploaded image is too large.",
+            status_code=413,
+            details={"max_pixels": MAX_IMAGE_PIXELS},
+        ) from exc
     except UnidentifiedImageError as exc:
         raise AppError(
             code="invalid_image",
