@@ -126,6 +126,24 @@ async def test_request_body_size_limit_returns_413() -> None:
 
 
 @pytest.mark.asyncio
+async def test_chunked_body_over_limit_returns_413(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAX_REQUEST_BODY_BYTES", "2048")
+    from app.core import settings as settings_module
+
+    settings_module.get_settings.cache_clear()
+    app = create_app()
+    transport = ASGITransport(app=app)
+
+    async def oversized():
+        yield b"x" * 3000
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/api/v1/reports", content=oversized())
+    settings_module.get_settings.cache_clear()
+    assert response.status_code == 413
+
+
+@pytest.mark.asyncio
 async def test_rate_limit_returns_429(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RATE_LIMIT_REPORT_MAX", "1")
     monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")

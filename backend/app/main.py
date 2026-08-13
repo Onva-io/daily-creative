@@ -49,8 +49,8 @@ def create_app() -> FastAPI:
     )
 
     application.add_middleware(MetricsMiddleware, settings=settings)
-    application.add_middleware(RequestTimeoutMiddleware, settings=settings)
     application.add_middleware(RequestSizeLimitMiddleware, settings=settings)
+    application.add_middleware(RequestTimeoutMiddleware, settings=settings)
     application.add_middleware(RateLimitMiddleware, settings=settings)
     application.add_middleware(RequestIDMiddleware, settings=settings)
 
