@@ -7,6 +7,7 @@ import json
 import uuid
 from datetime import timedelta
 
+from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import Clock
@@ -72,7 +73,7 @@ class SocialService:
             commit=False,
         )
         if inserted:
-            submission.like_count = submission.like_count + 1
+            await self._bump_submission_count(submission.id, like_delta=1)
             if user.id != submission.user_id:
                 await self._activity.add(
                     recipient_user_id=submission.user_id,
@@ -93,7 +94,7 @@ class SocialService:
             commit=False,
         )
         if deleted:
-            submission.like_count = max(0, submission.like_count - 1)
+            await self._bump_submission_count(submission.id, like_delta=-1)
         await self._session.commit()
         await self._session.refresh(submission)
         liked = await self._likes.exists(submission_id=submission.id, user_id=user.id)
@@ -215,7 +216,7 @@ class SocialService:
             body=body,
             commit=False,
         )
-        submission.reflection_count = submission.reflection_count + 1
+        await self._bump_submission_count(submission.id, reflection_delta=1)
         if user.id != submission.user_id:
             await self._activity.add(
                 recipient_user_id=submission.user_id,
@@ -283,8 +284,32 @@ class SocialService:
             commit=False,
         )
         if transitioned and submission is not None:
-            submission.reflection_count = max(0, submission.reflection_count - 1)
+            await self._bump_submission_count(submission.id, reflection_delta=-1)
         await self._session.commit()
+
+    async def _bump_submission_count(
+        self,
+        submission_id: uuid.UUID,
+        *,
+        like_delta: int = 0,
+        reflection_delta: int = 0,
+    ) -> None:
+        """Atomically adjust denormalized counters (UPDATE … SET col = col ± 1)."""
+        values: dict[str, object] = {}
+        if like_delta:
+            values["like_count"] = func.greatest(CreativePublication.like_count + like_delta, 0)
+        if reflection_delta:
+            values["reflection_count"] = func.greatest(
+                CreativePublication.reflection_count + reflection_delta,
+                0,
+            )
+        if not values:
+            return
+        await self._session.execute(
+            update(CreativePublication)
+            .where(CreativePublication.id == submission_id)
+            .values(**values)
+        )
 
     async def _require_visible_submission(
         self,
