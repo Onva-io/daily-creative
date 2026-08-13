@@ -3,19 +3,21 @@ import PackageDescription
 
 // sentry-cocoa's upstream Package.swift declares every xcframework variant as a
 // binary target. SwiftPM downloads all of them (~1 GB) even when the app only
-// links `Sentry`, which routinely fails Xcode package resolution.
-// This wrapper depends on the single static xcframework we actually use.
+// links one product, which routinely fails Xcode package resolution.
+//
+// Use the dynamic xcframework (not static): Xcode 16 requires a dSYM for every
+// bundled Sentry.framework UUID, and only the dynamic slice ships DWARF.
 let package = Package(
     name: "SentryCocoa",
     platforms: [.iOS("18.0")],
     products: [
-        .library(name: "Sentry", targets: ["Sentry"]),
+        .library(name: "Sentry", targets: ["Sentry-Dynamic"]),
     ],
     targets: [
         .binaryTarget(
-            name: "Sentry",
-            url: "https://github.com/getsentry/sentry-cocoa/releases/download/8.58.4/Sentry.xcframework.zip",
-            checksum: "8cdee7ae675910381bb53e6c84d61256c54fffb0ad039c9172c78e1029c70c29" // pragma: allowlist secret
+            name: "Sentry-Dynamic",
+            url: "https://github.com/getsentry/sentry-cocoa/releases/download/8.58.4/Sentry-Dynamic.xcframework.zip",
+            checksum: "23c14f81d67be79b3dd07ca739a96f2f574f7d7e2ae9e585e99058c6c3ca89e7" // pragma: allowlist secret
         ),
     ]
 )
