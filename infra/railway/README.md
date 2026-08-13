@@ -37,7 +37,7 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 |----------|--------|
 | `APP_ENV` | `staging` |
 | `LOG_LEVEL` | `INFO` |
-| `API_PUBLIC_URL` | `https://daily-creative-production.up.railway.app` |
+| `API_PUBLIC_URL` | `https://daily-creative-staging.up.railway.app` |
 | `RELEASE_VERSION` | semver from release |
 | `COMMIT_SHA` | git SHA (CI or manual) |
 | `BUILD_TIMESTAMP` | ISO timestamp |

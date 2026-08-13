@@ -41,7 +41,7 @@ Compose uses local Postgres and MinIO — no AWS credentials required.
 
 Use Railway when you need a **stable HTTPS URL** for iOS Release Staging builds, webhooks, or collaborators who cannot run Compose.
 
-- **API:** `https://daily-creative-production.up.railway.app`
+- **API:** `https://daily-creative-staging.up.railway.app`
 - **Descope:** project `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (wired in `ios/Config/*/Release-Staging.xcconfig`)
   - In the Descope Console for this project (and production when configured): **Project Settings → Session Management → Refresh Token Timeout = 30 days**. Session token timeout can stay short (e.g. 10–60 minutes); the iOS app refreshes it on foreground and before authenticated sketch/story API calls.
 - Postgres: Railway plugin
