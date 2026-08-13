@@ -72,6 +72,7 @@ services:
       CAPTION_MAX_LENGTH: "280"
       DESCOPE_PROJECT_ID: ${DESCOPE_PROJECT_ID:-replace-me}
       DESCOPE_AUDIENCE: ${DESCOPE_AUDIENCE:-}
+      GUEST_AGE_TOKEN_SECRET: ${GUEST_AGE_TOKEN_SECRET:-daily-creative-guest-age-local-secret}  # pragma: allowlist secret
     ports:
       - "8000:8000"
     depends_on:

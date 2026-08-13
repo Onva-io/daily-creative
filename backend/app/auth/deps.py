@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, Request
+from typing import Annotated
+
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.guest_age import missing_guest_age_error, verify_guest_age_token
 from app.auth.jwt import TokenVerifier, get_token_verifier
 from app.core.clock import Clock, get_clock
 from app.core.errors import AppError
@@ -83,18 +86,12 @@ async def get_current_user_allowing_pending_deletion(
     )
 
 
-async def get_optional_current_user(
+async def _optional_user(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    session: AsyncSession = Depends(get_db_session),
-    settings: Settings = Depends(get_settings),
+    credentials: HTTPAuthorizationCredentials | None,
+    session: AsyncSession,
+    settings: Settings,
 ) -> User | None:
-    """Return the authenticated user when a bearer token is present, else None.
-
-    Invalid, expired, or unverifiable tokens fall back to anonymous so public
-    reads (feed, profiles) stay available during auth outages.
-    Consent is not enforced here; clients gate community browsing separately.
-    """
     if credentials is None or credentials.scheme.lower() != "bearer" or not credentials.credentials:
         return None
     verifier: TokenVerifier = getattr(
@@ -105,3 +102,40 @@ async def get_optional_current_user(
         return await UserService(session).resolve_or_provision(verified)
     except AppError:
         return None
+
+
+async def get_optional_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> User | None:
+    """Return the authenticated user when a bearer token is present, else None.
+
+    Invalid, expired, or unverifiable tokens fall back to anonymous.
+    Community reads should use ``require_community_access`` instead so guests
+    must present a server-issued age token.
+    """
+    return await _optional_user(request, credentials, session, settings)
+
+
+async def require_community_access(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+    x_guest_age_token: Annotated[str | None, Header(alias="X-Guest-Age-Token")] = None,
+) -> User | None:
+    """Allow community GETs for an authenticated user or a valid guest age token.
+
+    The Daily Prompt and policy documents stay ungated. Invalid bearer tokens
+    fall back to the guest-token path so a stale session still works after
+    the guest declaration.
+    """
+    viewer = await _optional_user(request, credentials, session, settings)
+    if viewer is not None:
+        return viewer
+    if x_guest_age_token:
+        verify_guest_age_token(x_guest_age_token, settings)
+        return None
+    raise missing_guest_age_error()

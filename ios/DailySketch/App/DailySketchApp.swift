@@ -15,6 +15,7 @@ struct DailySketchApp: App {
             diskPath: "daily-sketch-image-cache"
         )
         CrashReportingClient.start()
+        GuestAgeGateStore.shared.applyTokenHeader()
     }
 
     var body: some Scene {

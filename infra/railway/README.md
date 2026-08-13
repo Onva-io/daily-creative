@@ -51,6 +51,7 @@ In the Descope Console for this test project, set **Project Settings → Session
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |
 | `MODERATION_PROVIDER` | `openai` (required in staging/production; heuristic is local/CI only) |
 | `OPENAI_API_KEY` | 🔒 Required when `MODERATION_PROVIDER=openai` |
+| `GUEST_AGE_TOKEN_SECRET` | 🔒 Unique 32+ character HMAC secret for guest age tokens |
 | `STORAGE_ENDPOINT` | `https://s3.REGION.amazonaws.com` |
 | `STORAGE_PUBLIC_ENDPOINT` | Public bucket/S3 URL for signed client PUTs/GETs (not the API host; no `:443`) |
 | `STORAGE_REGION` | e.g. `eu-west-1` |

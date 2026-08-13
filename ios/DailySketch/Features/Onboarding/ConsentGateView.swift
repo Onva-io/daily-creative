@@ -139,7 +139,7 @@ struct ConsentGateView: View {
         do {
             if needsAge {
                 try await dependencies.auth.setDateOfBirth(dateOfBirth)
-                try? GuestAgeGateStore.shared.declare(dateOfBirth: dateOfBirth)
+                try? await GuestAgeGateStore.shared.declare(dateOfBirth: dateOfBirth)
             }
             if needsPolicies {
                 await AgeAssuranceCoordinator.acknowledgeSignificantChangesIfNeeded(
@@ -160,6 +160,7 @@ struct GuestAgeGateView: View {
     @State private var pickerDraft = Calendar.current.date(byAdding: .year, value: -18, to: Date()) ?? Date()
     @State private var isDatePickerPresented = false
     @State private var errorMessage: String?
+    @State private var isSubmitting = false
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -226,14 +227,9 @@ struct GuestAgeGateView: View {
                 title: confirmTitle,
                 action: {
                     guard let dateOfBirth else { return }
-                    do {
-                        try store.declare(dateOfBirth: dateOfBirth)
-                        errorMessage = nil
-                    } catch {
-                        errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                    }
+                    Task { await confirm(dateOfBirth) }
                 },
-                isDisabled: dateOfBirth == nil
+                isDisabled: dateOfBirth == nil || isSubmitting
             )
         }
         .padding(AppSpacing.md)
@@ -269,6 +265,17 @@ struct GuestAgeGateView: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+    }
+
+    private func confirm(_ dateOfBirth: Date) async {
+        errorMessage = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            try await store.declare(dateOfBirth: dateOfBirth)
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

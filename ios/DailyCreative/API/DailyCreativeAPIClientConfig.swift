@@ -35,6 +35,18 @@ enum DailyCreativeAPITokenBridge {
         DailyCreativeAPIAPI.customHeaders = headers
     }
 
+    static func setGuestAgeToken(_ token: String) {
+        var headers = DailyCreativeAPIAPI.customHeaders
+        headers["X-Guest-Age-Token"] = token
+        DailyCreativeAPIAPI.customHeaders = headers
+    }
+
+    static func clearGuestAgeToken() {
+        var headers = DailyCreativeAPIAPI.customHeaders
+        headers.removeValue(forKey: "X-Guest-Age-Token")
+        DailyCreativeAPIAPI.customHeaders = headers
+    }
+
     static func clear() {
         lock.lock()
         _token = nil

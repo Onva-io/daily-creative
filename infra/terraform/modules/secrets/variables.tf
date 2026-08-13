@@ -42,3 +42,10 @@ variable "alert_webhook_url" {
   default     = null
   sensitive   = true
 }
+
+variable "guest_age_token_secret" {
+  description = "Optional HMAC secret for guest age-capability tokens."
+  type        = string
+  default     = null
+  sensitive   = true
+}

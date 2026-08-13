@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.deps import get_optional_current_user
+from app.auth.deps import require_community_access
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
@@ -23,7 +23,7 @@ router = APIRouter(tags=["users"])
 async def get_public_user(
     username: str,
     creative_type: CreativeType = Query(...),
-    viewer: User | None = Depends(get_optional_current_user),
+    viewer: User | None = Depends(require_community_access),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     storage: StorageAdapter = Depends(get_storage_adapter),
@@ -43,7 +43,7 @@ async def get_user_submissions(
     cursor: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
     creative_type: CreativeType = Query(...),
-    viewer: User | None = Depends(get_optional_current_user),
+    viewer: User | None = Depends(require_community_access),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     storage: StorageAdapter = Depends(get_storage_adapter),

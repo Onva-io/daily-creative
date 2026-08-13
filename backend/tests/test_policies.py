@@ -355,6 +355,7 @@ async def test_remote_consent_fails_closed_without_published_policies() -> None:
         MODERATION_OPERATOR_TOKEN="token",
         MODERATION_PROVIDER="openai",
         OPENAI_API_KEY="sk-test",  # pragma: allowlist secret
+        GUEST_AGE_TOKEN_SECRET="staging-guest-age-token-secret-value",  # pragma: allowlist secret
         STORAGE_ACCESS_KEY="remote-key",
         STORAGE_SECRET_KEY="remote-secret",  # pragma: allowlist secret
         STORAGE_USE_SSL="true",

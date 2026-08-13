@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from guest_age_helpers import guest_age_headers
 from jwt_helpers import StaticTokenVerifier, generate_rsa_keypair, mint_token
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -70,7 +71,11 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_db_session] = override_db
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=guest_age_headers(),
+    ) as http_client:
         http_client.app = app  # type: ignore[attr-defined]
         yield http_client
 

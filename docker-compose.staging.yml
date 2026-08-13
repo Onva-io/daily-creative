@@ -31,6 +31,7 @@ services:
       MODERATION_OPERATOR_TOKEN: staging-local-moderation-token  # pragma: allowlist secret
       MODERATION_PROVIDER: openai
       OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-staging-local-not-a-real-key}  # pragma: allowlist secret
+      GUEST_AGE_TOKEN_SECRET: staging-local-guest-age-token-secret-key  # pragma: allowlist secret
       STORAGE_ACCESS_KEY: staging-local-access-key
       STORAGE_SECRET_KEY: staging-local-secret-key  # pragma: allowlist secret
     ports:

@@ -150,22 +150,30 @@ open class SubmissionsAPI {
      Get a Submission
      
      - parameter submissionId: (path) Submission UUID. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - returns: Submission
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getSubmission(submissionId: UUID) async throws -> Submission {
-        return try await getSubmissionWithRequestBuilder(submissionId: submissionId).execute().body
+    open class func getSubmission(submissionId: UUID, xGuestAgeToken: String? = nil) async throws -> Submission {
+        return try await getSubmissionWithRequestBuilder(submissionId: submissionId, xGuestAgeToken: xGuestAgeToken).execute().body
     }
 
     /**
      Get a Submission
      - GET /api/v1/submissions/{submission_id}
-     - Returns a published Submission. Available to guests and authenticated users. Soft-deleted, hidden, removed, and suspended/deleted-author Submissions are not returned. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. 
+     - Returns a published Submission. Available to guests (with `X-Guest-Age-Token`) and authenticated users. Soft-deleted, hidden, removed, and suspended/deleted-author Submissions are not returned. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. 
+     - API Key:
+       - type: apiKey X-Guest-Age-Token (HEADER)
+       - name: guestAgeToken
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter submissionId: (path) Submission UUID. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - returns: RequestBuilder<Submission> 
      */
-    open class func getSubmissionWithRequestBuilder(submissionId: UUID) -> RequestBuilder<Submission> {
+    open class func getSubmissionWithRequestBuilder(submissionId: UUID, xGuestAgeToken: String? = nil) -> RequestBuilder<Submission> {
         var localVariablePath = "/api/v1/submissions/{submission_id}"
         let submissionIdPreEscape = "\(APIHelper.mapValueToPathItem(submissionId))"
         let submissionIdPostEscape = submissionIdPreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
@@ -176,14 +184,14 @@ open class SubmissionsAPI {
         let localVariableUrlComponents = URLComponents(string: localVariableURLString)
 
         let localVariableNillableHeaders: [String: Any?] = [
-            :
+            "X-Guest-Age-Token": xGuestAgeToken?.encodeToJSON(),
         ]
 
         let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
 
         let localVariableRequestBuilder: RequestBuilder<Submission>.Type = DailyCreativeAPIAPI.requestBuilderFactory.getBuilder()
 
-        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
     }
 
     /**
@@ -233,26 +241,34 @@ open class SubmissionsAPI {
      List Reflections on a Submission
      
      - parameter submissionId: (path) Submission UUID. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
      - returns: ReflectionList
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func listReflections(submissionId: UUID, cursor: String? = nil, limit: Int? = nil) async throws -> ReflectionList {
-        return try await listReflectionsWithRequestBuilder(submissionId: submissionId, cursor: cursor, limit: limit).execute().body
+    open class func listReflections(submissionId: UUID, xGuestAgeToken: String? = nil, cursor: String? = nil, limit: Int? = nil) async throws -> ReflectionList {
+        return try await listReflectionsWithRequestBuilder(submissionId: submissionId, xGuestAgeToken: xGuestAgeToken, cursor: cursor, limit: limit).execute().body
     }
 
     /**
      List Reflections on a Submission
      - GET /api/v1/submissions/{submission_id}/reflections
-     - Returns published Reflections for a visible Submission in oldest-to-newest order. Available to guests and authenticated users. Pass an opaque `cursor` from a previous page to continue keyset pagination. 
+     - Returns published Reflections for a visible Submission in oldest-to-newest order. Available to guests (with `X-Guest-Age-Token`) and authenticated users. Pass an opaque `cursor` from a previous page to continue keyset pagination. 
+     - API Key:
+       - type: apiKey X-Guest-Age-Token (HEADER)
+       - name: guestAgeToken
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter submissionId: (path) Submission UUID. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
      - returns: RequestBuilder<ReflectionList> 
      */
-    open class func listReflectionsWithRequestBuilder(submissionId: UUID, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<ReflectionList> {
+    open class func listReflectionsWithRequestBuilder(submissionId: UUID, xGuestAgeToken: String? = nil, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<ReflectionList> {
         var localVariablePath = "/api/v1/submissions/{submission_id}/reflections"
         let submissionIdPreEscape = "\(APIHelper.mapValueToPathItem(submissionId))"
         let submissionIdPostEscape = submissionIdPreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
@@ -267,14 +283,14 @@ open class SubmissionsAPI {
         ])
 
         let localVariableNillableHeaders: [String: Any?] = [
-            :
+            "X-Guest-Age-Token": xGuestAgeToken?.encodeToJSON(),
         ]
 
         let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
 
         let localVariableRequestBuilder: RequestBuilder<ReflectionList>.Type = DailyCreativeAPIAPI.requestBuilderFactory.getBuilder()
 
-        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
     }
 
     /**

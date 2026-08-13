@@ -15,6 +15,7 @@ struct DailyStoryApp: App {
             diskPath: "daily-story-cache"
         )
         CrashReportingClient.start()
+        GuestAgeGateStore.shared.applyTokenHeader()
     }
 
     var body: some Scene {

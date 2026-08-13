@@ -24,6 +24,7 @@ from app.models.user import User  # noqa: F401
 from app.models.user_preferences import UserPreferences  # noqa: F401
 from app.repositories.prompts import PromptRepository, prompt_date_lock_key
 from app.seeds.prompts import generate_prompt_words
+from guest_age_helpers import guest_age_headers
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -124,7 +125,11 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_clock] = override_clock
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=guest_age_headers(),
+    ) as http_client:
         http_client.app = app  # type: ignore[attr-defined]
         http_client.clock = clock  # type: ignore[attr-defined]
         http_client.session_factory = session_factory  # type: ignore[attr-defined]

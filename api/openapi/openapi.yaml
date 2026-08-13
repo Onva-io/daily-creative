@@ -10,7 +10,9 @@ info:
     and are not versioned under `/api/v1`.
 
     Authenticated feature endpoints use the `bearerAuth` security scheme
-    (Descope-issued JWT). Health probes are unauthenticated.
+    (Descope-issued JWT). Community GETs also accept a guest age token from
+    `POST /api/v1/guest/age-declaration`. Health probes and today's prompt
+    are unauthenticated.
 servers:
   - url: http://localhost:8000
     description: Local development
@@ -492,6 +494,44 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/guest/age-declaration:
+    post:
+      operationId: declareGuestAge
+      tags:
+        - guest
+      summary: Declare age as a guest
+      description: |
+        Verifies a self-declared date of birth against the current terms
+        minimum age and returns an opaque capability token. The date of birth
+        is not stored. Guests must send the token as `X-Guest-Age-Token` on
+        community GETs (feed, submission detail, public profiles, reflections).
+        Today's Daily Prompt remains available without this token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDateOfBirthRequest"
+      responses:
+        "200":
+          description: Guest age token issued
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuestAgeDeclaration"
+              example:
+                guest_age_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.guest
+                expires_at: "2026-11-11T20:00:00Z"
+                minimum_age: 13
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/users/{user_id}/block:
     put:
       operationId: blockUser
@@ -584,14 +624,18 @@ paths:
       summary: Public profile by username
       description: |
         Returns a public-safe projection of an active user with a completed profile.
-        Available to guests and authenticated users. When authenticated,
-        `is_self` is true when the viewer is the profile owner.
+        Available to guests (with `X-Guest-Age-Token`) and authenticated users.
+        When authenticated, `is_self` is true when the viewer is the profile owner.
         Excludes email, Descope subject, preferences, moderation internals,
         Drafts, and private session analytics. Incomplete, suspended, and
         deleted profiles return 404.
         When the authenticated viewer has a block relationship with the
         profile owner in either direction, the profile is unavailable (404).
+      security:
+        - bearerAuth: []
+        - guestAgeToken: []
       parameters:
+        - $ref: "#/components/parameters/GuestAgeToken"
         - name: username
           in: path
           required: true
@@ -627,6 +671,8 @@ paths:
                 submission_count: 12
                 current_streak: 5
                 is_self: false
+        "403":
+          $ref: "#/components/responses/AgeDeclarationRequired"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -641,12 +687,16 @@ paths:
         Returns a reverse-chronological page of published Submissions for the
         given public username, ordered by `published_at DESC, id DESC`.
         Soft-deleted, hidden, removed, and non-public content is excluded.
-        Available to guests and authenticated users. When authenticated,
+        Available to guests (with `X-Guest-Age-Token`) and authenticated users. When authenticated,
         `is_owner` and `viewer_has_liked` reflect the viewer.
         Incomplete, suspended, and deleted profiles return 404.
         Pass an opaque `cursor` from a previous page to continue keyset
         pagination without duplicates or skips under concurrent inserts.
+      security:
+        - bearerAuth: []
+        - guestAgeToken: []
       parameters:
+        - $ref: "#/components/parameters/GuestAgeToken"
         - name: username
           in: path
           required: true
@@ -725,6 +775,8 @@ paths:
                         is_owner: false
                         published_at: "2026-07-18T20:12:00Z"
                     next_cursor: null
+        "403":
+          $ref: "#/components/responses/AgeDeclarationRequired"
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
@@ -815,12 +867,16 @@ paths:
         Returns a reverse-chronological page of published Submissions
         ordered by `published_at DESC, id DESC`. Soft-deleted, hidden,
         removed, and suspended/deleted-author content is excluded.
-        Available to guests and authenticated users. When authenticated,
+        Available to guests (with `X-Guest-Age-Token`) and authenticated users. When authenticated,
         `is_owner` and `viewer_has_liked` reflect the viewer.
         Pass an opaque `cursor` from a previous page to continue
         keyset pagination without duplicates or skips under concurrent
         inserts.
+      security:
+        - bearerAuth: []
+        - guestAgeToken: []
       parameters:
+        - $ref: "#/components/parameters/GuestAgeToken"
         - name: cursor
           in: query
           required: false
@@ -890,6 +946,8 @@ paths:
                         is_owner: false
                         published_at: "2026-07-18T20:12:00Z"
                     next_cursor: null
+        "403":
+          $ref: "#/components/responses/AgeDeclarationRequired"
         "422":
           $ref: "#/components/responses/ValidationError"
         "500":
@@ -1695,11 +1753,15 @@ paths:
         - submissions
       summary: Get a Submission
       description: |
-        Returns a published Submission. Available to guests and authenticated
-        users. Soft-deleted, hidden, removed, and suspended/deleted-author
-        Submissions are not returned. When authenticated, `is_owner` and
-        `viewer_has_liked` reflect the viewer.
+        Returns a published Submission. Available to guests (with
+        `X-Guest-Age-Token`) and authenticated users. Soft-deleted, hidden,
+        removed, and suspended/deleted-author Submissions are not returned.
+        When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer.
+      security:
+        - bearerAuth: []
+        - guestAgeToken: []
       parameters:
+        - $ref: "#/components/parameters/GuestAgeToken"
         - name: submission_id
           in: path
           required: true
@@ -1748,6 +1810,8 @@ paths:
                 published_at: "2026-07-18T20:12:00Z"
                 created_at: "2026-07-18T20:12:00Z"
                 updated_at: "2026-07-18T20:12:00Z"
+        "403":
+          $ref: "#/components/responses/AgeDeclarationRequired"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -1872,10 +1936,15 @@ paths:
       summary: List Reflections on a Submission
       description: |
         Returns published Reflections for a visible Submission in
-        oldest-to-newest order. Available to guests and authenticated users.
+        oldest-to-newest order. Available to guests (with `X-Guest-Age-Token`)
+        and authenticated users.
         Pass an opaque `cursor` from a previous page to continue keyset
         pagination.
+      security:
+        - bearerAuth: []
+        - guestAgeToken: []
       parameters:
+        - $ref: "#/components/parameters/GuestAgeToken"
         - name: submission_id
           in: path
           required: true
@@ -1925,6 +1994,8 @@ paths:
                     created_at: "2026-07-18T21:00:00Z"
                     is_author: false
                 next_cursor: null
+        "403":
+          $ref: "#/components/responses/AgeDeclarationRequired"
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
@@ -2082,6 +2153,13 @@ components:
       bearerFormat: JWT
       description: >
         Descope-issued access/session JWT sent as Authorization Bearer token.
+    guestAgeToken:
+      type: apiKey
+      in: header
+      name: X-Guest-Age-Token
+      description: >
+        Opaque token from POST /api/v1/guest/age-declaration. Required for
+        anonymous community reads. Authenticated requests may omit it.
   headers:
     RequestId:
       description: |
@@ -2108,6 +2186,18 @@ components:
         minLength: 1
         maxLength: 255
       example: sketch-session-create-7f3a9c2e
+    GuestAgeToken:
+      name: X-Guest-Age-Token
+      in: header
+      required: false
+      description: |
+        Opaque token from `POST /api/v1/guest/age-declaration`. Required when
+        the request has no valid bearer token. Authenticated community reads
+        may omit it.
+      schema:
+        type: string
+        minLength: 1
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.guest
   responses:
     Unauthenticated:
       description: Missing or invalid bearer token
@@ -2165,6 +2255,15 @@ components:
                   code: reflection_forbidden
                   message: You can only delete your own reflection.
                   details: {}
+                  request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+            under_minimum_age:
+              summary: Declared age is below the published minimum
+              value:
+                error:
+                  code: under_minimum_age
+                  message: You must be at least 13 years old to use this app.
+                  details:
+                    minimum_age: 13
                   request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
     Conflict:
       description: Request conflicts with existing state
@@ -2436,6 +2535,22 @@ components:
               code: rate_limited
               message: Too many requests. Please try again later.
               details: {}
+              request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
+    AgeDeclarationRequired:
+      description: Guest community read without a valid age-capability token
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: age_declaration_required
+              message: Confirm your age to browse community content.
+              details:
+                reason: missing_guest_age_token
               request_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
   schemas:
     UUID:
@@ -2866,6 +2981,24 @@ components:
           type: string
           description: ISO date YYYY-MM-DD
           example: "2000-01-15"
+    GuestAgeDeclaration:
+      type: object
+      required:
+        - guest_age_token
+        - expires_at
+        - minimum_age
+      properties:
+        guest_age_token:
+          type: string
+          description: Opaque capability token for anonymous community reads.
+        expires_at:
+          type: string
+          format: date-time
+        minimum_age:
+          type: integer
+          minimum: 1
+          maximum: 120
+          example: 13
     PublicUser:
       type: object
       description: Public-safe user projection. Excludes private and moderation fields.
@@ -3928,6 +4061,8 @@ tags:
     description: Authenticated current-user endpoints
   - name: policies
     description: Versioned policy documents, acceptance, and age gating
+  - name: guest
+    description: Unauthenticated guest age declaration for community browsing
   - name: users
     description: Public user profile endpoints
   - name: prompts

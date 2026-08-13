@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.deps import get_current_user, get_optional_current_user
+from app.auth.deps import get_current_user, require_community_access
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
@@ -40,7 +40,7 @@ async def create_submission(
 @router.get("/submissions/{submission_id}", response_model=SubmissionResponse)
 async def get_submission(
     submission_id: UUID,
-    viewer: User | None = Depends(get_optional_current_user),
+    viewer: User | None = Depends(require_community_access),
     session: AsyncSession = Depends(get_db_session),
     clock: Clock = Depends(get_clock),
     storage: StorageAdapter = Depends(get_storage_adapter),

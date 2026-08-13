@@ -13,8 +13,10 @@ from html import escape
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.guest_age import mint_guest_age_token
 from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError
+from app.core.settings import Settings, get_settings
 from app.models.moderation_action import ModerationActionType
 from app.models.policy import PolicyDocument, PolicyKind, PolicyStatus
 from app.models.report import ReportTargetType
@@ -29,12 +31,12 @@ from app.schemas.policies import (
     AcceptedPolicyItem,
     ConsentState,
     CurrentPoliciesResponse,
+    GuestAgeDeclarationResponse,
     PolicyAcceptanceSummary,
     PolicyDocumentResponse,
     PolicyKindSchema,
     policy_kind_from_schema,
 )
-from app.core.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +237,40 @@ class PolicyService:
         await self._session.commit()
         await self._session.refresh(user)
         return user
+
+    async def declare_guest_age(self, *, date_of_birth: date) -> GuestAgeDeclarationResponse:
+        """Verify a guest DOB and mint a capability token. Does not persist the DOB."""
+        if date_of_birth > self._clock.today():
+            raise AppError(
+                code="date_of_birth_invalid",
+                message="Date of birth cannot be in the future.",
+                status_code=422,
+            )
+        published = await self._documents.list_published()
+        if not published and self._settings.is_remote_environment:
+            raise AppError(
+                code="policies_unavailable",
+                message="Required policies are not published. Please try again later.",
+                status_code=503,
+            )
+        minimum_age = self._minimum_age_from(published)
+        if age_on(self._clock.today(), date_of_birth=date_of_birth) < minimum_age:
+            raise AppError(
+                code="under_minimum_age",
+                message=f"You must be at least {minimum_age} years old to use this app.",
+                status_code=403,
+                details={"minimum_age": minimum_age},
+            )
+        token, expires_at = mint_guest_age_token(
+            self._settings,
+            minimum_age=minimum_age,
+            now=self._clock.now(),
+        )
+        return GuestAgeDeclarationResponse(
+            guest_age_token=token,
+            expires_at=expires_at,
+            minimum_age=minimum_age,
+        )
 
     async def create_draft(
         self,

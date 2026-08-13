@@ -32,6 +32,7 @@ from app.models.user_preferences import UserPreferences  # noqa: F401
 from app.repositories.prompts import PromptRepository
 from app.storage.base import get_storage_adapter
 from fake_storage import InMemoryStorageAdapter
+from guest_age_helpers import guest_age_headers
 from jwt_helpers import StaticTokenVerifier, generate_rsa_keypair, mint_token
 from test_uploads_submissions import (
     FixedClock,
@@ -109,7 +110,11 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_settings] = override_settings
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=guest_age_headers(settings),
+    ) as http_client:
         http_client.app = app  # type: ignore[attr-defined]
         http_client.clock = clock  # type: ignore[attr-defined]
         http_client.session_factory = session_factory  # type: ignore[attr-defined]

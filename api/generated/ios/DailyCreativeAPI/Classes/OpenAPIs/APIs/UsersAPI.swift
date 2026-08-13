@@ -60,23 +60,31 @@ open class UsersAPI {
      
      - parameter username: (path) Public username (case-insensitive lookup). 
      - parameter creativeType: (query) Creative type for submission counts and streak stats. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - returns: PublicUser
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getPublicUser(username: String, creativeType: CreativeType) async throws -> PublicUser {
-        return try await getPublicUserWithRequestBuilder(username: username, creativeType: creativeType).execute().body
+    open class func getPublicUser(username: String, creativeType: CreativeType, xGuestAgeToken: String? = nil) async throws -> PublicUser {
+        return try await getPublicUserWithRequestBuilder(username: username, creativeType: creativeType, xGuestAgeToken: xGuestAgeToken).execute().body
     }
 
     /**
      Public profile by username
      - GET /api/v1/users/{username}
-     - Returns a public-safe projection of an active user with a completed profile. Available to guests and authenticated users. When authenticated, `is_self` is true when the viewer is the profile owner. Excludes email, Descope subject, preferences, moderation internals, Drafts, and private session analytics. Incomplete, suspended, and deleted profiles return 404. When the authenticated viewer has a block relationship with the profile owner in either direction, the profile is unavailable (404). 
+     - Returns a public-safe projection of an active user with a completed profile. Available to guests (with `X-Guest-Age-Token`) and authenticated users. When authenticated, `is_self` is true when the viewer is the profile owner. Excludes email, Descope subject, preferences, moderation internals, Drafts, and private session analytics. Incomplete, suspended, and deleted profiles return 404. When the authenticated viewer has a block relationship with the profile owner in either direction, the profile is unavailable (404). 
+     - API Key:
+       - type: apiKey X-Guest-Age-Token (HEADER)
+       - name: guestAgeToken
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter username: (path) Public username (case-insensitive lookup). 
      - parameter creativeType: (query) Creative type for submission counts and streak stats. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - returns: RequestBuilder<PublicUser> 
      */
-    open class func getPublicUserWithRequestBuilder(username: String, creativeType: CreativeType) -> RequestBuilder<PublicUser> {
+    open class func getPublicUserWithRequestBuilder(username: String, creativeType: CreativeType, xGuestAgeToken: String? = nil) -> RequestBuilder<PublicUser> {
         var localVariablePath = "/api/v1/users/{username}"
         let usernamePreEscape = "\(APIHelper.mapValueToPathItem(username))"
         let usernamePostEscape = usernamePreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
@@ -90,14 +98,14 @@ open class UsersAPI {
         ])
 
         let localVariableNillableHeaders: [String: Any?] = [
-            :
+            "X-Guest-Age-Token": xGuestAgeToken?.encodeToJSON(),
         ]
 
         let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
 
         let localVariableRequestBuilder: RequestBuilder<PublicUser>.Type = DailyCreativeAPIAPI.requestBuilderFactory.getBuilder()
 
-        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
     }
 
     /**
@@ -105,27 +113,35 @@ open class UsersAPI {
      
      - parameter username: (path) Public username (case-insensitive lookup). 
      - parameter creativeType: (query) Creative type of submissions to return. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
      - returns: RecentFeed
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getUserSubmissions(username: String, creativeType: CreativeType, cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
-        return try await getUserSubmissionsWithRequestBuilder(username: username, creativeType: creativeType, cursor: cursor, limit: limit).execute().body
+    open class func getUserSubmissions(username: String, creativeType: CreativeType, xGuestAgeToken: String? = nil, cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
+        return try await getUserSubmissionsWithRequestBuilder(username: username, creativeType: creativeType, xGuestAgeToken: xGuestAgeToken, cursor: cursor, limit: limit).execute().body
     }
 
     /**
      Public profile submission history
      - GET /api/v1/users/{username}/submissions
-     - Returns a reverse-chronological page of published Submissions for the given public username, ordered by `published_at DESC, id DESC`. Soft-deleted, hidden, removed, and non-public content is excluded. Available to guests and authenticated users. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. Incomplete, suspended, and deleted profiles return 404. Pass an opaque `cursor` from a previous page to continue keyset pagination without duplicates or skips under concurrent inserts. 
+     - Returns a reverse-chronological page of published Submissions for the given public username, ordered by `published_at DESC, id DESC`. Soft-deleted, hidden, removed, and non-public content is excluded. Available to guests (with `X-Guest-Age-Token`) and authenticated users. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. Incomplete, suspended, and deleted profiles return 404. Pass an opaque `cursor` from a previous page to continue keyset pagination without duplicates or skips under concurrent inserts. 
+     - API Key:
+       - type: apiKey X-Guest-Age-Token (HEADER)
+       - name: guestAgeToken
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter username: (path) Public username (case-insensitive lookup). 
      - parameter creativeType: (query) Creative type of submissions to return. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
      - returns: RequestBuilder<RecentFeed> 
      */
-    open class func getUserSubmissionsWithRequestBuilder(username: String, creativeType: CreativeType, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
+    open class func getUserSubmissionsWithRequestBuilder(username: String, creativeType: CreativeType, xGuestAgeToken: String? = nil, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
         var localVariablePath = "/api/v1/users/{username}/submissions"
         let usernamePreEscape = "\(APIHelper.mapValueToPathItem(username))"
         let usernamePostEscape = usernamePreEscape.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
@@ -141,14 +157,14 @@ open class UsersAPI {
         ])
 
         let localVariableNillableHeaders: [String: Any?] = [
-            :
+            "X-Guest-Age-Token": xGuestAgeToken?.encodeToJSON(),
         ]
 
         let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
 
         let localVariableRequestBuilder: RequestBuilder<RecentFeed>.Type = DailyCreativeAPIAPI.requestBuilderFactory.getBuilder()
 
-        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
     }
 
     /**

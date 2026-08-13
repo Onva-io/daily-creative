@@ -105,6 +105,9 @@ locals {
     var.alert_webhook_url != null ? {
       ALERT_WEBHOOK_URL = module.secrets.alert_webhook_url_secret_arn
     } : {},
+    var.guest_age_token_secret != null ? {
+      GUEST_AGE_TOKEN_SECRET = module.secrets.guest_age_token_secret_arn
+    } : {},
   )
 }
 
@@ -189,6 +192,7 @@ module "secrets" {
   moderation_operator_token = var.moderation_operator_token
   sentry_dsn                = var.sentry_dsn
   alert_webhook_url         = var.alert_webhook_url
+  guest_age_token_secret    = var.guest_age_token_secret
   tags                      = local.common_tags
 }
 

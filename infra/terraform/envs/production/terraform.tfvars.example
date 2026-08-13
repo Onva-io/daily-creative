@@ -23,6 +23,7 @@ descope_project_id        = "Pxxxxxxxxxxxxxxxxxxxxxx"
 
 # Required in production — copy to terraform.tfvars locally; never commit.
 # moderation_operator_token = "..."
+# guest_age_token_secret    = "..."
 # sentry_dsn                = "..."
 # alert_webhook_url         = "..."
 # alarm_sns_topic_arn       = "arn:aws:sns:eu-west-1:ACCOUNT_ID:ops-alerts"

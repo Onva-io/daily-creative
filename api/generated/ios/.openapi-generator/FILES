@@ -6,6 +6,7 @@ DailyCreativeAPI.podspec
 DailyCreativeAPI/Classes/OpenAPIs/APIHelper.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/FeedAPI.swift
+DailyCreativeAPI/Classes/OpenAPIs/APIs/GuestAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/HealthAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/MeAPI.swift
 DailyCreativeAPI/Classes/OpenAPIs/APIs/PoliciesAPI.swift
@@ -49,6 +50,7 @@ DailyCreativeAPI/Classes/OpenAPIs/Models/ErrorBody.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/FeedItem.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/FeedPromptSummary.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/FeedUserSummary.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/GuestAgeDeclaration.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/HealthLiveResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/HealthReadyResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/LikeState.swift
@@ -120,6 +122,8 @@ docs/FeedAPI.md
 docs/FeedItem.md
 docs/FeedPromptSummary.md
 docs/FeedUserSummary.md
+docs/GuestAPI.md
+docs/GuestAgeDeclaration.md
 docs/HealthAPI.md
 docs/HealthLiveResponse.md
 docs/HealthReadyResponse.md

@@ -55,6 +55,9 @@ def test_staging_settings_accept_valid_config(monkeypatch: pytest.MonkeyPatch) -
     )
     monkeypatch.setenv("MODERATION_PROVIDER", "openai")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-openai")  # pragma: allowlist secret
+    monkeypatch.setenv(
+        "GUEST_AGE_TOKEN_SECRET", "staging-guest-age-token-secret-value"
+    )  # pragma: allowlist secret
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.app_env == "staging"
     assert settings.resolved_descope_audience is None

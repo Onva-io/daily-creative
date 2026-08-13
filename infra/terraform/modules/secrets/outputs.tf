@@ -18,6 +18,11 @@ output "alert_webhook_url_secret_arn" {
   value       = aws_secretsmanager_secret.alert_webhook_url.arn
 }
 
+output "guest_age_token_secret_arn" {
+  description = "Secrets Manager ARN for GUEST_AGE_TOKEN_SECRET."
+  value       = aws_secretsmanager_secret.guest_age_token_secret.arn
+}
+
 output "all_secret_arns" {
   description = "All secret ARNs referenced by ECS task roles."
   value = [
@@ -25,5 +30,6 @@ output "all_secret_arns" {
     aws_secretsmanager_secret.moderation_operator_token.arn,
     aws_secretsmanager_secret.sentry_dsn.arn,
     aws_secretsmanager_secret.alert_webhook_url.arn,
+    aws_secretsmanager_secret.guest_age_token_secret.arn,
   ]
 }

@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _PLACEHOLDER_DESCOPE = "replace-me"
 _INSECURE_STORAGE_KEYS = frozenset({"minioadmin"})
+_LOCAL_GUEST_AGE_SECRET = "daily-creative-guest-age-local-secret"  # pragma: allowlist secret
 
 
 class Settings(BaseSettings):
@@ -141,6 +142,14 @@ class Settings(BaseSettings):
         default="support@dailycreative.example",
         alias="SUPPORT_EMAIL",
     )
+    guest_age_token_secret: str = Field(
+        default=_LOCAL_GUEST_AGE_SECRET,
+        alias="GUEST_AGE_TOKEN_SECRET",
+    )
+    guest_age_token_ttl_seconds: int = Field(
+        default=7_776_000,
+        alias="GUEST_AGE_TOKEN_TTL_SECONDS",
+    )
 
     @field_validator("request_timeout_seconds")
     @classmethod
@@ -198,6 +207,13 @@ class Settings(BaseSettings):
             raise ValueError("REFLECTION_MAX_LENGTH must be at least 1")
         return value
 
+    @field_validator("guest_age_token_ttl_seconds")
+    @classmethod
+    def validate_guest_age_token_ttl(cls, value: int) -> int:
+        if value < 3600:
+            raise ValueError("GUEST_AGE_TOKEN_TTL_SECONDS must be at least 3600")
+        return value
+
     @field_validator("prompt_date_timezone")
     @classmethod
     def validate_prompt_date_timezone(cls, value: str) -> str:
@@ -238,6 +254,14 @@ class Settings(BaseSettings):
             )
         if not self.openai_api_key or "replace-me" in self.openai_api_key:
             raise ValueError("OPENAI_API_KEY is required when MODERATION_PROVIDER=openai")
+        if (
+            not self.guest_age_token_secret
+            or self.guest_age_token_secret == _LOCAL_GUEST_AGE_SECRET
+            or len(self.guest_age_token_secret) < 32
+        ):
+            raise ValueError(
+                "GUEST_AGE_TOKEN_SECRET must be a unique 32+ character value in staging/production"
+            )
         if self.storage_access_key in _INSECURE_STORAGE_KEYS:
             raise ValueError(
                 "STORAGE_ACCESS_KEY must not use default credentials in staging/production"

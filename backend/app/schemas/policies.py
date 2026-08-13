@@ -108,6 +108,14 @@ class SetDateOfBirthRequest(BaseModel):
     date_of_birth: str = Field(description="ISO date YYYY-MM-DD")
 
 
+class GuestAgeDeclarationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    guest_age_token: str
+    expires_at: datetime
+    minimum_age: int = Field(ge=1, le=120)
+
+
 def policy_kind_from_schema(kind: PolicyKindSchema) -> PolicyKind:
     return PolicyKind(kind.value)
 

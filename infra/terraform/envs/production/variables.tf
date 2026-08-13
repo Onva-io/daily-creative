@@ -159,3 +159,10 @@ variable "alert_webhook_url" {
   default     = null
   sensitive   = true
 }
+
+variable "guest_age_token_secret" {
+  description = "GUEST_AGE_TOKEN_SECRET (sensitive — unique 32+ character HMAC secret)."
+  type        = string
+  default     = null
+  sensitive   = true
+}

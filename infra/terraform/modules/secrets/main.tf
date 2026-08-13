@@ -40,6 +40,15 @@ resource "aws_secretsmanager_secret" "alert_webhook_url" {
   })
 }
 
+resource "aws_secretsmanager_secret" "guest_age_token_secret" {
+  name                    = "${var.name_prefix}/guest-age-token-secret"
+  recovery_window_in_days = var.recovery_window_in_days
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name_prefix}-guest-age-token-secret"
+  })
+}
+
 resource "aws_secretsmanager_secret_version" "database_url" {
   count = var.database_url == null ? 0 : 1
 
@@ -66,4 +75,11 @@ resource "aws_secretsmanager_secret_version" "alert_webhook_url" {
 
   secret_id     = aws_secretsmanager_secret.alert_webhook_url.id
   secret_string = var.alert_webhook_url
+}
+
+resource "aws_secretsmanager_secret_version" "guest_age_token_secret" {
+  count = var.guest_age_token_secret == null ? 0 : 1
+
+  secret_id     = aws_secretsmanager_secret.guest_age_token_secret.id
+  secret_string = var.guest_age_token_secret
 }

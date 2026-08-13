@@ -16,26 +16,34 @@ open class FeedAPI {
      Recent community feed
      
      - parameter creativeType: (query) Creative type of submissions to return. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
      - returns: RecentFeed
      */
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    open class func getRecentFeed(creativeType: CreativeType, cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
-        return try await getRecentFeedWithRequestBuilder(creativeType: creativeType, cursor: cursor, limit: limit).execute().body
+    open class func getRecentFeed(creativeType: CreativeType, xGuestAgeToken: String? = nil, cursor: String? = nil, limit: Int? = nil) async throws -> RecentFeed {
+        return try await getRecentFeedWithRequestBuilder(creativeType: creativeType, xGuestAgeToken: xGuestAgeToken, cursor: cursor, limit: limit).execute().body
     }
 
     /**
      Recent community feed
      - GET /api/v1/feed/recent
-     - Returns a reverse-chronological page of published Submissions ordered by `published_at DESC, id DESC`. Soft-deleted, hidden, removed, and suspended/deleted-author content is excluded. Available to guests and authenticated users. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. Pass an opaque `cursor` from a previous page to continue keyset pagination without duplicates or skips under concurrent inserts. 
+     - Returns a reverse-chronological page of published Submissions ordered by `published_at DESC, id DESC`. Soft-deleted, hidden, removed, and suspended/deleted-author content is excluded. Available to guests (with `X-Guest-Age-Token`) and authenticated users. When authenticated, `is_owner` and `viewer_has_liked` reflect the viewer. Pass an opaque `cursor` from a previous page to continue keyset pagination without duplicates or skips under concurrent inserts. 
+     - API Key:
+       - type: apiKey X-Guest-Age-Token (HEADER)
+       - name: guestAgeToken
+     - Bearer Token:
+       - type: http
+       - name: bearerAuth
      - responseHeaders: [X-Request-ID(UUID)]
      - parameter creativeType: (query) Creative type of submissions to return. 
+     - parameter xGuestAgeToken: (header) Opaque token from &#x60;POST /api/v1/guest/age-declaration&#x60;. Required when the request has no valid bearer token. Authenticated community reads may omit it.  (optional)
      - parameter cursor: (query) Opaque cursor from a previous page, or omit for the first page. (optional)
      - parameter limit: (query) Maximum number of items to return (1–50). Defaults to 20. (optional, default to 20)
      - returns: RequestBuilder<RecentFeed> 
      */
-    open class func getRecentFeedWithRequestBuilder(creativeType: CreativeType, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
+    open class func getRecentFeedWithRequestBuilder(creativeType: CreativeType, xGuestAgeToken: String? = nil, cursor: String? = nil, limit: Int? = nil) -> RequestBuilder<RecentFeed> {
         let localVariablePath = "/api/v1/feed/recent"
         let localVariableURLString = DailyCreativeAPIAPI.basePath + localVariablePath
         let localVariableParameters: [String: Any]? = nil
@@ -48,13 +56,13 @@ open class FeedAPI {
         ])
 
         let localVariableNillableHeaders: [String: Any?] = [
-            :
+            "X-Guest-Age-Token": xGuestAgeToken?.encodeToJSON(),
         ]
 
         let localVariableHeaderParameters = APIHelper.rejectNilHeaders(localVariableNillableHeaders)
 
         let localVariableRequestBuilder: RequestBuilder<RecentFeed>.Type = DailyCreativeAPIAPI.requestBuilderFactory.getBuilder()
 
-        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: false)
+        return localVariableRequestBuilder.init(method: "GET", URLString: (localVariableUrlComponents?.string ?? localVariableURLString), parameters: localVariableParameters, headers: localVariableHeaderParameters, requiresAuthentication: true)
     }
 }
