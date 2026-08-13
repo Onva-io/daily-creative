@@ -25,7 +25,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>COMMUNITY_GUIDELINES_URL</key>
 	<string>$(COMMUNITY_GUIDELINES_URL)</string>
 	<key>COMMUNITY_TITLE</key>
@@ -55,10 +55,10 @@
 	<string>$(SHOW_ENVIRONMENT_BADGE)</string>
 	<key>START_ACTION_TITLE</key>
 	<string>$(START_ACTION_TITLE)</string>
-	<key>SUPPORT_URL</key>
-	<string>$(SUPPORT_URL)</string>
 	<key>SUPPORT_EMAIL</key>
 	<string>$(SUPPORT_EMAIL)</string>
+	<key>SUPPORT_URL</key>
+	<string>$(SUPPORT_URL)</string>
 	<key>TERMS_URL</key>
 	<string>$(TERMS_URL)</string>
 	<key>UIApplicationSceneManifest</key>

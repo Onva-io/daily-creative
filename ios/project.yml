@@ -12,7 +12,7 @@ settings:
     SWIFT_VERSION: "6.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     MARKETING_VERSION: "0.1.0"
     GENERATE_INFOPLIST_FILE: YES
 configs:
@@ -39,6 +39,7 @@ targets:
     info:
       path: DailySketch/Resources/Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         API_BASE_URL: $(API_BASE_URL)
         APP_ENVIRONMENT: $(APP_ENVIRONMENT)
         DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
@@ -125,6 +126,7 @@ targets:
     info:
       path: DailyStory/Resources/Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         API_BASE_URL: $(API_BASE_URL)
         APP_ENVIRONMENT: $(APP_ENVIRONMENT)
         DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
