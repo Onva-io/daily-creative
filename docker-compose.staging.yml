@@ -18,6 +18,7 @@ services:
       APP_ENV: staging
       LOG_LEVEL: INFO
       METRICS_ENABLED: "true"
+      METRICS_SCRAPE_TOKEN: staging-local-metrics-token
       REQUEST_TIMEOUT_SECONDS: "30"
       MAX_REQUEST_BODY_BYTES: "1048576"
       DB_POOL_SIZE: "5"

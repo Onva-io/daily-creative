@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     rate_limit_moderation_max: int = Field(default=60, alias="RATE_LIMIT_MODERATION_MAX")
 
     metrics_enabled: bool = Field(default=True, alias="METRICS_ENABLED")
+    metrics_scrape_token: str | None = Field(default=None, alias="METRICS_SCRAPE_TOKEN")
     sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
     otel_exporter_otlp_endpoint: str | None = Field(
         default=None,

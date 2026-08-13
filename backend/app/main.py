@@ -6,13 +6,13 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.responses import Response
 
 from app.api.health import router as health_router
 from app.api.moderation import router as moderation_router
 from app.api.v1 import router as v1_router
-from app.core.errors import register_exception_handlers
+from app.core.errors import AppError, register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIDMiddleware
 from app.core.rate_limit import RateLimitMiddleware
@@ -60,10 +60,28 @@ def create_app() -> FastAPI:
     application.include_router(moderation_router)
 
     if settings.metrics_enabled:
+        scrape_token = (settings.metrics_scrape_token or "").strip()
+        if scrape_token or not settings.is_remote_environment:
 
-        @application.get("/metrics", include_in_schema=False)
-        async def metrics() -> Response:
-            return metrics_response()
+            @application.get("/metrics", include_in_schema=False)
+            async def metrics(
+                authorization: str | None = Header(default=None),
+                x_metrics_token: str | None = Header(default=None, alias="X-Metrics-Token"),
+            ) -> Response:
+                if scrape_token:
+                    presented = None
+                    if authorization and authorization.lower().startswith("bearer "):
+                        presented = authorization[7:].strip()
+                    elif x_metrics_token:
+                        presented = x_metrics_token.strip()
+                    if presented != scrape_token:
+                        raise AppError(
+                            code="unauthenticated",
+                            message="Authentication is required.",
+                            status_code=401,
+                            details={"reason": "metrics_token"},
+                        )
+                return metrics_response()
 
     return application
 

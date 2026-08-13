@@ -60,6 +60,7 @@ In the Descope Console for this test project, set **Project Settings → Session
 | `STORAGE_SECRET_KEY` | 🔒 IAM secret key |
 | `STORAGE_USE_SSL` | `true` |
 | `METRICS_ENABLED` | `true` |
+| `METRICS_SCRAPE_TOKEN` | 🔒 Bearer/X-Metrics-Token required to scrape `/metrics`; omit to disable the route remotely |
 
 Optional: `SENTRY_DSN`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `ALERT_WEBHOOK_URL`.
 

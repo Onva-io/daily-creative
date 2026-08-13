@@ -38,6 +38,8 @@ def _route_key(scope: Scope) -> str:
         return f"{method} feed"
     if path.startswith("/api/v1/users") and path.endswith("/submissions"):
         return f"{method} profile_submissions"
+    if path.startswith("/api/v1/users"):
+        return f"{method} user"
     if path.endswith("/like"):
         return f"{method} like"
     if path.endswith("/reflections"):
@@ -46,9 +48,25 @@ def _route_key(scope: Scope) -> str:
         return f"{method} upload"
     if path.startswith("/api/v1/submissions"):
         return f"{method} submission"
-    if path == "/api/v1/me" and method == "DELETE":
-        return f"{method} account_deletion"
-    return f"{method} {path}"
+    if path.startswith("/api/v1/sketch-sessions"):
+        return f"{method} sketch_session"
+    if path.startswith("/api/v1/story-sessions"):
+        return f"{method} story_session"
+    if path.startswith("/api/v1/reports"):
+        return f"{method} report"
+    if path.startswith("/api/v1/policies"):
+        return f"{method} policies"
+    if path.startswith("/api/v1/guest"):
+        return f"{method} guest"
+    if path.startswith("/api/v1/me"):
+        return f"{method} me"
+    if path.startswith("/internal/moderation"):
+        return f"{method} moderation"
+    if path.startswith("/health"):
+        return f"{method} health"
+    if path == "/metrics":
+        return f"{method} metrics"
+    return f"{method} unmatched"
 
 
 class MetricsMiddleware:
