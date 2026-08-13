@@ -93,7 +93,12 @@ async def test_create_signed_upload_uses_normalized_public_endpoint() -> None:
         content_type="image/jpeg",
         max_bytes=1000,
         expires_at=datetime.now(UTC) + timedelta(minutes=5),
+        content_length=512,
     )
+    assert signed.headers["Content-Length"] == "512"
+    public_client.generate_presigned_url.assert_called_once()
+    params = public_client.generate_presigned_url.call_args.kwargs["Params"]
+    assert params["ContentLength"] == 512
     assert "bucket.example.com:443" not in signed.url
     # First client is internal endpoint; second is public without :443
     assert build.call_args_list[1].args[0] == "https://bucket.example.com"

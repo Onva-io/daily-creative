@@ -82,6 +82,7 @@ class UploadService:
             content_type=payload.content_type.lower(),
             expires_at=expires_at,
             upload_id=upload_id,
+            byte_size=payload.byte_size,
         )
 
         signed = await self._storage.create_signed_upload(
@@ -89,6 +90,7 @@ class UploadService:
             content_type=upload.content_type,
             max_bytes=self._settings.max_upload_bytes,
             expires_at=expires_at,
+            content_length=payload.byte_size,
         )
         signed_response = SignedUploadResponse(
             url=signed.url,
@@ -134,6 +136,7 @@ class UploadService:
             content_type=upload.content_type,
             max_bytes=self._settings.max_upload_bytes,
             expires_at=expires_at,
+            content_length=upload.byte_size,
         )
         upload.expires_at = expires_at
         await self._uploads.save(upload)
@@ -182,6 +185,7 @@ class UploadService:
 
         metadata = await self._storage.verify_object(key=upload.storage_key)
         if metadata.byte_size > self._settings.max_upload_bytes:
+            await self._discard_oversized_object(upload)
             raise AppError(
                 code="image_too_large",
                 message="That image is too large to upload.",
@@ -191,13 +195,18 @@ class UploadService:
         upload.status = UploadStatus.processing
         await self._uploads.save(upload)
 
-        original_bytes = await self._storage.download_object(key=upload.storage_key)
-        if len(original_bytes) > self._settings.max_upload_bytes:
-            raise AppError(
-                code="image_too_large",
-                message="That image is too large to upload.",
-                status_code=422,
+        try:
+            original_bytes = await self._storage.download_object(
+                key=upload.storage_key,
+                max_bytes=self._settings.max_upload_bytes,
             )
+        except AppError as exc:
+            if exc.code == "image_too_large":
+                await self._discard_oversized_object(upload)
+            else:
+                upload.status = UploadStatus.pending
+                await self._uploads.save(upload)
+            raise
 
         from app.models.report import ReportTargetType
         from app.services.content_moderation import ContentModerationService
@@ -273,6 +282,14 @@ class UploadService:
                 message="That upload purpose is not supported.",
                 status_code=422,
             )
+
+    async def _discard_oversized_object(self, upload: Upload) -> None:
+        try:
+            await self._storage.delete_object(key=upload.storage_key)
+        except Exception:
+            pass
+        upload.status = UploadStatus.failed
+        await self._uploads.save(upload)
 
     async def _require_owned_upload(self, *, user: User, upload_id: uuid.UUID) -> Upload:
         upload = await self._uploads.get_by_id(upload_id)

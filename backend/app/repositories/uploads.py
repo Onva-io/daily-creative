@@ -25,6 +25,7 @@ class UploadRepository:
         content_type: str,
         expires_at: datetime,
         upload_id: uuid.UUID | None = None,
+        byte_size: int | None = None,
     ) -> Upload:
         upload = Upload(
             id=upload_id or uuid.uuid4(),
@@ -34,6 +35,7 @@ class UploadRepository:
             storage_bucket=storage_bucket,
             storage_key=storage_key,
             content_type=content_type,
+            byte_size=byte_size,
             expires_at=expires_at,
         )
         self._session.add(upload)

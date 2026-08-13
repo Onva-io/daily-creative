@@ -43,6 +43,7 @@ class StorageAdapter(Protocol):
         content_type: str,
         max_bytes: int,
         expires_at: datetime,
+        content_length: int | None = None,
     ) -> SignedUpload:
         """Create a short-lived signed upload URL for exactly one object key."""
         ...
@@ -59,8 +60,8 @@ class StorageAdapter(Protocol):
         """Delete a single object."""
         ...
 
-    async def download_object(self, *, key: str) -> bytes:
-        """Download object bytes."""
+    async def download_object(self, *, key: str, max_bytes: int | None = None) -> bytes:
+        """Download object bytes, aborting if the object exceeds max_bytes."""
         ...
 
     async def put_object(

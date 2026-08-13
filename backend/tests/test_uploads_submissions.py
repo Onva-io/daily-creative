@@ -326,6 +326,8 @@ async def _create_ready_upload(
     upload = created.json()
     assert upload["status"] == "pending"
     assert upload["signed_upload"] is not None
+    assert upload["signed_upload"]["headers"].get("Content-Length") == str(len(data))
+    assert upload["byte_size"] == len(data)
     await _put_upload_bytes(client, headers, upload["id"], data)
     completed = await client.post(
         f"/api/v1/uploads/{upload['id']}/complete",
@@ -372,6 +374,43 @@ async def test_oversized_image_rejected(client: AsyncClient) -> None:
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "image_too_large"
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_complete_rejects_stored_object_over_max_bytes(client: AsyncClient) -> None:
+    headers = _auth_headers(client)
+    await _complete_profile(client, headers)
+    settings: Settings = client.settings  # type: ignore[attr-defined]
+    original_max = settings.max_upload_bytes
+    settings.max_upload_bytes = 64
+    jpeg = make_jpeg()
+    created = await client.post(
+        "/api/v1/uploads",
+        headers=headers,
+        json={
+            "purpose": "submission",
+            "content_type": "image/jpeg",
+            "byte_size": 32,
+        },
+    )
+    assert created.status_code == 201
+    upload_id = created.json()["id"]
+    storage: InMemoryStorageAdapter = client.storage  # type: ignore[attr-defined]
+    me = await client.get("/api/v1/me", headers=headers, params=_creative_type_params())
+    user_id = me.json()["id"]
+    storage.put_bytes(
+        f"users/{user_id}/uploads/{upload_id}/original",
+        jpeg if len(jpeg) > 64 else jpeg + (b"\x00" * 64),
+        "image/jpeg",
+    )
+    try:
+        completed = await client.post(f"/api/v1/uploads/{upload_id}/complete", headers=headers)
+        assert completed.status_code == 422
+        assert completed.json()["error"]["code"] == "image_too_large"
+        assert f"users/{user_id}/uploads/{upload_id}/original" not in storage._objects
+    finally:
+        settings.max_upload_bytes = original_max
 
 
 @requires_postgres

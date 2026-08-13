@@ -73,17 +73,23 @@ class MinioStorageAdapter:
         content_type: str,
         max_bytes: int,
         expires_at: datetime,
+        content_length: int | None = None,
     ) -> SignedUpload:
         expires_in = max(int((expires_at - datetime.now(UTC)).total_seconds()), 60)
+        params: dict[str, Any] = {
+            "Bucket": self._bucket,
+            "Key": key,
+            "ContentType": content_type,
+        }
+        headers = {"Content-Type": content_type}
+        if content_length is not None:
+            params["ContentLength"] = content_length
+            headers["Content-Length"] = str(content_length)
         url = await asyncio.to_thread(
             partial(
                 self._public_client.generate_presigned_url,
                 "put_object",
-                Params={
-                    "Bucket": self._bucket,
-                    "Key": key,
-                    "ContentType": content_type,
-                },
+                Params=params,
                 ExpiresIn=expires_in,
                 HttpMethod="PUT",
             )
@@ -92,7 +98,7 @@ class MinioStorageAdapter:
             upload_id=uuid4(),
             url=url,
             method="PUT",
-            headers={"Content-Type": content_type},
+            headers=headers,
             expires_at=expires_at,
             max_bytes=max_bytes,
             content_type=content_type,
@@ -139,7 +145,7 @@ class MinioStorageAdapter:
     async def delete_object(self, *, key: str) -> None:
         await asyncio.to_thread(partial(self._client.delete_object, Bucket=self._bucket, Key=key))
 
-    async def download_object(self, *, key: str) -> bytes:
+    async def download_object(self, *, key: str, max_bytes: int | None = None) -> bytes:
         try:
             response = await asyncio.to_thread(
                 partial(self._client.get_object, Bucket=self._bucket, Key=key)
@@ -154,7 +160,28 @@ class MinioStorageAdapter:
                 ) from exc
             raise
         body = response["Body"]
-        return await asyncio.to_thread(body.read)
+        limit = max_bytes
+
+        def _read() -> bytes:
+            if limit is None:
+                return bytes(body.read())
+            chunks: list[bytes] = []
+            total = 0
+            while True:
+                chunk = body.read(64 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > limit:
+                    raise AppError(
+                        code="image_too_large",
+                        message="That image is too large to upload.",
+                        status_code=422,
+                    )
+                chunks.append(chunk)
+            return b"".join(chunks)
+
+        return await asyncio.to_thread(_read)
 
     async def ping(self) -> bool:
         try:

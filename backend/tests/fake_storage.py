@@ -33,12 +33,16 @@ class InMemoryStorageAdapter:
         content_type: str,
         max_bytes: int,
         expires_at: datetime,
+        content_length: int | None = None,
     ) -> SignedUpload:
+        headers = {"Content-Type": content_type}
+        if content_length is not None:
+            headers["Content-Length"] = str(content_length)
         return SignedUpload(
             upload_id=uuid4(),
             url=f"https://storage.test/upload/{key}",
             method="PUT",
-            headers={"Content-Type": content_type},
+            headers=headers,
             expires_at=expires_at,
             max_bytes=max_bytes,
             content_type=content_type,
@@ -65,12 +69,18 @@ class InMemoryStorageAdapter:
     async def delete_object(self, *, key: str) -> None:
         self._objects.pop(key, None)
 
-    async def download_object(self, *, key: str) -> bytes:
+    async def download_object(self, *, key: str, max_bytes: int | None = None) -> bytes:
         stored = self._objects.get(key)
         if stored is None:
             raise AppError(
                 code="object_missing",
                 message="The uploaded image could not be found. Please try again.",
+                status_code=422,
+            )
+        if max_bytes is not None and len(stored.body) > max_bytes:
+            raise AppError(
+                code="image_too_large",
+                message="That image is too large to upload.",
                 status_code=422,
             )
         return stored.body
