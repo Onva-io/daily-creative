@@ -10,6 +10,7 @@
 | Storage policy | Pass | Private bucket, signed PUT/GET only, no credentials in iOS |
 | Signed URL expiry | Pass | Create + `POST .../refresh-signed-upload`; expiry settings validated ≥60s |
 | Image validation | Pass | MIME allowlist, max bytes, decode/dimensions in `app/media/processing.py` |
+| Image moderation | Pass (remote) / heuristic local | Staging/production require `MODERATION_PROVIDER=openai` and `OPENAI_API_KEY`. Heuristic adapter remains local/CI only and does not screen images. |
 | Public media / EXIF | Pass (derivatives) | Originals retained **verbatim** privately; display/thumbnail derivatives are EXIF-stripped and are the only URLs returned in feed/detail/profile payloads |
 | Secrets | Pass | `.env.example` placeholders only; `detect-secrets` in CI |
 | Moderation access | Pass | `X-Moderation-Token` compared with `secrets.compare_digest`; rate limited |

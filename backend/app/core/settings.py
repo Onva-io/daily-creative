@@ -227,6 +227,14 @@ class Settings(BaseSettings):
             )
         if not self.moderation_operator_token:
             raise ValueError("MODERATION_OPERATOR_TOKEN is required for staging/production")
+        provider = (self.moderation_provider or "").strip().lower()
+        if provider != "openai":
+            raise ValueError(
+                "MODERATION_PROVIDER must be openai in staging/production; "
+                "heuristic image screening is a no-op"
+            )
+        if not self.openai_api_key or "replace-me" in self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required when MODERATION_PROVIDER=openai")
         if self.storage_access_key in _INSECURE_STORAGE_KEYS:
             raise ValueError(
                 "STORAGE_ACCESS_KEY must not use default credentials in staging/production"

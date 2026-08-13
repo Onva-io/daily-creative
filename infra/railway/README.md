@@ -48,6 +48,8 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 
 In the Descope Console for this test project, set **Project Settings → Session Management → Refresh Token Timeout** to **30 days** so signed-in sessions survive multi-week gaps between opens.
 | `MODERATION_OPERATOR_TOKEN` | 🔒 Test-only operator token |
+| `MODERATION_PROVIDER` | `openai` (required in staging/production; heuristic is local/CI only) |
+| `OPENAI_API_KEY` | 🔒 Required when `MODERATION_PROVIDER=openai` |
 | `STORAGE_ENDPOINT` | `https://s3.REGION.amazonaws.com` |
 | `STORAGE_PUBLIC_ENDPOINT` | Public bucket/S3 URL for signed client PUTs/GETs (not the API host; no `:443`) |
 | `STORAGE_REGION` | e.g. `eu-west-1` |

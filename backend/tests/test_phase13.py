@@ -53,9 +53,47 @@ def test_staging_settings_accept_valid_config(monkeypatch: pytest.MonkeyPatch) -
         "DATABASE_URL",
         "postgresql+asyncpg://user:pass@db.example.com:5432/dailycreative",  # pragma: allowlist secret
     )
+    monkeypatch.setenv("MODERATION_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-openai")  # pragma: allowlist secret
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.app_env == "staging"
     assert settings.resolved_descope_audience is None
+
+
+def test_staging_settings_reject_heuristic_moderation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "staging")
+    monkeypatch.setenv("DESCOPE_PROJECT_ID", "P123")
+    monkeypatch.setenv("MODERATION_OPERATOR_TOKEN", "staging-token")
+    monkeypatch.setenv("STORAGE_ACCESS_KEY", "remote-key")
+    monkeypatch.setenv("STORAGE_SECRET_KEY", "remote-secret")
+    monkeypatch.setenv("STORAGE_USE_SSL", "true")
+    monkeypatch.setenv("STORAGE_ENDPOINT", "https://storage.example.com")
+    monkeypatch.setenv("DB_SSL_REQUIRE", "true")
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://user:pass@db.example.com:5432/dailycreative",  # pragma: allowlist secret
+    )
+    monkeypatch.setenv("MODERATION_PROVIDER", "heuristic")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)  # type: ignore[call-arg]
+
+
+def test_staging_settings_reject_openai_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "staging")
+    monkeypatch.setenv("DESCOPE_PROJECT_ID", "P123")
+    monkeypatch.setenv("MODERATION_OPERATOR_TOKEN", "staging-token")
+    monkeypatch.setenv("STORAGE_ACCESS_KEY", "remote-key")
+    monkeypatch.setenv("STORAGE_SECRET_KEY", "remote-secret")
+    monkeypatch.setenv("STORAGE_USE_SSL", "true")
+    monkeypatch.setenv("STORAGE_ENDPOINT", "https://storage.example.com")
+    monkeypatch.setenv("DB_SSL_REQUIRE", "true")
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://user:pass@db.example.com:5432/dailycreative",  # pragma: allowlist secret
+    )
+    monkeypatch.setenv("MODERATION_PROVIDER", "openai")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)  # type: ignore[call-arg]
 
 
 def test_db_ssl_require_uses_unverified_context(monkeypatch: pytest.MonkeyPatch) -> None:
