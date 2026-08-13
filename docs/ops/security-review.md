@@ -14,7 +14,7 @@
 | Public media / EXIF | Pass (derivatives) | Originals retained **verbatim** privately; display/thumbnail derivatives are EXIF-stripped and are the only URLs returned in feed/detail/profile payloads |
 | Secrets | Pass | `.env.example` placeholders only; `detect-secrets` in CI |
 | Moderation access | Pass | `X-Moderation-Token` compared with `secrets.compare_digest`; rate limited |
-| Account deletion | Pass | Two-phase deletion + finalize job via shared `job_main` (dry-run supported); uploads marked `deleted_at` |
+| Account deletion | Pass | Two-phase deletion + finalize job anonymizes PII/UGC text, deletes Descope users when `DESCOPE_MANAGEMENT_KEY` is set, and is scheduled via `.github/workflows/scheduled-jobs.yml` |
 | Log redaction | Pass | `app/core/redaction.py` + JSON formatter integration |
 | Rate limits | Pass | In-process middleware; `429 rate_limited` documented in OpenAPI |
 

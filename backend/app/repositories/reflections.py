@@ -124,6 +124,12 @@ class ReflectionRepository:
         )
         return list(result.scalars().all())
 
+    async def list_all_for_user(self, user_id: uuid.UUID) -> list[Reflection]:
+        result = await self._session.execute(
+            select(Reflection).where(Reflection.user_id == user_id)
+        )
+        return list(result.scalars().all())
+
     async def set_moderation_status(
         self,
         reflection: Reflection,

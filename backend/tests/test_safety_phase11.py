@@ -364,3 +364,9 @@ async def test_account_deletion_pending_and_finalize(
             await session.execute(select(User).where(User.id == uuid.UUID(profile["id"])))
         ).scalar_one()
         assert user.status == UserStatus.deleted
+        assert user.username is None
+        assert user.username_normalized is None
+        assert user.display_name == "Deleted account"
+        assert user.bio is None
+        assert user.date_of_birth is None
+        assert user.descope_subject == f"deleted:{user.id}"

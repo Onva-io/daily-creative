@@ -12,6 +12,19 @@ Provider cron examples (UTC):
 | Deleted media cleanup | `0 3 * * *` | `python -m app.jobs.deleted_media_cleanup` |
 | Missing prompt check | `0 12 * * *` | `python -m app.jobs.missing_prompt_check` (ensures today + tomorrow) |
 
+## Railway (current deploy)
+
+[`.github/workflows/scheduled-jobs.yml`](../../.github/workflows/scheduled-jobs.yml) runs every hour on `main` via `railway run`. Set repository secrets:
+
+- `RAILWAY_TOKEN` (required)
+- `RAILWAY_PROJECT_ID` (recommended)
+- `RAILWAY_SERVICE` (API service name, optional if the token’s default service is the API)
+- `RAILWAY_ENVIRONMENT` (optional; defaults to the project’s production environment)
+
+Until `RAILWAY_TOKEN` is set, the workflow checks out and exits without failing. Trigger **Run workflow** on the Actions tab to verify once secrets exist.
+
+AWS EventBridge schedules remain in Terraform for a future AWS cutover.
+
 Dry-run locally:
 
 ```bash

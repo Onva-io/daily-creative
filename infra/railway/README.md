@@ -44,6 +44,7 @@ Map from [`.env.example`](../../.env.example). Set these in Railway **Variables*
 | `DATABASE_URL` | 🔒 From Postgres plugin (`postgresql+asyncpg://...`) |
 | `DB_SSL_REQUIRE` | `true` for Railway Postgres (encrypts; does not verify the self-signed chain) |
 | `DESCOPE_PROJECT_ID` | `P3GtbG5aJKoUuefcaA8DfyMzA0nK` (test project) |
+| `DESCOPE_MANAGEMENT_KEY` | 🔒 Management key for account-deletion IdP teardown |
 | `DESCOPE_AUDIENCE` | Optional audience override (defaults to project ID) |
 
 In the Descope Console for this test project, set **Project Settings → Session Management → Refresh Token Timeout** to **30 days** so signed-in sessions survive multi-week gaps between opens.

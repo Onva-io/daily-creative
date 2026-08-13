@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.descope_mgmt import DescopeUserDeleter, delete_descope_user, is_descope_not_found
 from app.core.clock import Clock
 from app.core.settings import Settings, get_settings
 from app.models.creative_publication import PublicationStatus
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 DELETE_ME_ENDPOINT = "DELETE /api/v1/me"
 DELETION_MESSAGE = "Your account deletion has been scheduled."
+DELETED_DISPLAY_NAME = "Deleted account"
+REDACTED_STORY_BODY = ""
 
 
 class AccountDeletionService:
@@ -33,11 +36,13 @@ class AccountDeletionService:
         clock: Clock,
         settings: Settings | None = None,
         storage: StorageAdapter | None = None,
+        descope_deleter: DescopeUserDeleter | None = None,
     ) -> None:
         self._session = session
         self._clock = clock
         self._settings = settings or get_settings()
         self._storage = storage
+        self._descope_deleter = descope_deleter or _default_descope_deleter
         self._users = UserRepository(session)
         self._publications = PublicationRepository(session)
         self._reflections = ReflectionRepository(session)
@@ -171,6 +176,12 @@ class AccountDeletionService:
                             logger.exception("Failed to delete media key during account finalize")
                     if upload.deleted_at is None:
                         upload.deleted_at = self._clock.now()
+            story_detail = await self._publications.get_story_submission(publication.id)
+            if story_detail is not None:
+                story_detail.body = REDACTED_STORY_BODY
+                story_detail.caption = None
+            if sketch_detail is not None:
+                sketch_detail.caption = None
             if publication.status != PublicationStatus.deleted:
                 await self._publications.set_status(
                     publication,
@@ -197,7 +208,11 @@ class AccountDeletionService:
                 if avatar.deleted_at is None:
                     avatar.deleted_at = self._clock.now()
 
+        for reflection in await self._reflections.list_all_for_user(user.id):
+            reflection.body = ""
+
         self._coordinate_descope_deletion(user)
+        self._anonymize_user(user)
 
         await self._users.set_status(
             user,
@@ -206,10 +221,59 @@ class AccountDeletionService:
             commit=True,
         )
 
+    def _anonymize_user(self, user: User) -> None:
+        """Clear identifiable fields so a deleted row cannot be reconstituted."""
+        user.username = None
+        user.username_normalized = None
+        user.display_name = DELETED_DISPLAY_NAME
+        user.bio = None
+        user.date_of_birth = None
+        user.avatar_upload_id = None
+        user.descope_subject = f"deleted:{user.id}"
+
     def _coordinate_descope_deletion(self, user: User) -> None:
-        """Best-effort Descope disable/delete. No-op when management creds are absent."""
-        logger.info(
-            "account_deletion_descope_seam user_id=%s descope_subject=%s",
-            user.id,
-            user.descope_subject,
-        )
+        """Best-effort Descope delete. Logs and alerts when remote creds are missing."""
+        subject = user.descope_subject
+        if subject.startswith("deleted:"):
+            return
+
+        key = self._settings.descope_management_key
+        if not key:
+            if self._settings.is_remote_environment:
+                logger.error(
+                    "account_deletion_descope_missing_key user_id=%s",
+                    user.id,
+                )
+            else:
+                logger.info(
+                    "account_deletion_descope_skipped user_id=%s descope_subject=%s",
+                    user.id,
+                    subject,
+                )
+            return
+
+        try:
+            self._descope_deleter(
+                self._settings.descope_project_id,
+                key,
+                subject,
+            )
+        except Exception as exc:
+            if is_descope_not_found(exc):
+                logger.info(
+                    "account_deletion_descope_already_gone user_id=%s",
+                    user.id,
+                )
+                return
+            logger.exception(
+                "account_deletion_descope_failed user_id=%s",
+                user.id,
+            )
+
+
+def _default_descope_deleter(project_id: str, management_key: str, subject: str) -> None:
+    delete_descope_user(
+        project_id=project_id,
+        management_key=management_key,
+        subject=subject,
+    )

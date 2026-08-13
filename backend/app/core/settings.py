@@ -103,6 +103,9 @@ class Settings(BaseSettings):
     reflection_max_length: int = Field(default=500, alias="REFLECTION_MAX_LENGTH")
 
     descope_project_id: str = Field(default="replace-me", alias="DESCOPE_PROJECT_ID")
+    # Management key for Descope user delete during account-deletion finalize.
+    # Optional locally; required in practice for staging/production erasure.
+    descope_management_key: str | None = Field(default=None, alias="DESCOPE_MANAGEMENT_KEY")
     # Optional JWT audience. Only set when Descope JWT templates include a custom aud claim.
     # Leave unset for default Descope session tokens (which omit aud).
     descope_audience: str | None = Field(default=None, alias="DESCOPE_AUDIENCE")
