@@ -290,6 +290,7 @@
 		5097E7E1021ECD475053BC19 /* DailySketch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DailySketch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51F7DB2E23E2988C018694B0 /* DeleteAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountView.swift; sourceTree = "<group>"; };
 		563BC9C98672AAA664ABDCA8 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		56510A6C23AD3D11B6711ACC /* SentryCocoa */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SentryCocoa; path = Packages/SentryCocoa; sourceTree = SOURCE_ROOT; };
 		5821C8D7B32E0471B25847D4 /* DescopeAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescopeAuthService.swift; sourceTree = "<group>"; };
 		582B054229E038288975FD52 /* ReviewSubmissionViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSubmissionViewModelTests.swift; sourceTree = "<group>"; };
 		5A29DE0D85829CBFF9EBE986 /* DraftTextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftTextStore.swift; sourceTree = "<group>"; };
@@ -448,8 +449,9 @@
 			isa = PBXGroup;
 			children = (
 				B0BF540D2883B7E520D7179D /* ios */,
+				56510A6C23AD3D11B6711ACC /* SentryCocoa */,
 			);
-			name = Packages;
+			path = Packages;
 			sourceTree = "<group>";
 		};
 		21816465CD0504E1E709106A /* StorySession */ = {
@@ -1009,8 +1011,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B992EB446A8DF69F366FFD6B /* XCRemoteSwiftPackageReference "descope-swift" */,
-				76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 				EE6299076E7C101157F38E17 /* XCLocalSwiftPackageReference "../api/generated/ios" */,
+				E262E28C7DFB844EBDEFD5FA /* XCLocalSwiftPackageReference "Packages/SentryCocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A4000AD9BEC1CE5EA7D5D7E3 /* Products */;
@@ -2009,6 +2011,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		E262E28C7DFB844EBDEFD5FA /* XCLocalSwiftPackageReference "Packages/SentryCocoa" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SentryCocoa;
+		};
 		EE6299076E7C101157F38E17 /* XCLocalSwiftPackageReference "../api/generated/ios" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../api/generated/ios;
@@ -2016,14 +2022,6 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 8.53.0;
-			};
-		};
 		B992EB446A8DF69F366FFD6B /* XCRemoteSwiftPackageReference "descope-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/descope/descope-swift";
@@ -2041,7 +2039,6 @@
 		};
 		497554C86C865963684058B5 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
 		};
 		707F9FB332B7F7A14D42278D /* DescopeKit */ = {
@@ -2051,7 +2048,6 @@
 		};
 		791F9D72A314565754E46F63 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 76D03D631913848DA9A3FC8F /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
 		};
 		AE528EF0BFBFF4AA3828EE44 /* DailyCreativeAPI */ = {
