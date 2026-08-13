@@ -97,7 +97,7 @@ variable "log_group_name" {
 variable "health_check_path" {
   description = "ALB health check path."
   type        = string
-  default     = "/health/live"
+  default     = "/health/ready"
 }
 
 variable "tags" {

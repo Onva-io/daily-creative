@@ -117,7 +117,7 @@ Suggested schedules match Terraform EventBridge defaults (hourly/daily). Add `--
 2. All required env vars from `.env.example` filled in Railway
 3. S3 bucket + IAM keys configured
 4. Deploy starts `scripts/start.sh`, which runs `alembic upgrade head` then the API
-5. Smoke: `curl -fsS $API_PUBLIC_URL/health/live`
+5. Smoke: `curl -fsS $API_PUBLIC_URL/health/ready`
 6. Seed prompts if needed (from `backend/`): `railway run uv run python -m app.seeds.prompts --days 30`
 
 One-off migrations from your laptop need the **public** Postgres URL (internal `*.railway.internal` hosts do not resolve locally):

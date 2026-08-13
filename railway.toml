@@ -15,7 +15,7 @@ watchPatterns = ["backend/**", "railway.toml"]
 # Migrations run in start.sh (same pattern as local Compose) — more reliable than releaseCommand
 # on Railway Dockerfile deploys, where the release phase can be skipped or fail silently.
 startCommand = "./scripts/start.sh"
-healthcheckPath = "/health/live"
+healthcheckPath = "/health/ready"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
