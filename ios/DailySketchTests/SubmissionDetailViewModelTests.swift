@@ -13,6 +13,7 @@ final class SubmissionDetailViewModelTests: XCTestCase {
             id: UUID(),
             creativeType: "sketch",
             caption: "Quiet botanical lines for the page title check.",
+            content: TestFixtures.sketchContent(),
             status: "published",
             timerMode: "countdown",
             timerSeconds: 600,
@@ -20,16 +21,12 @@ final class SubmissionDetailViewModelTests: XCTestCase {
             reflectionCount: reflectionCount,
             viewerHasLiked: liked,
             isOwner: isOwner,
-            imageURL: URL(string: "https://example.test/display")!,
-            thumbnailURL: URL(string: "https://example.test/thumb")!,
             userId: UUID(),
             username: "alexdraws",
             displayName: "Alex Rivers",
             promptWords: ["Leaf", "Green", "Organic"],
             promptDate: Date(timeIntervalSince1970: 1_784_332_800),
-            sketchSessionId: UUID(),
-            storySessionId: nil,
-            body: nil,
+            sessionId: UUID(),
             publishedAt: Date()
         )
     }

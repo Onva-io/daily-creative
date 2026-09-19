@@ -23,9 +23,8 @@ from app.models.idempotency_key import IdempotencyKey  # noqa: F401
 from app.models.moderation_action import ModerationAction, ModerationActionType
 from app.models.moderation_review import ModerationReviewItem, ModerationReviewStatus
 from app.models.report import Report, ReportStatus, ReportTargetType  # noqa: F401
-from app.models.sketch_session import SketchSession  # noqa: F401
-from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.sketch_submission import SketchSubmission
+from app.models.creative_session import CreativeSession  # noqa: F401
+from app.models.creative_session_event import CreativeSessionEvent  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_block import UserBlock  # noqa: F401
@@ -291,8 +290,8 @@ async def test_redact_caption_clears_caption(client: AsyncClient) -> None:
 
     session_factory = client.session_factory  # type: ignore[attr-defined]
     async with session_factory() as session:
-        sketch = await session.get(SketchSubmission, uuid.UUID(submission["id"]))
-        assert sketch is not None
-        assert sketch.caption is None
+        publication = await session.get(CreativePublication, uuid.UUID(submission["id"]))
+        assert publication is not None
+        assert publication.caption is None
         actions = (await session.execute(select(ModerationAction))).scalars().all()
         assert any(a.action == ModerationActionType.redact_caption for a in actions)

@@ -1038,7 +1038,7 @@ Email addresses, Descope identifiers, notification settings, blocked-user relati
 
 ### 27.2 Image metadata
 
-The app should remove unnecessary EXIF metadata, particularly precise location, before public display or derivative generation.
+The app should remove unnecessary EXIF metadata, particularly precise location, before public display or derivative generation. Uploaded image bytes never carry EXIF GPS in any app, including Daily Photo: the client reads a photo's own location on-device only to *suggest* a place to the author, then uploads a metadata-free JPEG.
 
 ### 27.3 Account deletion
 
@@ -1046,7 +1046,9 @@ The user can request account deletion from Settings. The product must clearly ex
 
 ### 27.4 Data minimisation
 
-Do not collect precise location in version one. Do not require real names. Do not collect contacts.
+Do not collect precise location in version one of Daily Sketch or Daily Story. Do not require real names. Do not collect contacts.
+
+Daily Photo is the one deliberate exception, and only as author-authored content (see `spec/product-photo.md`): a photo may carry a place the author confirmed — coordinates seeded from the photo's EXIF or the device, editable by search or pin, plus an author-written title — and the author decides per post whether exact coordinates are published. Location is never collected in the background, never derived server-side (no reverse geocoding, clustering, or place index), never used for discovery, and is deleted with the post or the account.
 
 ---
 

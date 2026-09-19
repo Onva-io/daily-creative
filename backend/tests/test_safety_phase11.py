@@ -25,10 +25,10 @@ from app.models.daily_prompt import DailyPrompt  # noqa: F401
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
 from app.models.moderation_action import ModerationAction  # noqa: F401
 from app.models.report import Report  # noqa: F401
-from app.models.sketch_session import SketchSession  # noqa: F401
-from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
-from app.models.creative_publication import CreativePublication  # noqa: F401
-from app.models.upload import Upload  # noqa: F401
+from app.models.creative_session import CreativeSession  # noqa: F401
+from app.models.creative_session_event import CreativeSessionEvent  # noqa: F401
+from app.models.creative_publication import CreativePublication, PublicationStatus
+from app.models.upload import Upload
 from app.models.user import User, UserStatus
 from app.models.user_block import UserBlock  # noqa: F401
 from app.models.user_preferences import UserPreferences  # noqa: F401
@@ -42,8 +42,10 @@ from test_uploads_submissions import (
     FixedClock,
     _complete_profile,
     _create_ready_session,
+    _create_ready_story_session,
     _create_ready_upload,
     _sketch_submission_json,
+    _story_submission_json,
 )
 
 DATABASE_URL = os.environ.get(
@@ -336,6 +338,17 @@ async def test_account_deletion_pending_and_finalize(
     headers = _auth_headers(client, subject="descope|deleteme")
     profile = await _complete_profile(client, headers, username="delete_me_user")
     submission = await _publish(client, headers, caption="Gone soon")
+    today = client.clock.today()  # type: ignore[attr-defined]
+    story_prompt = await _seed_prompt_on(client, today)
+    story_session_id = await _create_ready_story_session(client, headers, story_prompt.id)
+    story = await client.post(
+        "/api/v1/submissions",
+        headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+        json=_story_submission_json(
+            story_session_id, prompt_id=story_prompt.id, body="Private words", caption="Hi"
+        ),
+    )
+    assert story.status_code == 201, story.text
 
     deleted = await client.delete("/api/v1/me", headers=headers)
     assert deleted.status_code == 202
@@ -375,3 +388,23 @@ async def test_account_deletion_pending_and_finalize(
         assert user.bio is None
         assert user.date_of_birth is None
         assert user.descope_subject == f"deleted:{user.id}"
+
+        # Every publication is redacted through its creative type handler.
+        publications = (
+            (
+                await session.execute(
+                    select(CreativePublication).where(CreativePublication.user_id == user.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(publications) == 2
+        for publication in publications:
+            assert publication.status == PublicationStatus.deleted
+            assert publication.caption is None
+        story_publication = next(p for p in publications if p.id == uuid.UUID(story.json()["id"]))
+        assert story_publication.content == {"body": ""}
+        sketch_publication = next(p for p in publications if p.id == uuid.UUID(submission["id"]))
+        upload = await session.get(Upload, sketch_publication.upload_id)
+        assert upload is not None and upload.deleted_at is not None

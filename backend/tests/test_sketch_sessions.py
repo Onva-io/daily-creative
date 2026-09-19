@@ -1,4 +1,4 @@
-"""Sketch Session integration, contract, and unit tests."""
+"""Creative Session integration, contract, and unit tests (exercised via the sketch type)."""
 
 from __future__ import annotations
 
@@ -25,12 +25,12 @@ from app.main import create_app
 from app.models.daily_prompt import DailyPrompt
 from app.models.enums import TimerMode
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
-from app.models.sketch_session import SketchSession  # noqa: F401
-from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
+from app.models.creative_session import CreativeSession  # noqa: F401
+from app.models.creative_session_event import CreativeSessionEvent  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_preferences import UserPreferences  # noqa: F401
 from app.repositories.prompts import PromptRepository
-from app.services.sketch_sessions import validate_timer_selection
+from app.services.creative_sessions import validate_timer_selection
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -201,9 +201,10 @@ async def test_create_get_events_abandon_happy_path(
     headers = _auth_headers(client)
 
     create = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "create-happy-1"},
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 300,
@@ -213,17 +214,17 @@ async def test_create_get_events_abandon_happy_path(
     )
     assert create.status_code == 201
     body = create.json()
-    assert_matches_schema(body, "SketchSession", openapi_spec)
+    assert_matches_schema(body, "CreativeSession", openapi_spec)
     assert body["status"] == "active"
     assert body["paused_total_seconds"] == 0
     session_id = body["id"]
 
-    fetched = await client.get(f"/api/v1/sketch-sessions/{session_id}", headers=headers)
+    fetched = await client.get(f"/api/v1/sessions/{session_id}", headers=headers)
     assert fetched.status_code == 200
-    assert_matches_schema(fetched.json(), "SketchSession", openapi_spec)
+    assert_matches_schema(fetched.json(), "CreativeSession", openapi_spec)
 
     paused = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "paused"},
     )
@@ -232,7 +233,7 @@ async def test_create_get_events_abandon_happy_path(
 
     client.clock.advance(seconds=45)  # type: ignore[attr-defined]
     resumed = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "resumed"},
     )
@@ -241,19 +242,21 @@ async def test_create_get_events_abandon_happy_path(
     assert resumed.json()["paused_total_seconds"] == 45
 
     finished = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "finished_early"},
     )
     assert finished.status_code == 200
-    assert finished.json()["status"] == "ready_for_photo"
+    assert finished.json()["status"] == "active"
+    assert finished.json()["stage"] == "ready_for_photo"
     assert finished.json()["finish_requested_at"] is not None
 
     # Create another session to abandon while active.
     other = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "create-happy-2"},
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "no_timer",
             "selected_timer_seconds": None,
@@ -262,7 +265,7 @@ async def test_create_get_events_abandon_happy_path(
     assert other.status_code == 201
     other_id = other.json()["id"]
     abandoned = await client.post(
-        f"/api/v1/sketch-sessions/{other_id}/abandon",
+        f"/api/v1/sessions/{other_id}/abandon",
         headers=headers,
     )
     assert abandoned.status_code == 200
@@ -271,7 +274,7 @@ async def test_create_get_events_abandon_happy_path(
 
     # Abandon is idempotent.
     abandoned_again = await client.post(
-        f"/api/v1/sketch-sessions/{other_id}/abandon",
+        f"/api/v1/sessions/{other_id}/abandon",
         headers=headers,
     )
     assert abandoned_again.status_code == 200
@@ -284,18 +287,19 @@ async def test_idempotent_create_returns_same_session(client: AsyncClient) -> No
     prompt = await _seed_prompt(client)
     headers = _auth_headers(client)
     payload = {
+        "creative_type": "sketch",
         "prompt_id": str(prompt.id),
         "timer_mode": "countdown",
         "selected_timer_seconds": 180,
     }
 
     first = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "dup-key-1"},
         json=payload,
     )
     second = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "dup-key-1"},
         json=payload,
     )
@@ -310,9 +314,10 @@ async def test_idempotency_key_conflict(client: AsyncClient) -> None:
     prompt = await _seed_prompt(client)
     headers = _auth_headers(client)
     first = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "conflict-key"},
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 60,
@@ -321,9 +326,10 @@ async def test_idempotency_key_conflict(client: AsyncClient) -> None:
     assert first.status_code == 201
 
     conflict = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "conflict-key"},
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "no_timer",
             "selected_timer_seconds": None,
@@ -339,9 +345,10 @@ async def test_invalid_duration_rejected(client: AsyncClient) -> None:
     prompt = await _seed_prompt(client)
     headers = _auth_headers(client)
     response = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 90,
@@ -357,9 +364,10 @@ async def test_no_timer_create_valid(client: AsyncClient, openapi_spec: dict[str
     prompt = await _seed_prompt(client)
     headers = _auth_headers(client)
     response = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "no_timer",
             "selected_timer_seconds": None,
@@ -367,7 +375,7 @@ async def test_no_timer_create_valid(client: AsyncClient, openapi_spec: dict[str
     )
     assert response.status_code == 201
     body = response.json()
-    assert_matches_schema(body, "SketchSession", openapi_spec)
+    assert_matches_schema(body, "CreativeSession", openapi_spec)
     assert body["timer_mode"] == "no_timer"
     assert body["selected_timer_seconds"] is None
 
@@ -378,9 +386,10 @@ async def test_transition_rules_enforced(client: AsyncClient) -> None:
     prompt = await _seed_prompt(client)
     headers = _auth_headers(client)
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 300,
@@ -389,21 +398,136 @@ async def test_transition_rules_enforced(client: AsyncClient) -> None:
     session_id = created.json()["id"]
 
     resume_without_pause = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "resumed"},
     )
     assert resume_without_pause.status_code == 422
     assert resume_without_pause.json()["error"]["code"] == "invalid_session_transition"
 
-    await client.post(f"/api/v1/sketch-sessions/{session_id}/abandon", headers=headers)
+    await client.post(f"/api/v1/sessions/{session_id}/abandon", headers=headers)
     event_on_abandoned = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "paused"},
     )
     assert event_on_abandoned.status_code == 422
     assert event_on_abandoned.json()["error"]["code"] == "invalid_session_transition"
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_stage_events_are_scoped_to_creative_type(client: AsyncClient) -> None:
+    """A story stage event is rejected on a sketch session and vice versa."""
+    prompt = await _seed_prompt(client)
+    headers = _auth_headers(client)
+
+    sketch = await client.post(
+        "/api/v1/sessions",
+        headers=headers,
+        json={"creative_type": "sketch", "prompt_id": str(prompt.id), "timer_mode": "no_timer"},
+    )
+    sketch_id = sketch.json()["id"]
+    wrong_type = await client.post(
+        f"/api/v1/sessions/{sketch_id}/events",
+        headers=headers,
+        json={"event_type": "writing_started"},
+    )
+    assert wrong_type.status_code == 422
+    assert wrong_type.json()["error"]["code"] == "invalid_session_transition"
+
+    unknown = await client.post(
+        f"/api/v1/sessions/{sketch_id}/events",
+        headers=headers,
+        json={"event_type": "teleported"},
+    )
+    assert unknown.status_code == 422
+
+    story = await client.post(
+        "/api/v1/sessions",
+        headers=headers,
+        json={"creative_type": "story", "prompt_id": str(prompt.id), "timer_mode": "no_timer"},
+    )
+    story_id = story.json()["id"]
+    writing = await client.post(
+        f"/api/v1/sessions/{story_id}/events",
+        headers=headers,
+        json={"event_type": "writing_started"},
+    )
+    assert writing.status_code == 200
+    assert writing.json()["status"] == "active"
+    assert writing.json()["stage"] == "writing"
+
+    # Pause is only valid before a stage has been entered.
+    pause_in_stage = await client.post(
+        f"/api/v1/sessions/{story_id}/events",
+        headers=headers,
+        json={"event_type": "paused"},
+    )
+    assert pause_in_stage.status_code == 422
+    assert pause_in_stage.json()["error"]["details"]["stage"] == "writing"
+
+    draft = await client.post(
+        f"/api/v1/sessions/{story_id}/events",
+        headers=headers,
+        json={"event_type": "draft_saved", "metadata": {"chars": 120}},
+    )
+    assert draft.status_code == 200
+    assert draft.json()["stage"] == "writing"
+
+
+@requires_postgres
+@pytest.mark.asyncio
+async def test_sketch_upload_stages_record_timestamps_and_block_abandon(
+    client: AsyncClient,
+) -> None:
+    prompt = await _seed_prompt(client)
+    headers = _auth_headers(client)
+    created = await client.post(
+        "/api/v1/sessions",
+        headers=headers,
+        json={"creative_type": "sketch", "prompt_id": str(prompt.id), "timer_mode": "no_timer"},
+    )
+    session_id = created.json()["id"]
+
+    # upload_started is not allowed before the photo step.
+    early = await client.post(
+        f"/api/v1/sessions/{session_id}/events",
+        headers=headers,
+        json={"event_type": "upload_started"},
+    )
+    assert early.status_code == 422
+
+    reached = await client.post(
+        f"/api/v1/sessions/{session_id}/events",
+        headers=headers,
+        json={"event_type": "photo_step_reached"},
+    )
+    assert reached.status_code == 200
+    assert reached.json()["stage"] == "ready_for_photo"
+    assert "photo_step_reached_at" in reached.json()["stage_timestamps"]
+
+    started = await client.post(
+        f"/api/v1/sessions/{session_id}/events",
+        headers=headers,
+        json={"event_type": "upload_started"},
+    )
+    assert started.status_code == 200
+    assert started.json()["stage"] == "uploading"
+    assert "upload_started_at" in started.json()["stage_timestamps"]
+
+    blocked = await client.post(f"/api/v1/sessions/{session_id}/abandon", headers=headers)
+    assert blocked.status_code == 422
+    assert blocked.json()["error"]["details"]["stage"] == "uploading"
+
+    completed = await client.post(
+        f"/api/v1/sessions/{session_id}/events",
+        headers=headers,
+        json={"event_type": "upload_completed"},
+    )
+    assert completed.status_code == 200
+    timestamps = completed.json()["stage_timestamps"]
+    assert set(timestamps) == {"photo_step_reached_at", "upload_started_at", "upload_completed_at"}
 
 
 @requires_postgres
@@ -414,9 +538,10 @@ async def test_ownership_enforced(client: AsyncClient) -> None:
     other_headers = _auth_headers(client, subject=f"descope|{uuid.uuid4()}")
 
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=owner_headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 60,
@@ -425,14 +550,14 @@ async def test_ownership_enforced(client: AsyncClient) -> None:
     session_id = created.json()["id"]
 
     other_get = await client.get(
-        f"/api/v1/sketch-sessions/{session_id}",
+        f"/api/v1/sessions/{session_id}",
         headers=other_headers,
     )
     assert other_get.status_code == 404
     assert other_get.json()["error"]["code"] == "session_not_found"
 
     missing = await client.get(
-        f"/api/v1/sketch-sessions/{uuid.uuid4()}",
+        f"/api/v1/sessions/{uuid.uuid4()}",
         headers=owner_headers,
     )
     assert missing.status_code == 404
@@ -441,13 +566,14 @@ async def test_ownership_enforced(client: AsyncClient) -> None:
 
 @requires_postgres
 @pytest.mark.asyncio
-async def test_timer_completed_sets_ready_for_photo(client: AsyncClient) -> None:
+async def test_timer_completed_enters_post_timer_stage(client: AsyncClient) -> None:
     prompt = await _seed_prompt(client)
     headers = _auth_headers(client)
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 60,
@@ -455,12 +581,13 @@ async def test_timer_completed_sets_ready_for_photo(client: AsyncClient) -> None
     )
     session_id = created.json()["id"]
     completed = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "timer_completed"},
     )
     assert completed.status_code == 200
-    assert completed.json()["status"] == "ready_for_photo"
+    assert completed.json()["status"] == "active"
+    assert completed.json()["stage"] == "ready_for_photo"
     assert completed.json()["timer_completed_at"] is not None
 
 
@@ -474,9 +601,10 @@ async def test_session_create_accepts_yesterday_rejects_older_and_future(
 
     yesterday = await _seed_prompt_on(client, today - timedelta(days=1))
     ok = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(yesterday.id),
             "timer_mode": "no_timer",
             "client_started_at": "2026-07-17T23:55:00Z",
@@ -486,18 +614,18 @@ async def test_session_create_accepts_yesterday_rejects_older_and_future(
 
     older = await _seed_prompt_on(client, today - timedelta(days=2))
     too_old = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
-        json={"prompt_id": str(older.id), "timer_mode": "no_timer"},
+        json={"creative_type": "sketch", "prompt_id": str(older.id), "timer_mode": "no_timer"},
     )
     assert too_old.status_code == 422
     assert too_old.json()["error"]["code"] == "prompt_date_out_of_window"
 
     future = await _seed_prompt_on(client, today + timedelta(days=1))
     too_new = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
-        json={"prompt_id": str(future.id), "timer_mode": "no_timer"},
+        json={"creative_type": "sketch", "prompt_id": str(future.id), "timer_mode": "no_timer"},
     )
     assert too_new.status_code == 422
     assert too_new.json()["error"]["code"] == "prompt_date_out_of_window"

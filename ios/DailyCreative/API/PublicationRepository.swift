@@ -21,6 +21,7 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
     let id: UUID
     let creativeType: String
     let caption: String?
+    let content: SubmissionContentModel
     let status: String
     let timerMode: String
     let timerSeconds: Int?
@@ -28,25 +29,23 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
     let reflectionCount: Int
     let viewerHasLiked: Bool
     let isOwner: Bool
-    let imageURL: URL?
-    let thumbnailURL: URL?
     let userId: UUID
     let username: String
     let displayName: String
     let promptWords: [String]
     let promptDate: Date
-    let sketchSessionId: UUID?
-    let storySessionId: UUID?
-    let body: String?
+    let sessionId: UUID
     let publishedAt: Date
 
-    var isStory: Bool { creativeType == "story" }
+    var imageURL: URL? { content.imageURL }
+    var body: String? { content.body }
 
     func withLikeState(liked: Bool, likeCount: Int) -> SubmissionModel {
         SubmissionModel(
             id: id,
             creativeType: creativeType,
             caption: caption,
+            content: content,
             status: status,
             timerMode: timerMode,
             timerSeconds: timerSeconds,
@@ -54,16 +53,12 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
             reflectionCount: reflectionCount,
             viewerHasLiked: liked,
             isOwner: isOwner,
-            imageURL: imageURL,
-            thumbnailURL: thumbnailURL,
             userId: userId,
             username: username,
             displayName: displayName,
             promptWords: promptWords,
             promptDate: promptDate,
-            sketchSessionId: sketchSessionId,
-            storySessionId: storySessionId,
-            body: body,
+            sessionId: sessionId,
             publishedAt: publishedAt
         )
     }
@@ -73,6 +68,7 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
             id: id,
             creativeType: creativeType,
             caption: caption,
+            content: content,
             status: status,
             timerMode: timerMode,
             timerSeconds: timerSeconds,
@@ -80,16 +76,12 @@ struct SubmissionModel: Equatable, Sendable, Identifiable {
             reflectionCount: count,
             viewerHasLiked: viewerHasLiked,
             isOwner: isOwner,
-            imageURL: imageURL,
-            thumbnailURL: thumbnailURL,
             userId: userId,
             username: username,
             displayName: displayName,
             promptWords: promptWords,
             promptDate: promptDate,
-            sketchSessionId: sketchSessionId,
-            storySessionId: storySessionId,
-            body: body,
+            sessionId: sessionId,
             publishedAt: publishedAt
         )
     }
@@ -127,11 +119,11 @@ enum PublicationAPIError: LocalizedError, Equatable {
         case .uploadAlreadyConsumed:
             return "This upload has already been used."
         case .sessionAlreadySubmitted:
-            return "This sketch session already has a published submission."
+            return "This session already has a published submission."
         case .sessionNotFound:
-            return "The requested sketch session could not be found."
+            return "The requested session could not be found."
         case .submissionNotFound:
-            return "The requested sketch could not be found."
+            return "The requested submission could not be found."
         case .unsupportedMediaType:
             return "That image type is not supported."
         case .imageTooLarge:
@@ -147,9 +139,9 @@ enum PublicationAPIError: LocalizedError, Equatable {
         case .signedUploadExpired:
             return "Your upload link expired. Retry to request a fresh upload."
         case .promptDateOutOfWindow:
-            return "This sketch is too old to publish. Start a new sketch with today's inspiration."
+            return "This session is too old to publish. Start again with today's inspiration."
         case .promptMismatch:
-            return "This sketch no longer matches its inspiration. Start a new sketch."
+            return "This session no longer matches its inspiration. Start again with today's inspiration."
         case .invalidSessionTransition:
             return "That lifecycle event is not valid for the current session state."
         case .promptNotFound:
@@ -185,9 +177,32 @@ protocol UploadServing: Sendable {
     ) async throws -> UploadSlotModel
 }
 
+/// Where a photo was taken, as the author confirmed it for publication.
+struct PhotoLocationInputModel: Codable, Equatable, Sendable {
+    /// Mirrors the API's `PhotoLocationSource`; audit only, never shown.
+    enum Source: String, Codable, Sendable {
+        case exif
+        case device
+        case search
+        case pin
+    }
+
+    var latitude: Double?
+    var longitude: Double?
+    var label: String?
+    var source: Source?
+    /// Publish exact coordinates to other users. Off unless the author opts in.
+    var shareExact: Bool = false
+
+    var hasCoordinates: Bool {
+        latitude != nil && longitude != nil
+    }
+}
+
 enum PublicationContent: Sendable {
     case sketch(uploadId: UUID, caption: String?)
     case story(body: String, caption: String?)
+    case photo(uploadId: UUID, caption: String?, location: PhotoLocationInputModel?)
 }
 
 protocol PublicationServing: Sendable {
@@ -359,6 +374,23 @@ struct PublicationRepository: PublicationServing {
                         caption: caption
                     )
                 )
+            case .photo(let uploadId, let caption, let location):
+                contentPayload = .typePhotoSubmissionContent(
+                    PhotoSubmissionContent(
+                        creativeType: .photo,
+                        uploadId: uploadId,
+                        caption: caption,
+                        location: location.map { location in
+                            PhotoLocationInput(
+                                latitude: location.latitude,
+                                longitude: location.longitude,
+                                label: location.label,
+                                source: location.source.flatMap { PhotoLocationSource(rawValue: $0.rawValue) },
+                                shareExact: location.shareExact
+                            )
+                        }
+                    )
+                )
             }
             let request = CreateSubmissionRequest(
                 creativeType: apiCreativeType,
@@ -410,6 +442,7 @@ struct PublicationRepository: PublicationServing {
             id: submission.id,
             creativeType: submission.creativeType.rawValue,
             caption: submission.caption,
+            content: FeedMapping.mapContent(submission.content),
             status: submission.status.rawValue,
             timerMode: submission.timerMode.rawValue,
             timerSeconds: submission.timerSeconds,
@@ -417,8 +450,6 @@ struct PublicationRepository: PublicationServing {
             reflectionCount: submission.reflectionCount,
             viewerHasLiked: submission.viewerHasLiked,
             isOwner: submission.isOwner,
-            imageURL: submission.imageUrl.flatMap(URL.init(string:)),
-            thumbnailURL: submission.thumbnailUrl.flatMap(URL.init(string:)),
             userId: submission.user.id,
             username: submission.user.username,
             displayName: submission.user.displayName,
@@ -428,9 +459,7 @@ struct PublicationRepository: PublicationServing {
                 submission.prompt.word3,
             ],
             promptDate: submission.prompt.promptDate,
-            sketchSessionId: submission.creativeType == .sketch ? submission.sessionId : nil,
-            storySessionId: submission.creativeType == .story ? submission.sessionId : nil,
-            body: submission.body,
+            sessionId: submission.sessionId,
             publishedAt: submission.publishedAt
         )
     }
@@ -592,56 +621,64 @@ final class RecordingPublicationRepository: PublicationServing, @unchecked Senda
         lastContent = content
         if let createError { throw createError }
         if let nextSubmission { return nextSubmission }
+        let caption: String?
+        let modelContent: SubmissionContentModel
         switch content {
-        case .sketch(_, let caption):
-            return SubmissionModel(
-                id: UUID(),
-                creativeType: creativeType,
-                caption: caption,
-                status: "published",
-                timerMode: "countdown",
-                timerSeconds: 300,
-                likeCount: 0,
-                reflectionCount: 0,
-                viewerHasLiked: false,
-                isOwner: true,
-                imageURL: URL(string: "https://example.test/display")!,
-                thumbnailURL: URL(string: "https://example.test/thumb")!,
-                userId: UUID(),
-                username: "sketchy",
-                displayName: "Sketcher",
-                promptWords: ["A", "B", "C"],
-                promptDate: Date(),
-                sketchSessionId: sessionId,
-                storySessionId: nil,
-                body: nil,
-                publishedAt: Date()
+        case .sketch(_, let sketchCaption):
+            caption = sketchCaption
+            modelContent = .sketch(
+                SketchContentModel(
+                    imageURL: URL(string: "https://example.test/display")!,
+                    thumbnailURL: URL(string: "https://example.test/thumb")!
+                )
             )
-        case .story(let body, let caption):
-            return SubmissionModel(
-                id: UUID(),
-                creativeType: creativeType,
-                caption: caption,
-                status: "published",
-                timerMode: "countdown",
-                timerSeconds: 300,
-                likeCount: 0,
-                reflectionCount: 0,
-                viewerHasLiked: false,
-                isOwner: true,
-                imageURL: nil,
-                thumbnailURL: nil,
-                userId: UUID(),
-                username: "writer",
-                displayName: "Writer",
-                promptWords: ["A", "B", "C"],
-                promptDate: Date(),
-                sketchSessionId: nil,
-                storySessionId: sessionId,
-                body: body,
-                publishedAt: Date()
+        case .story(let body, let storyCaption):
+            caption = storyCaption
+            modelContent = .story(
+                StoryContentModel(
+                    body: body,
+                    bodyPreview: String(body.prefix(200)),
+                    wordCount: body.split(whereSeparator: \.isWhitespace).count
+                )
+            )
+        case .photo(_, let photoCaption, let location):
+            caption = photoCaption
+            modelContent = .photo(
+                PhotoContentModel(
+                    imageURL: URL(string: "https://example.test/display")!,
+                    thumbnailURL: URL(string: "https://example.test/thumb")!,
+                    location: location.map { location in
+                        // The author always sees their own coordinates.
+                        PhotoLocationModel(
+                            label: location.label,
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            exactShared: location.shareExact
+                        )
+                    }
+                )
             )
         }
+        return SubmissionModel(
+            id: UUID(),
+            creativeType: creativeType,
+            caption: caption,
+            content: modelContent,
+            status: "published",
+            timerMode: "countdown",
+            timerSeconds: 300,
+            likeCount: 0,
+            reflectionCount: 0,
+            viewerHasLiked: false,
+            isOwner: true,
+            userId: UUID(),
+            username: "creator",
+            displayName: "Creator",
+            promptWords: ["A", "B", "C"],
+            promptDate: Date(),
+            sessionId: sessionId,
+            publishedAt: Date()
+        )
     }
 
     func getSubmission(accessToken: String?, submissionId: UUID) async throws -> SubmissionModel {

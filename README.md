@@ -4,6 +4,17 @@ Native iOS creative journal with a FastAPI backend. Every user receives the same
 
 This repository is a monorepo. Phase 13 adds production hardening, observability, cleanup jobs, staging rehearsal, iOS release polish, and release/rollback documentation.
 
+## Unified creative model (post Phase 13)
+
+One platform, many apps. Daily Sketch, Daily Story, and Daily Photo are thin creative-type plugins on shared infrastructure (see `spec/decisions/0012-unified-creative-model.md` and `spec/plans/daily_creative_platform.plan.md`).
+
+- **Backend:** `creative_sessions` (+ events) and `creative_publications` with JSONB `content` replace the per-type `sketch_*` / `story_*` tables (migration `0004_unified_creative_model`, with backfill). A creative type is one module in `backend/app/creative_types/` declaring its content schemas, session stages, and `validate`/`project`/`moderation_texts`/`redact` hooks; the registry drives everything else.
+- **Contract:** `/api/v1/sessions` (with `creative_type` in the body) replaces `/api/v1/sketch-sessions` and `/api/v1/story-sessions`. `Submission` and `FeedItem` carry a discriminated `content` object (`SketchContent`, `StoryContent`, …) instead of flat type-specific fields. `CreativeSession` exposes a generic `status` plus type-owned `stage` and `stage_timestamps`.
+- **Preferences:** timer memory and the daily reminder are per app (`creative_type_preferences`); timezone, appearance, and profile remain account-wide.
+- **Jobs:** one `session_cleanup` job (`make job-session-cleanup`) replaces the sketch/story pair; `deleted_media_cleanup` works from `creative_publications.upload_id`.
+
+Phase notes below are kept as history; where they name `sketch-sessions` endpoints or `sketch_sessions` tables, read the unified equivalents above.
+
 ## Phase 13 — Production Hardening and Release Readiness
 
 - **Backend:** Request timeouts, body size limits, in-process rate limits, tunable DB pool + statement timeout, storage readiness ping, `/metrics`, optional Sentry/OTLP, log redaction, staging/production fail-fast settings.
@@ -53,18 +64,19 @@ make ios-build IOS_ENV=development          # remote development API
 make ios-build IOS_ENV=staging              # staging API
 make ios-build IOS_ENV=production           # production API
 make ios-build IOS_APP=DailyStory           # Daily Story instead of Daily Sketch
+make ios-build IOS_APP=DailyPhoto           # Daily Photo
 ```
 
 ### iOS build environments
 
-Each environment is defined in `ios/Config/*.xcconfig` and injected into the app at build time via `Info.plist`. Select a scheme in Xcode, or pass `IOS_ENV` to `make ios-build` / `make ios-test`.
+Each environment is defined once in `ios/Config/Environments/*.xcconfig` (shared by every app target) and injected into the app at build time via `Info.plist`. Per-app branding (`BRAND_NAME`, `CREATIVE_TYPE_ID`, bundle id base, …) lives on the target in `ios/project.yml`. Select a scheme in Xcode, or pass `IOS_ENV` to `make ios-build` / `make ios-test`.
 
 | Environment | Xcode scheme | API base URL |
 | --- | --- | --- |
-| Local | DailySketch / DailyStory | `http://localhost:8000` |
-| Development | DailySketch Development / DailyStory Development | `https://api.development.dailycreative.example` |
-| Staging | DailySketch Staging / DailyStory Staging | `https://daily-creative-staging.up.railway.app` |
-| Production | DailySketch Production / DailyStory Production | `https://api.dailycreative.example` |
+| Local | DailySketch / DailyStory / DailyPhoto | `http://localhost:8000` |
+| Development | DailySketch Development / DailyStory Development / DailyPhoto Development | `https://api.development.dailycreative.example` |
+| Staging | DailySketch Staging / DailyStory Staging / DailyPhoto Staging | `https://daily-creative-staging.up.railway.app` |
+| Production | DailySketch Production / DailyStory Production / DailyPhoto Production | `https://api.dailycreative.example` |
 
 Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoUuefcaA8DfyMzA0nK`). Development/production hostnames and Descope IDs remain placeholders until real values are supplied. Non-production builds show an environment badge in the app.
 

@@ -1,15 +1,21 @@
 import SwiftUI
 
+/// Home tab for Daily Story.
+///
+/// Shares `HomeViewModel` and every `HomeSections` block with the other apps;
+/// only the flow (timer → writing editor → publish) is story-specific.
 struct StoryHomeView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.scenePhase) private var scenePhase
-    @State private var viewModel: StoryHomeViewModel?
-    @State private var storyFlow: StoryFlowViewModel?
+    @State private var viewModel: HomeViewModel?
+    @State private var flow: StoryFlowViewModel?
+
+    private var vocabulary: CreativeVocabulary { dependencies.module.vocabulary }
 
     var body: some View {
         Group {
-            if let viewModel, let storyFlow {
-                content(viewModel, storyFlow)
+            if let viewModel, let flow {
+                content(viewModel, flow)
             } else {
                 LoadingView(message: "Loading today’s inspiration…")
             }
@@ -19,21 +25,9 @@ struct StoryHomeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if viewModel == nil {
-                let flow = dependencies.makeStoryFlowViewModel {
-                    viewModel?.refreshPublishedToday()
-                }
-                storyFlow = flow
-                let model = StoryHomeViewModel(
-                    promptFetcher: dependencies.promptRepository,
-                    feedFetcher: dependencies.promptRepository,
-                    socialService: dependencies.socialRepository,
-                    publishedStore: dependencies.publishedSubmissionStore,
-                    homeCacheStore: dependencies.homeCacheStore,
-                    networkMonitor: dependencies.networkMonitor,
-                    analytics: dependencies.analytics,
-                    isAuthenticated: { dependencies.auth.isAuthenticated },
-                    accessTokenProvider: { dependencies.auth.accessToken }
-                )
+                let flow = StoryFlowViewModel.make(dependencies: dependencies)
+                self.flow = flow
+                let model = HomeViewModel.make(dependencies: dependencies)
                 viewModel = model
                 flow.prepareOnAppear()
                 await model.load()
@@ -49,11 +43,11 @@ struct StoryHomeView: View {
     }
 
     @ViewBuilder
-    private func content(_ model: StoryHomeViewModel, _ flow: StoryFlowViewModel) -> some View {
+    private func content(_ model: HomeViewModel, _ flow: StoryFlowViewModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.section) {
                 inspirationSection(model, flow)
-                communitySection(model)
+                HomeSections.Community(model: model, vocabulary: vocabulary)
             }
             .padding(.horizontal, AppSpacing.screenHorizontal)
             .padding(.top, AppSpacing.md)
@@ -62,6 +56,7 @@ struct StoryHomeView: View {
         .refreshable {
             await model.refresh()
         }
+        .homeTabBehaviors(model: model, dependencies: dependencies)
         .sheet(
             isPresented: Binding(
                 get: { flow.showsTimerSelection },
@@ -93,7 +88,7 @@ struct StoryHomeView: View {
             )
         ) {
             if let sessionModel = flow.sessionViewModel {
-                StorySessionView(model: sessionModel)
+                TimedSessionView(model: sessionModel)
             }
         }
         .fullScreenCover(
@@ -134,11 +129,6 @@ struct StoryHomeView: View {
             model.refreshPublishedToday()
             Task { await model.retryFeed() }
         }
-        .onChange(of: dependencies.navigation.feedNeedsRefresh) { _, needsRefresh in
-            guard needsRefresh else { return }
-            dependencies.navigation.feedNeedsRefresh = false
-            Task { await model.retryFeed() }
-        }
         .alert(
             "Something went wrong",
             isPresented: Binding(
@@ -150,42 +140,11 @@ struct StoryHomeView: View {
         } message: {
             Text(flow.errorMessage ?? "")
         }
-        .alert(
-            "Couldn’t update Like",
-            isPresented: Binding(
-                get: { model.likeErrorMessage != nil },
-                set: { if !$0 { model.clearLikeError() } }
-            )
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(model.likeErrorMessage ?? "")
-        }
     }
 
-    private func inspirationSection(_ model: StoryHomeViewModel, _ flow: StoryFlowViewModel) -> some View {
+    private func inspirationSection(_ model: HomeViewModel, _ flow: StoryFlowViewModel) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.contentGapLarge) {
-            VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text(inspirationTitle(for: model))
-                    .font(AppTypography.display)
-                    .foregroundStyle(AppColors.textPrimary)
-                    .accessibilityIdentifier("inspiration-heading")
-
-                Text("Tap a prompt to start writing your daily story.")
-                    .font(AppTypography.bodyLarge)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-
-            if let offlineMessage = model.offlineIndicatorMessage {
-                HStack(spacing: AppSpacing.sm) {
-                    Image(systemName: "wifi.slash")
-                        .foregroundStyle(AppColors.textSecondary)
-                        .accessibilityHidden(true)
-                    Text(offlineMessage)
-                        .font(AppTypography.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                }
-            }
+            HomeSections.Header(model: model, vocabulary: vocabulary)
 
             if let banner = flow.draftSavedBanner {
                 Text(banner)
@@ -193,151 +152,33 @@ struct StoryHomeView: View {
                     .foregroundStyle(AppColors.success)
             }
 
-            promptSection(model)
+            HomeSections.Prompt(model: model)
 
             if model.hasPublishedToday {
-                publishedTodaySection(model)
+                HomeSections.PublishedToday(model: model, vocabulary: vocabulary) { id in
+                    dependencies.navigation.homePath.append(.submissionDetail(id))
+                }
             }
 
             if flow.isCreatingSession {
-                LoadingView(message: "Starting your story…")
+                LoadingView(message: vocabulary.startingMessage)
             }
 
-            PrimaryButton(
-                title: model.hasPublishedToday ? "Write Another Story" : ProductConfig.current.startActionTitle,
-                action: {
-                    if let prompt = model.loadedPrompt {
-                        flow.startWriting(prompt: prompt)
-                    }
-                },
-                isDisabled: model.loadedPrompt == nil || flow.isCreatingSession,
-                systemImage: model.hasPublishedToday ? "plus" : "pencil"
-            )
-            .accessibilityHint("Starts today’s timed writing session")
-        }
-    }
-
-    private func inspirationTitle(for model: StoryHomeViewModel) -> String {
-        if let prompt = model.loadedPrompt {
-            return prompt.inspirationTitle
-        }
-        return "Today’s Inspiration"
-    }
-
-    private func publishedTodaySection(_ model: StoryHomeViewModel) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            HStack(spacing: AppSpacing.sm) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(AppColors.success)
-                    .accessibilityHidden(true)
-                Text("You wrote today")
-                    .font(AppTypography.headline)
-                    .foregroundStyle(AppColors.textPrimary)
+            HomeSections.StartButton(
+                model: model,
+                vocabulary: vocabulary,
+                isStarting: flow.isCreatingSession
+            ) { prompt in
+                flow.start(prompt: prompt)
             }
 
-            SecondaryButton(
-                title: model.todaysPublished.count > 1 ? "View My Stories" : "View My Story",
-                action: {
-                    if let first = model.todaysPublished.first {
-                        dependencies.navigation.homePath.append(.submissionDetail(first.id))
-                    }
+            if !dependencies.auth.isAuthenticated {
+                SecondaryButton(title: "Sign In") {
+                    model.authSheetMode = .signIn
+                    model.showsAuthSheet = true
                 }
-            )
-        }
-        .padding(AppSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColors.surfaceSecondary)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadii.large, style: .continuous))
-    }
-
-    private func communitySection(_ model: StoryHomeViewModel) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.contentGap) {
-            Text(ProductConfig.current.communityTitle)
-                .font(AppTypography.title3)
-                .foregroundStyle(AppColors.textPrimary)
-
-            if !dependencies.auth.isAuthenticated && !GuestAgeGateStore.shared.canBrowseCommunity {
-                GuestAgeGateView(store: GuestAgeGateStore.shared)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 280)
-            } else {
-                feedSection(model)
+                .accessibilityLabel("Sign In")
             }
-        }
-    }
-
-    @ViewBuilder
-    private func promptSection(_ model: StoryHomeViewModel) -> some View {
-        switch model.promptState {
-        case .loading:
-            LoadingSkeleton(height: PromptCardStackLayout.height)
-                .accessibilityLabel("Loading today’s prompt")
-        case .loaded(let prompt):
-            PromptCardStack(words: prompt.words, accessibilityLabel: prompt.accessibilityLabel)
-        case .missing:
-            ErrorStateView(
-                title: "Today’s prompt isn’t ready",
-                message: "Check back soon, or retry if you think this is temporary.",
-                onRetry: { Task { await model.retryPrompt() } }
-            )
-        case .failed(let message):
-            ErrorStateView(
-                title: "Couldn’t load today’s prompt",
-                message: message,
-                onRetry: { Task { await model.retryPrompt() } }
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func feedSection(_ model: StoryHomeViewModel) -> some View {
-        switch model.feedState {
-        case .loading:
-            VStack(spacing: AppSpacing.contentGap) {
-                LoadingSkeleton(height: 160)
-                LoadingSkeleton(height: 160)
-            }
-        case .empty:
-            EmptyStateView(
-                title: "No stories yet",
-                message: "Be the first to share an interpretation of today’s prompt.",
-                systemImage: "text.alignleft"
-            )
-        case .loaded(let items):
-            LazyVStack(spacing: AppSpacing.contentGapLarge) {
-                ForEach(items) { item in
-                    SubmissionCard(
-                        item: item,
-                        onTapArtwork: {
-                            dependencies.navigation.homePath.append(.submissionDetail(item.id))
-                        },
-                        onTapOwner: {
-                            dependencies.navigation.homePath.append(.publicProfile(username: item.username))
-                        },
-                        onTapLike: {
-                            Task { await model.toggleLike(itemId: item.id) }
-                        },
-                        onTapReflection: {
-                            dependencies.navigation.homePath.append(.submissionDetail(item.id))
-                        }
-                    )
-                    .onAppear {
-                        Task { await model.loadMoreFeedIfNeeded(currentItem: item) }
-                    }
-                }
-
-                if model.isLoadingMoreFeed {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, AppSpacing.md)
-                }
-            }
-        case .failed(let message):
-            ErrorStateView(
-                title: "Couldn’t load community stories",
-                message: message,
-                onRetry: { Task { await model.retryFeed() } }
-            )
         }
     }
 }

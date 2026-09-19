@@ -5,8 +5,10 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Uuid, desc, func, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Text, Uuid, desc, func, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -82,7 +84,27 @@ class CreativePublication(Base):
         nullable=False,
     )
     creative_type: Mapped[CreativeType] = mapped_column(creative_type_sa, nullable=False)
-    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("creative_sessions.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    )
+    # Fields every creative type shares live as columns; type-specific fields
+    # live in ``content`` and are shaped by the type's content schema.
+    caption: Mapped[str | None] = mapped_column(Text, nullable=True)
+    upload_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("uploads.id", ondelete="RESTRICT"),
+        nullable=True,
+        unique=True,
+    )
+    content: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
     visibility: Mapped[PublicationVisibility] = mapped_column(
         Enum(PublicationVisibility, name="submission_visibility", native_enum=True),
         nullable=False,

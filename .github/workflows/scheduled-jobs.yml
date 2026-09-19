@@ -66,8 +66,7 @@ jobs:
           }
           run_job app.jobs.account_deletion
           run_job app.jobs.upload_cleanup
-          run_job app.jobs.sketch_session_cleanup
-          run_job app.jobs.story_session_cleanup
+          run_job app.jobs.session_cleanup
           run_job app.jobs.idempotency_cleanup
           run_job app.jobs.deleted_media_cleanup
           run_job app.jobs.missing_prompt_check

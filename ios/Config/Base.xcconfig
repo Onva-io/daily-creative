@@ -1,10 +1,19 @@
-// Shared build settings for all configurations.
+// Shared build settings for every app target and configuration.
+//
+// Environment-specific values (API host, Descope project, policy URLs,
+// optimisation) live in Config/Environments/<Configuration>.xcconfig.
+// App-specific branding (BRAND_NAME, CREATIVE_TYPE_ID, bundle id base…) is
+// set per target in project.yml so adding an app never touches these files.
 IPHONEOS_DEPLOYMENT_TARGET = 18.0
 SWIFT_VERSION = 6.0
 MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 2
 
 DEVELOPMENT_TEAM = 547PA5L58A
+
+// Each target sets APP_BUNDLE_ID_BASE (e.g. com.codebrewery.dailycreatives.sketch);
+// each environment sets BUNDLE_ID_SUFFIX (".dev", ".staging", "" for production).
+PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID_BASE)$(BUNDLE_ID_SUFFIX)
 
 // Policy HTML is served by the backend so App Store / in-app links match gated copy.
 // Replace hostnames per environment xcconfig. Support email is required by Guideline 1.2.
@@ -17,9 +26,3 @@ SENTRY_DSN =
 ANALYTICS_ENVIRONMENT = local
 LOGGING_LEVEL = debug
 SHOW_ENVIRONMENT_BADGE = YES
-BRAND_NAME = Daily Sketch
-CREATIVE_TYPE_ID = sketch
-COMMUNITY_TITLE = Community Sketches
-START_ACTION_TITLE = Start Sketch
-REQUIRES_CAMERA = YES
-DAILY_REMINDER_NOTIFICATION_ID = daily-sketch.daily-reminder

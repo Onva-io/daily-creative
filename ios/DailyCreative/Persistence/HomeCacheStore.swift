@@ -25,7 +25,13 @@ struct HomeCacheStore: HomeCacheStoring {
         if !fileManager.fileExists(atPath: directory.path) {
             try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         }
-        self.fileURL = directory.appendingPathComponent("home_cache.json")
+        // Versioned: the unified-content FeedItemModel cannot decode caches
+        // written by earlier builds, so those are removed rather than parsed.
+        self.fileURL = directory.appendingPathComponent("home_cache_v2.json")
+        let legacyURL = directory.appendingPathComponent("home_cache.json")
+        if fileManager.fileExists(atPath: legacyURL.path) {
+            try? fileManager.removeItem(at: legacyURL)
+        }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         self.encoder = encoder

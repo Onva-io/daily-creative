@@ -17,39 +17,6 @@ final class HomeViewModelTests: XCTestCase {
         )
     }
 
-    private func makeSketchFlow() -> SketchFlowViewModel {
-        let auth = AuthSessionStore(
-            authService: MockAuthService(),
-            meFetcher: RecordingMeFetcher(
-                profile: CurrentUserProfile(
-                    id: UUID(),
-                    username: nil,
-                    displayName: "Guest",
-                    profileCompleted: false,
-                    status: "incomplete"
-                )
-            )
-        )
-        return SketchFlowViewModel(
-            auth: auth,
-            preferencesService: RecordingMeFetcher(
-                profile: CurrentUserProfile(
-                    id: UUID(),
-                    username: nil,
-                    displayName: "Guest",
-                    profileCompleted: false,
-                    status: "incomplete"
-                )
-            ),
-            guestTimerStore: InMemoryGuestTimerPreferenceStore(),
-            activeSessionStore: InMemoryActiveSessionStore(),
-            sessionService: RecordingSketchSessionRepository(),
-            draftStore: InMemoryDraftStore(),
-            imageStore: InMemoryDraftImageStore(),
-            cameraAuthorizer: FakeCameraAuthorizer()
-        )
-    }
-
     private func makeModel(
         fetcher: RecordingPromptFetcher,
         publishedStore: any PublishedSubmissionStoring = InMemoryPublishedSubmissionStore(),
@@ -68,7 +35,6 @@ final class HomeViewModelTests: XCTestCase {
             homeCacheStore: homeCacheStore,
             networkMonitor: networkMonitor,
             analytics: InMemoryAnalyticsClient(),
-            sketchFlow: makeSketchFlow(),
             dateProvider: dateProvider,
             isAuthenticated: isAuthenticated,
             accessTokenProvider: accessTokenProvider
@@ -86,11 +52,11 @@ final class HomeViewModelTests: XCTestCase {
             return XCTFail("Expected loaded prompt")
         }
         XCTAssertEqual(prompt.words, ["Chocolate", "Coffee", "Banana"])
-        XCTAssertTrue(model.canStartSketch)
+        XCTAssertTrue(model.canStartSession)
         XCTAssertEqual(model.feedState, .empty)
     }
 
-    func testFeedFailureDoesNotBlockPromptOrStartSketch() async {
+    func testFeedFailureDoesNotBlockPromptOrStart() async {
         let fetcher = RecordingPromptFetcher()
         fetcher.prompt = samplePrompt()
         fetcher.feedError = PromptAPIError.underlying("network down")
@@ -103,7 +69,7 @@ final class HomeViewModelTests: XCTestCase {
         guard case .loaded = model.promptState else {
             return XCTFail("Prompt should remain usable when feed fails")
         }
-        XCTAssertTrue(model.canStartSketch)
+        XCTAssertTrue(model.canStartSession)
         guard case .failed = model.feedState else {
             return XCTFail("Expected feed failure state")
         }
@@ -120,7 +86,7 @@ final class HomeViewModelTests: XCTestCase {
         guard case .failed = model.promptState else {
             return XCTFail("Expected prompt failure")
         }
-        XCTAssertFalse(model.canStartSketch)
+        XCTAssertFalse(model.canStartSession)
         XCTAssertEqual(model.feedState, .empty)
     }
 
@@ -134,7 +100,7 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(model.promptState, .missing)
         XCTAssertNil(model.cachedPrompt)
         XCTAssertNil(model.promptWords)
-        XCTAssertFalse(model.canStartSketch)
+        XCTAssertFalse(model.canStartSession)
         XCTAssertEqual(model.feedState, .empty)
     }
 
@@ -149,21 +115,26 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(model.feedState, .empty)
     }
 
-    func testStartSketchOpensTimerSelectionByDefault() async {
+    func testStartOpensTimerSelectionByDefault() async {
         let fetcher = RecordingPromptFetcher()
         fetcher.prompt = samplePrompt()
         let model = makeModel(fetcher: fetcher)
+        let flow = TestFixtures.makeCaptureFlow()
 
         await model.load()
-        model.startSketch()
-        // startSketch kicks an async Task — wait briefly for sheet flag.
+        guard let prompt = model.loadedPrompt else {
+            return XCTFail("Expected loaded prompt")
+        }
+        model.trackStartTapped(prompt: prompt)
+        flow.start(prompt: prompt)
+        // start kicks an async Task — wait briefly for sheet flag.
         let deadline = Date().addingTimeInterval(1)
-        while !model.sketchFlow.showsTimerSelection, Date() < deadline {
+        while !flow.showsTimerSelection, Date() < deadline {
             await Task.yield()
         }
 
-        XCTAssertTrue(model.sketchFlow.showsTimerSelection)
-        XCTAssertFalse(model.sketchFlow.showsActiveSession)
+        XCTAssertTrue(flow.showsTimerSelection)
+        XCTAssertFalse(flow.showsActiveSession)
     }
 
     func testCachedPromptSurvivesTransientRefreshFailure() async {
@@ -202,11 +173,12 @@ final class HomeViewModelTests: XCTestCase {
 
         await model.load()
 
-        XCTAssertTrue(model.hasSketchedToday)
-        XCTAssertEqual(model.primarySketchButtonTitle, "Create Another Sketch")
-        XCTAssertEqual(model.viewMySketchTitle, "View My Sketch")
+        XCTAssertTrue(model.hasPublishedToday)
+        let vocabulary = TestFixtures.module.vocabulary
+        XCTAssertEqual(vocabulary.anotherActionTitle, "Create Another Sketch")
+        XCTAssertEqual(vocabulary.viewMineTitle(count: model.todaysPublished.count), "View My Sketch")
         XCTAssertEqual(model.todaysPublished.count, 1)
-        XCTAssertTrue(model.canStartSketch)
+        XCTAssertTrue(model.canStartSession)
     }
 
     func testHomeCompletionPluralizesViewTitle() async throws {
@@ -229,7 +201,11 @@ final class HomeViewModelTests: XCTestCase {
         }
         let model = makeModel(fetcher: fetcher, publishedStore: publishedStore)
         await model.load()
-        XCTAssertEqual(model.viewMySketchTitle, "View My Sketches")
+        XCTAssertEqual(model.todaysPublished.count, 2)
+        XCTAssertEqual(
+            TestFixtures.module.vocabulary.viewMineTitle(count: model.todaysPublished.count),
+            "View My Sketches"
+        )
     }
 
     func testLoadedFeedStateMapsItems() async {
@@ -255,26 +231,12 @@ final class HomeViewModelTests: XCTestCase {
         let fetcher = RecordingPromptFetcher()
         fetcher.prompt = samplePrompt()
         let first = FeedItemModel.preview
-        let second = FeedItemModel(
-            id: UUID(),
-            creativeType: "sketch",
-            imageURL: first.imageURL,
-            thumbnailURL: first.thumbnailURL,
-            userId: first.userId,
+        let second = TestFixtures.feedItem(
+            basedOn: first,
             username: "second",
             displayName: "Second",
-            avatarURL: nil,
-            promptWords: first.promptWords,
-            promptDate: first.promptDate,
-            timerMode: first.timerMode,
-            timerSeconds: first.timerSeconds,
             captionPreview: "Next page",
-            bodyPreview: nil,
-            wordCount: nil,
             likeCount: 1,
-            reflectionCount: 0,
-            viewerHasLiked: false,
-            isOwner: false,
             publishedAt: first.publishedAt.addingTimeInterval(-3_600)
         )
         fetcher.feedPages[nil] = RecentFeedPage(items: [first], nextCursor: "page-2")
@@ -301,26 +263,10 @@ final class HomeViewModelTests: XCTestCase {
         let model = makeModel(fetcher: fetcher)
         await model.load()
 
-        let refreshed = FeedItemModel(
-            id: UUID(),
-            creativeType: "sketch",
-            imageURL: first.imageURL,
-            thumbnailURL: first.thumbnailURL,
-            userId: first.userId,
+        let refreshed = TestFixtures.feedItem(
+            basedOn: first,
             username: "refreshed",
             displayName: "Refreshed",
-            avatarURL: nil,
-            promptWords: first.promptWords,
-            promptDate: first.promptDate,
-            timerMode: first.timerMode,
-            timerSeconds: first.timerSeconds,
-            captionPreview: nil,
-            bodyPreview: nil,
-            wordCount: nil,
-            likeCount: 0,
-            reflectionCount: 0,
-            viewerHasLiked: false,
-            isOwner: false,
             publishedAt: Date()
         )
         fetcher.feed = RecentFeedPage(items: [refreshed], nextCursor: nil)
@@ -437,7 +383,7 @@ final class HomeViewModelTests: XCTestCase {
             return XCTFail("Fresh cache should show words immediately")
         }
         XCTAssertEqual(prompt.words, ["Chocolate", "Coffee", "Banana"])
-        XCTAssertTrue(model.canStartSketch)
+        XCTAssertTrue(model.canStartSession)
     }
 
     func testStaleCacheHidesWordsUntilRefresh() async throws {
@@ -461,7 +407,7 @@ final class HomeViewModelTests: XCTestCase {
         )
 
         XCTAssertEqual(model.promptState, .loading)
-        XCTAssertFalse(model.canStartSketch)
+        XCTAssertFalse(model.canStartSession)
         XCTAssertEqual(model.cachedPrompt?.word1, "Chocolate")
 
         await model.load()
@@ -494,7 +440,7 @@ final class HomeViewModelTests: XCTestCase {
         )
 
         XCTAssertEqual(model.promptState, .loading)
-        XCTAssertFalse(model.canStartSketch)
+        XCTAssertFalse(model.canStartSession)
     }
 
     func testOfflineKeepsStaleCachedWords() throws {
@@ -520,7 +466,7 @@ final class HomeViewModelTests: XCTestCase {
             return XCTFail("Offline should keep showing cached inspiration")
         }
         XCTAssertEqual(prompt.word1, "Chocolate")
-        XCTAssertTrue(model.canStartSketch)
+        XCTAssertTrue(model.canStartSession)
     }
 
     func testForegroundResumeHidesStaleWordsAndRefreshes() async {

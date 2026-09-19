@@ -4,13 +4,18 @@ enum ActiveSessionLifecycle: String, Codable, Sendable, Equatable {
     case active
     case paused
     case timerCompleted
-    case readyForPhoto
+    /// Raw value kept as `readyForPhoto` so snapshots written by earlier
+    /// builds still decode.
+    case readyToContinue = "readyForPhoto"
     case abandoned
 }
 
 struct ActiveSessionSnapshot: Codable, Equatable, Sendable, Identifiable {
     let id: UUID
     var serverSessionId: UUID?
+    /// API `creative_type` of the session. Optional only so snapshots written
+    /// before the field existed still decode; they belong to this app's type.
+    var creativeType: String?
     let promptId: UUID
     let promptWords: [String]
     let promptAccessibilityLabel: String
@@ -25,7 +30,7 @@ struct ActiveSessionSnapshot: Codable, Equatable, Sendable, Identifiable {
 
     var isRecoverable: Bool {
         switch lifecycle {
-        case .active, .paused, .timerCompleted, .readyForPhoto:
+        case .active, .paused, .timerCompleted, .readyToContinue:
             return true
         case .abandoned:
             return false

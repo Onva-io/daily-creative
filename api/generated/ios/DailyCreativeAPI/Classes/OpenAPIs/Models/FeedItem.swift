@@ -10,7 +10,7 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Feed projection for a published Submission. Includes image URLs for sketch submissions, user and Prompt summaries, timer metadata, caption preview, Like/Reflection counts, viewer Like state, and ownership flags.  */
+/** Feed projection for a published Submission. Shared fields are flat (user and Prompt summaries, timer metadata, caption preview, Like/Reflection counts, viewer Like state, ownership flags); the type-specific preview lives under &#x60;content&#x60;.  */
 public struct FeedItem: Codable, JSONEncodable, Hashable {
 
     public static let likeCountRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: nil, exclusiveMaximum: false, multipleOf: nil)
@@ -18,10 +18,7 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     /** Canonical UUID string identifier. */
     public var id: UUID
     public var creativeType: CreativeType
-    /** Display image URL. */
-    public var imageUrl: String?
-    /** Thumbnail image URL. */
-    public var thumbnailUrl: String?
+    public var content: SubmissionContent
     public var user: FeedUserSummary
     public var prompt: FeedPromptSummary
     public var timerMode: TimerMode
@@ -29,10 +26,6 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     public var timerSeconds: Int?
     /** Truncated caption preview, or null when absent. */
     public var captionPreview: String?
-    /** Truncated story body preview. Null for non-story submissions. */
-    public var bodyPreview: String?
-    /** Story word count. Null for non-story submissions. */
-    public var wordCount: Int?
     public var likeCount: Int
     public var reflectionCount: Int
     public var viewerHasLiked: Bool
@@ -40,18 +33,15 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     /** RFC 3339 UTC timestamp. */
     public var publishedAt: Date
 
-    public init(id: UUID, creativeType: CreativeType, imageUrl: String? = nil, thumbnailUrl: String? = nil, user: FeedUserSummary, prompt: FeedPromptSummary, timerMode: TimerMode, timerSeconds: Int?, captionPreview: String?, bodyPreview: String? = nil, wordCount: Int? = nil, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, publishedAt: Date) {
+    public init(id: UUID, creativeType: CreativeType, content: SubmissionContent, user: FeedUserSummary, prompt: FeedPromptSummary, timerMode: TimerMode, timerSeconds: Int?, captionPreview: String?, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, publishedAt: Date) {
         self.id = id
         self.creativeType = creativeType
-        self.imageUrl = imageUrl
-        self.thumbnailUrl = thumbnailUrl
+        self.content = content
         self.user = user
         self.prompt = prompt
         self.timerMode = timerMode
         self.timerSeconds = timerSeconds
         self.captionPreview = captionPreview
-        self.bodyPreview = bodyPreview
-        self.wordCount = wordCount
         self.likeCount = likeCount
         self.reflectionCount = reflectionCount
         self.viewerHasLiked = viewerHasLiked
@@ -62,15 +52,12 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case id
         case creativeType = "creative_type"
-        case imageUrl = "image_url"
-        case thumbnailUrl = "thumbnail_url"
+        case content
         case user
         case prompt
         case timerMode = "timer_mode"
         case timerSeconds = "timer_seconds"
         case captionPreview = "caption_preview"
-        case bodyPreview = "body_preview"
-        case wordCount = "word_count"
         case likeCount = "like_count"
         case reflectionCount = "reflection_count"
         case viewerHasLiked = "viewer_has_liked"
@@ -84,15 +71,12 @@ public struct FeedItem: Codable, JSONEncodable, Hashable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(creativeType, forKey: .creativeType)
-        try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
-        try container.encodeIfPresent(thumbnailUrl, forKey: .thumbnailUrl)
+        try container.encode(content, forKey: .content)
         try container.encode(user, forKey: .user)
         try container.encode(prompt, forKey: .prompt)
         try container.encode(timerMode, forKey: .timerMode)
         try container.encode(timerSeconds, forKey: .timerSeconds)
         try container.encode(captionPreview, forKey: .captionPreview)
-        try container.encodeIfPresent(bodyPreview, forKey: .bodyPreview)
-        try container.encodeIfPresent(wordCount, forKey: .wordCount)
         try container.encode(likeCount, forKey: .likeCount)
         try container.encode(reflectionCount, forKey: .reflectionCount)
         try container.encode(viewerHasLiked, forKey: .viewerHasLiked)

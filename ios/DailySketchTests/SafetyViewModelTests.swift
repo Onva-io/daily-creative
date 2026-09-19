@@ -51,6 +51,7 @@ final class BlockSafetyViewModelTests: XCTestCase {
             id: UUID(),
             creativeType: "sketch",
             caption: nil,
+            content: TestFixtures.sketchContent(),
             status: "published",
             timerMode: "no_timer",
             timerSeconds: nil,
@@ -58,16 +59,12 @@ final class BlockSafetyViewModelTests: XCTestCase {
             reflectionCount: 0,
             viewerHasLiked: false,
             isOwner: false,
-            imageURL: URL(string: "https://example.test/d")!,
-            thumbnailURL: URL(string: "https://example.test/t")!,
             userId: authorId,
             username: "blocked",
             displayName: "Blocked",
             promptWords: ["A", "B", "C"],
             promptDate: Date(),
-            sketchSessionId: UUID(),
-            storySessionId: nil,
-            body: nil,
+            sessionId: UUID(),
             publishedAt: Date()
         )
         submissions.nextSubmission = submission

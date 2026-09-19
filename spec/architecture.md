@@ -243,6 +243,44 @@ Avoid:
 - a large third-party state-management framework unless clearly justified;
 - direct dependence of views on raw networking code.
 
+### 5.1.1 One shared shell, one module per app
+
+The iOS project is one XcodeGen spec (`ios/project.yml`) producing one App
+Store target per creative type. All targets compile `ios/DailyCreative/`; a
+target's own directory contains only three things:
+
+- `Daily{Type}App.swift` — builds `AppDependencies.live(module:)` and shows
+  `CreativeAppRootView`;
+- `{Type}Module.swift` — conforms to `CreativeModule` and supplies the API
+  `creative_type`, vocabulary/copy, timed-session labels, default timer option,
+  the Home tab root view and an optional guest draft card;
+- `Resources/` — Info.plist, entitlements, assets, privacy manifest.
+
+The shared shell (`RootTabView`, profile, settings, submission detail, feed and
+gallery cards, moderation, account deletion) never branches on the creative
+type. Published work renders through `SubmissionContentModel`, a client mirror
+of the API's discriminated `content` object, so mixed feeds and caches decode
+and display without the app knowing which type produced an item. Session and
+publication networking go through the unified `CreativeSessionRepository` and
+`PublicationRepository`; type-specific stage events are opaque strings supplied
+by the module's flow.
+
+Image-based types (sketch, photo) share one capture flow (`CaptureFlowViewModel`
+→ `CaptureSourceView` → `ReviewSubmissionViewModel`) and differ only through a
+`CaptureContentPlugin`. The flow hands the plugin each `CapturedImage`
+(normalised JPEG plus the picker's original bytes, so EXIF can be read before
+it is discarded), and the plugin returns a `CaptureExtrasControlling` per
+review session. That controller renders an optional editor under the caption,
+serialises its state into the opaque `LocalDraft.contentExtras`, and turns the
+finished upload into a `PublicationContent`. Daily Photo's controller is the
+location editor; Daily Sketch's is empty. The review screen, draft store and
+guest sign-in checkpoint never learn what the extras contain.
+
+Compile-time product switches (`#if PRODUCT_*`) and `creativeType ==` checks
+are not permitted in `ios/DailyCreative/`. Build environments live once in
+`ios/Config/Environments/`; per-app branding is set on the target in
+`project.yml` via the `CreativeApp` target template.
+
 ## 5.2 Backend
 
 Use:
@@ -634,19 +672,31 @@ Rules:
 
 ## 10.2 User preferences
 
+Settings scope rule: anything a user sets inside one app applies to that app
+only. Only preferences that describe the account holder are shared.
+
 ```text
-user_preferences
+user_preferences                       -- account-wide (shared by every app)
 - user_id uuid pk fk users
-- notifications_enabled boolean not null
-- notification_time_local time null
 - timezone text not null
-- remember_timer_option boolean not null
-- remembered_timer_mode enum null
-- remembered_timer_seconds integer null
 - appearance enum not null
 - created_at timestamptz not null
 - updated_at timestamptz not null
+
+creative_type_preferences              -- per app (user_id, creative_type)
+- user_id uuid pk fk users
+- creative_type enum pk
+- remember_timer_option boolean not null
+- remembered_timer_mode enum null
+- remembered_timer_seconds integer null
+- notifications_enabled boolean not null
+- notification_time_local time null
+- created_at timestamptz not null
+- updated_at timestamptz not null
 ```
+
+`GET/PATCH /api/v1/me/preferences?creative_type=` returns and updates one
+merged projection for the calling app.
 
 Timer mode:
 
@@ -693,74 +743,56 @@ Rules:
 - one published prompt per Prompt Date;
 - no per-user random prompt generation.
 
-## 10.4 Sketch sessions
+## 10.4 Creative sessions
+
+One table serves every creative type. The generic lifecycle (start, pause,
+resume, timer complete, finish early, abandon, expire) is shared; type-owned
+sub-states live in `stage` and are declared by the type's definition in
+`backend/app/creative_types/`.
 
 ```text
-sketch_sessions
+creative_sessions
 - id uuid pk
 - user_id uuid fk users not null
 - prompt_id uuid fk daily_prompts not null
+- creative_type enum not null
 - timer_mode enum not null
 - selected_timer_seconds integer null
-- status enum not null
+- status enum not null            -- active | paused | completed | abandoned | expired
+- stage text null                 -- type-owned: sketch/photo ready_for_photo|uploading, story writing
+- stage_timestamps jsonb not null default '{}'  -- e.g. photo_step_reached_at, upload_started_at
 - started_at timestamptz not null
 - paused_total_seconds integer not null default 0
 - timer_completed_at timestamptz null
 - finish_requested_at timestamptz null
-- photo_step_reached_at timestamptz null
-- upload_started_at timestamptz null
-- upload_completed_at timestamptz null
 - completed_at timestamptz null
 - abandoned_at timestamptz null
 - created_at timestamptz not null
 - updated_at timestamptz not null
 ```
 
-Suggested status:
-
-```text
-active
-paused
-ready_for_photo
-uploading
-completed
-abandoned
-expired
-```
-
 A session is private.
 
-## 10.5 Sketch session events
+## 10.5 Creative session events
 
 ```text
-sketch_session_events
+creative_session_events
 - id uuid pk
-- sketch_session_id uuid fk
-- event_type enum not null
+- session_id uuid fk creative_sessions
+- event_type text not null
 - occurred_at timestamptz not null
 - client_occurred_at timestamptz null
 - metadata_json jsonb not null default '{}'
 - created_at timestamptz not null
 ```
 
-Events may include:
-
-```text
-started
-paused
-resumed
-timer_completed
-finished_early
-photo_step_reached
-upload_started
-upload_completed
-submission_created
-abandoned
-```
+Generic events every type accepts: `started` (server), `paused`, `resumed`,
+`timer_completed`, `finished_early`, `abandoned`, `submission_created` (server).
+Stage events are declared per type as `StageRule`s (event, allowed from-stages,
+resulting stage, optional timestamp key) and validated against the definition
+at runtime, so the column is free text rather than a Postgres enum.
 
 Use event rows for analytics and auditability.
-
-Keep key timestamps denormalised on `sketch_sessions` for efficient reads.
 
 ## 10.6 Uploads
 
@@ -808,23 +840,30 @@ expired
 deleted
 ```
 
-## 10.7 Submissions
+## 10.7 Publications
 
 ```text
-submissions
+creative_publications
 - id uuid pk
 - user_id uuid fk users not null
 - prompt_id uuid fk daily_prompts not null
-- sketch_session_id uuid fk sketch_sessions unique not null
-- upload_id uuid fk uploads unique not null
-- caption text null
+- creative_type enum not null
+- session_id uuid fk creative_sessions unique not null
+- caption text null                 -- shared by every type
+- upload_id uuid fk uploads unique null   -- image-based types only
+- content jsonb not null default '{}'     -- type-specific, shaped by the type's content schema
 - visibility enum not null
 - status enum not null
+- like_count / reflection_count integer not null default 0
 - published_at timestamptz not null
 - created_at timestamptz not null
 - updated_at timestamptz not null
 - deleted_at timestamptz null
 ```
+
+Shared fields are columns; type-specific fields are JSONB validated and
+projected by the type's handler (`validate`, `project`, `moderation_texts`,
+`redact`). There are no per-type detail tables.
 
 Visibility version one:
 
@@ -1187,11 +1226,10 @@ The by-date and prompt-submissions endpoints may be implemented after the core f
 ## 13.6 Sketch sessions
 
 ```text
-POST  /api/v1/sketch-sessions
-GET   /api/v1/sketch-sessions/{session_id}
-PATCH /api/v1/sketch-sessions/{session_id}
-POST  /api/v1/sketch-sessions/{session_id}/events
-POST  /api/v1/sketch-sessions/{session_id}/abandon
+POST  /api/v1/sessions                        (creative_type in body)
+GET   /api/v1/sessions/{session_id}
+POST  /api/v1/sessions/{session_id}/events
+POST  /api/v1/sessions/{session_id}/abandon
 ```
 
 Session creation request:
@@ -1508,7 +1546,7 @@ Version one should avoid adding a durable queue unless necessary.
 
 ## 18.4 Metadata stripping
 
-Remove unnecessary EXIF metadata, including precise location.
+Remove unnecessary EXIF metadata, including precise location. This holds for Daily Photo too: the iOS client reads EXIF GPS from the picker's original bytes purely to seed the author's location editor, and uploads a re-encoded JPEG with no metadata. Stored location is the author-confirmed value in `creative_publications.content`, not anything read from the image server-side.
 
 ## 18.5 Read URLs
 
@@ -1799,7 +1837,7 @@ Rate-limit or protect:
 ## 23.5 Privacy
 
 - strip EXIF;
-- no precise location;
+- no precise location, except the author-confirmed, per-post location of a Daily Photo publication (exact coordinates are projected to other users only when the author opted in; the coordinate `source` is never returned);
 - do not log tokens;
 - minimise user data in logs;
 - protect Draft files with iOS file protection.
@@ -1874,8 +1912,9 @@ submissions(published_at desc, id desc)
 submissions(user_id, published_at desc, id desc)
 submissions(prompt_id, published_at desc, id desc)
 
-sketch_sessions(user_id, created_at desc)
-sketch_sessions(prompt_id, created_at desc)
+creative_sessions(user_id, created_at desc)
+creative_sessions(prompt_id, created_at desc)
+creative_sessions(creative_type, status)
 
 uploads(user_id, created_at desc)
 uploads(status, expires_at)
@@ -2195,7 +2234,7 @@ The platform supports multiple creative types (sketch, story, and future types) 
 - **Publication anchor + typed detail tables**: `creative_publications` holds shared social/index fields with a generic `session_id`. Each creative type has a 1:1 detail table (`sketch_submissions`, `story_submissions`) with typed payload columns.
 - **Shared social layer**: Likes, reflections, blocks, and reports remain keyed on `creative_publications.id` regardless of creative type.
 - **Type-scoped queries**: Feed, profile, and streak endpoints accept an optional `creative_type` filter parameter.
-- **Per-type iOS targets**: DailySketch and DailyStory are separate app targets sharing code from DailyCore (auth, profile, design system, social). Each target has its own session flow, branding, and build configuration.
+- **Per-type iOS targets**: DailySketch, DailyStory and DailyPhoto are separate app targets compiling the shared `DailyCreative` shell (see 5.1.1). Each target contributes one `CreativeModule` plus branding; image-based types further plug into the shared capture flow through a `CaptureContentPlugin`.
 - **ProductConfig**: Info.plist-driven branding (`BRAND_NAME`, `CREATIVE_TYPE_ID`) allows each app target to customize UI without code changes.
 
 To add a new creative type, see the "Adding a Future Creative Type" section in the [plan](../plans/daily_creative_platform.plan.md).

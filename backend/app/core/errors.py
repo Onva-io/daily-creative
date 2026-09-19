@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -105,7 +106,8 @@ def register_exception_handlers(app: FastAPI) -> None:
             code="validation_error",
             message="The request could not be validated.",
             request_id=_request_id_from(request),
-            details={"issues": exc.errors()},
+            # ``ctx`` may hold the raising exception when a model validator fails.
+            details={"issues": jsonable_encoder(exc.errors())},
         )
 
     @app.exception_handler(StarletteHTTPException)

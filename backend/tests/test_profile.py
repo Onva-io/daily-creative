@@ -199,6 +199,18 @@ async def test_preferences_persist(client: AsyncClient) -> None:
     me = await client.get("/api/v1/me", headers=headers, params={"creative_type": "sketch"})
     assert me.json()["preferences"]["appearance"] == "dark"
 
+    # Timer memory and the daily reminder are per app; appearance is account-wide.
+    story = await client.get(
+        "/api/v1/me/preferences", headers=headers, params={"creative_type": "story"}
+    )
+    assert story.status_code == 200
+    story_body = story.json()
+    assert story_body["notifications_enabled"] is False
+    assert story_body["notification_time_local"] is None
+    assert story_body["remember_timer_option"] is False
+    assert story_body["remembered_timer_mode"] is None
+    assert story_body["appearance"] == "dark"
+
 
 @requires_postgres
 @pytest.mark.asyncio

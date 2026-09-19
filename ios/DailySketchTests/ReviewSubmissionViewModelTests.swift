@@ -1,3 +1,4 @@
+import SwiftUI
 import UIKit
 import XCTest
 @preconcurrency import DailyCreativeAPI
@@ -113,7 +114,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: uploads,
             submissionService: submissions,
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: uploader,
             publishedStore: publishedStore,
             accessTokenProvider: { "token" },
@@ -135,6 +136,53 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
         XCTAssertEqual(submissions.createCallCount, 1)
         XCTAssertEqual(try publishedStore.list().map(\.id), [submission.id])
         XCTAssertNotNil(try draftStore.list().first?.publicationIdempotencyKey)
+    }
+
+    func testExtrasArePersistedWithDraftAndUsedForPayload() async throws {
+        let draftStore = InMemoryDraftStore()
+        let imageStore = InMemoryDraftImageStore()
+        let submissions = RecordingSubmissionRepository()
+        let extras = RecordingExtrasController(extras: Data("place".utf8))
+        let (draft, data) = try makeDraft(imageStore: imageStore, caption: "with extras")
+        try draftStore.save(draft)
+
+        var outcome: ReviewSubmissionOutcome?
+        let model = ReviewSubmissionViewModel(
+            draft: draft,
+            imageData: data,
+            draftStore: draftStore,
+            imageStore: imageStore,
+            uploadService: RecordingUploadRepository(),
+            submissionService: submissions,
+            sessionService: RecordingCreativeSessionRepository(),
+            extras: extras,
+            directUploader: RecordingDirectUploader(),
+            accessTokenProvider: { "token" },
+            isAuthenticated: { true },
+            canPublish: { true },
+            onFinished: { outcome = $0 },
+            onReplaceRequested: {}
+        )
+
+        model.saveToDrafts()
+        await waitUntil(outcome != nil)
+        XCTAssertEqual(try draftStore.list().first?.contentExtras, Data("place".utf8))
+
+        try model.replaceImage(with: makeJPEG(color: .green))
+        XCTAssertEqual(extras.replacedImages.count, 1)
+
+        outcome = nil
+        model.submitToCommunity()
+        await waitUntil(outcome != nil)
+        guard case .published = outcome else {
+            return XCTFail("Expected published outcome, got \(String(describing: outcome))")
+        }
+        XCTAssertEqual(extras.publishedCaptions, ["with extras"])
+        guard case .photo(_, let caption, let location) = submissions.lastContent else {
+            return XCTFail("Expected the controller's payload to be sent")
+        }
+        XCTAssertEqual(caption, "with extras")
+        XCTAssertEqual(location?.label, "recorded")
     }
 
     func testPublishFailurePreservesDraftAndCaption() async throws {
@@ -266,7 +314,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: uploads,
             submissionService: RecordingSubmissionRepository(),
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: RecordingDirectUploader(),
             accessTokenProvider: { "token" },
             isAuthenticated: { true },
@@ -367,7 +415,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: RecordingUploadRepository(),
             submissionService: submissions,
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: RecordingDirectUploader(),
             accessTokenProvider: { "token" },
             isAuthenticated: { true },
@@ -385,7 +433,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
     func testLazySessionCreateSendsClientStartedAt() async throws {
         let draftStore = InMemoryDraftStore()
         let imageStore = InMemoryDraftImageStore()
-        let sessions = RecordingSketchSessionRepository()
+        let sessions = RecordingCreativeSessionRepository()
         let startedAt = Date(timeIntervalSince1970: 1_784_300_000)
         let (baseDraft, data) = try makeDraft(imageStore: imageStore, serverSessionId: nil)
         let draft = LocalDraft(
@@ -446,7 +494,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: RecordingUploadRepository(),
             submissionService: submissions,
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: RecordingDirectUploader(),
             accessTokenProvider: { "token" },
             isAuthenticated: { true },
@@ -500,5 +548,35 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             context.fill(CGRect(x: 0, y: 0, width: 6, height: 6))
         }
         return image.jpegData(compressionQuality: 0.9)!
+    }
+}
+
+/// Stands in for a type's controller so the shared review flow can be checked
+/// without any real creative type's extras.
+@MainActor
+private final class RecordingExtrasController: CaptureExtrasControlling {
+    let extras: Data?
+    private(set) var replacedImages: [CapturedImage] = []
+    private(set) var publishedCaptions: [String?] = []
+
+    init(extras: Data?) {
+        self.extras = extras
+    }
+
+    func encodeExtras() throws -> Data? { extras }
+
+    func makeReviewView(isDisabled: Bool) -> AnyView? { nil }
+
+    func handleImageReplaced(_ captured: CapturedImage) {
+        replacedImages.append(captured)
+    }
+
+    func makePublicationContent(uploadId: UUID, caption: String?) -> PublicationContent {
+        publishedCaptions.append(caption)
+        return .photo(
+            uploadId: uploadId,
+            caption: caption,
+            location: PhotoLocationInputModel(label: "recorded")
+        )
     }
 }

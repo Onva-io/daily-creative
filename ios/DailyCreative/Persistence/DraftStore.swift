@@ -1,10 +1,14 @@
 import Foundation
 
-/// Local unpublished sketch metadata. Image bytes live in `DraftImageStoring`, never UserDefaults.
+/// Local unpublished image-based work (sketch, photo). Image bytes live in
+/// `DraftImageStoring`, never UserDefaults.
 struct LocalDraft: Codable, Equatable, Sendable, Identifiable {
     let id: UUID
     let localSessionId: UUID
     var serverSessionId: UUID?
+    /// API `creative_type` of the draft. Optional only so drafts written before
+    /// the field existed still decode; they belong to this app's type.
+    var creativeType: String? = nil
     let promptId: UUID
     let promptWords: [String]
     let promptAccessibilityLabel: String
@@ -23,6 +27,9 @@ struct LocalDraft: Codable, Equatable, Sendable, Identifiable {
     var uploadId: UUID? = nil
     /// True after a successful signed upload and completeUpload call.
     var uploadCompleted: Bool = false
+    /// Type-specific state owned by the app's `CaptureContentPlugin` (for a
+    /// photo, its location). Opaque to the shared shell.
+    var contentExtras: Data? = nil
 
     var isRecoverable: Bool {
         !imageFileName.isEmpty

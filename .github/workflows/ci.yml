@@ -218,6 +218,15 @@ jobs:
             -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             build
+      - name: Build DailyPhoto for simulator
+        run: |
+          xcodebuild \
+            -project ios/DailySketch.xcodeproj \
+            -scheme DailyPhoto \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug-Local \
+            CODE_SIGNING_ALLOWED=NO \
+            build
       - name: DailySketch unit tests
         run: |
           xcodebuild \
@@ -227,4 +236,14 @@ jobs:
             -configuration Debug-Local \
             CODE_SIGNING_ALLOWED=NO \
             -only-testing:DailySketchTests \
+            test
+      - name: DailyPhoto unit tests
+        run: |
+          xcodebuild \
+            -project ios/DailySketch.xcodeproj \
+            -scheme DailyPhoto \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -configuration Debug-Local \
+            CODE_SIGNING_ALLOWED=NO \
+            -only-testing:DailyPhotoTests \
             test

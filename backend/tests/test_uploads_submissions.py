@@ -25,8 +25,8 @@ from app.db.session import Base, get_db_session
 from app.main import create_app
 from app.models.daily_prompt import DailyPrompt
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
-from app.models.sketch_session import SketchSession  # noqa: F401
-from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
+from app.models.creative_session import CreativeSession  # noqa: F401
+from app.models.creative_session_event import CreativeSessionEvent  # noqa: F401
 from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User  # noqa: F401
@@ -277,9 +277,10 @@ async def _create_ready_session(
     if idempotency_key is not None:
         create_headers["Idempotency-Key"] = idempotency_key
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=create_headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt_id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 300,
@@ -288,12 +289,13 @@ async def _create_ready_session(
     assert created.status_code == 201
     session_id = created.json()["id"]
     finished = await client.post(
-        f"/api/v1/sketch-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "finished_early"},
     )
     assert finished.status_code == 200
-    assert finished.json()["status"] == "ready_for_photo"
+    assert finished.json()["status"] == "active"
+    assert finished.json()["stage"] == "ready_for_photo"
     return session_id
 
 
@@ -677,14 +679,17 @@ async def test_delete_hides_submission(client: AsyncClient) -> None:
     assert created.status_code == 201
     submission_id = created.json()["id"]
     body = created.json()
-    assert "/display" in body["image_url"] or "display" in body["image_url"]
-    assert "/thumbnail" in body["thumbnail_url"] or "thumbnail" in body["thumbnail_url"]
-    assert "/original" not in body["image_url"]
-    assert "/original" not in body["thumbnail_url"]
+    assert "/display" in body["content"]["image_url"] or "display" in body["content"]["image_url"]
+    assert (
+        "/thumbnail" in body["content"]["thumbnail_url"]
+        or "thumbnail" in body["content"]["thumbnail_url"]
+    )
+    assert "/original" not in body["content"]["image_url"]
+    assert "/original" not in body["content"]["thumbnail_url"]
 
     fetched = await client.get(f"/api/v1/submissions/{submission_id}", headers=headers)
     assert fetched.status_code == 200
-    assert "/original" not in fetched.json()["image_url"]
+    assert "/original" not in fetched.json()["content"]["image_url"]
 
     deleted = await client.delete(f"/api/v1/submissions/{submission_id}", headers=headers)
     assert deleted.status_code == 204
@@ -782,9 +787,10 @@ async def _create_ready_story_session(
     if idempotency_key is not None:
         create_headers["Idempotency-Key"] = idempotency_key
     created = await client.post(
-        "/api/v1/story-sessions",
+        "/api/v1/sessions",
         headers=create_headers,
         json={
+            "creative_type": "story",
             "prompt_id": str(prompt_id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 300,
@@ -793,12 +799,13 @@ async def _create_ready_story_session(
     assert created.status_code == 201
     session_id = created.json()["id"]
     finished = await client.post(
-        f"/api/v1/story-sessions/{session_id}/events",
+        f"/api/v1/sessions/{session_id}/events",
         headers=headers,
         json={"event_type": "finished_early"},
     )
     assert finished.status_code == 200
-    assert finished.json()["status"] == "writing"
+    assert finished.json()["status"] == "active"
+    assert finished.json()["stage"] == "writing"
     return session_id
 
 
@@ -820,7 +827,8 @@ async def test_story_publication_create_and_feed_filter(client: AsyncClient) -> 
     assert created.status_code == 201
     body = created.json()
     assert body["creative_type"] == CREATIVE_TYPE_STORY
-    assert body["body"] == "Once upon a coffee bean."
+    assert body["content"]["body"] == "Once upon a coffee bean."
+    assert body["content"]["word_count"] == 5
     assert body["session_id"] == session_id
     assert body["upload_id"] is None
 
@@ -862,9 +870,10 @@ async def test_story_session_lifecycle(client: AsyncClient) -> None:
     headers = _auth_headers(client)
     prompt = await _seed_prompt(client)
     created = await client.post(
-        "/api/v1/story-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "story",
             "prompt_id": str(prompt.id),
             "timer_mode": "no_timer",
         },
@@ -872,12 +881,12 @@ async def test_story_session_lifecycle(client: AsyncClient) -> None:
     assert created.status_code == 201
     session_id = created.json()["id"]
 
-    fetched = await client.get(f"/api/v1/story-sessions/{session_id}", headers=headers)
+    fetched = await client.get(f"/api/v1/sessions/{session_id}", headers=headers)
     assert fetched.status_code == 200
     assert fetched.json()["status"] == "active"
 
     abandoned = await client.post(
-        f"/api/v1/story-sessions/{session_id}/abandon",
+        f"/api/v1/sessions/{session_id}/abandon",
         headers=headers,
     )
     assert abandoned.status_code == 200
@@ -917,9 +926,10 @@ async def test_two_day_old_prompt_rejected_at_session_create(client: AsyncClient
     prompt = await _seed_prompt_on(client, today - timedelta(days=2))
 
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 300,
@@ -941,9 +951,10 @@ async def test_tomorrow_prompt_rejected_at_session_create(client: AsyncClient) -
     prompt = await _seed_prompt_on(client, today + timedelta(days=1))
 
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers=headers,
         json={
+            "creative_type": "sketch",
             "prompt_id": str(prompt.id),
             "timer_mode": "no_timer",
         },
@@ -998,9 +1009,10 @@ async def test_lazy_session_create_rejects_stale_prompt(client: AsyncClient) -> 
     )
 
     created = await client.post(
-        "/api/v1/sketch-sessions",
+        "/api/v1/sessions",
         headers={**headers, "Idempotency-Key": "draft-session-stale"},
         json={
+            "creative_type": "sketch",
             "prompt_id": str(stale.id),
             "timer_mode": "countdown",
             "selected_timer_seconds": 300,

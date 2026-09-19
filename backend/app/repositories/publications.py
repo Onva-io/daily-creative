@@ -15,12 +15,9 @@ from app.models.creative_publication import (
     PublicationStatus,
     PublicationVisibility,
 )
+from app.models.creative_session import CreativeSession
 from app.models.daily_prompt import DailyPrompt
 from app.models.enums import CreativeType
-from app.models.sketch_session import SketchSession
-from app.models.sketch_submission import SketchSubmission
-from app.models.story_session import StorySession
-from app.models.story_submission import StorySubmission
 from app.models.upload import Upload
 from app.models.user import User, UserStatus
 
@@ -34,10 +31,7 @@ class FeedRow:
     publication: CreativePublication
     user: User
     prompt: DailyPrompt
-    sketch_session: SketchSession | None
-    story_session: StorySession | None
-    sketch_submission: SketchSubmission | None
-    story_submission: StorySubmission | None
+    session: CreativeSession | None
     upload: Upload | None
 
 
@@ -45,85 +39,41 @@ class PublicationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create_sketch(
+    async def create(
         self,
         *,
         user_id: uuid.UUID,
         prompt_id: uuid.UUID,
+        creative_type: CreativeType,
         session_id: uuid.UUID,
-        sketch_session_id: uuid.UUID,
-        upload_id: uuid.UUID,
         caption: str | None,
+        upload_id: uuid.UUID | None,
+        content: dict[str, Any],
         published_at: datetime,
         commit: bool = True,
-    ) -> tuple[CreativePublication, SketchSubmission]:
+    ) -> CreativePublication:
         publication = CreativePublication(
             id=uuid.uuid4(),
             user_id=user_id,
             prompt_id=prompt_id,
-            creative_type=CreativeType.sketch,
+            creative_type=creative_type,
             session_id=session_id,
-            visibility=PublicationVisibility.public,
-            status=PublicationStatus.published,
-            like_count=0,
-            reflection_count=0,
-            published_at=published_at,
-        )
-        detail = SketchSubmission(
-            publication_id=publication.id,
-            sketch_session_id=sketch_session_id,
+            caption=caption,
             upload_id=upload_id,
-            caption=caption,
-        )
-        self._session.add(publication)
-        self._session.add(detail)
-        if commit:
-            await self._session.commit()
-            await self._session.refresh(publication)
-            await self._session.refresh(detail)
-        else:
-            await self._session.flush()
-        return publication, detail
-
-    async def create_story(
-        self,
-        *,
-        user_id: uuid.UUID,
-        prompt_id: uuid.UUID,
-        session_id: uuid.UUID,
-        story_session_id: uuid.UUID,
-        body: str,
-        caption: str | None,
-        published_at: datetime,
-        commit: bool = True,
-    ) -> tuple[CreativePublication, StorySubmission]:
-        publication = CreativePublication(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            prompt_id=prompt_id,
-            creative_type=CreativeType.story,
-            session_id=session_id,
+            content=content,
             visibility=PublicationVisibility.public,
             status=PublicationStatus.published,
             like_count=0,
             reflection_count=0,
             published_at=published_at,
         )
-        detail = StorySubmission(
-            publication_id=publication.id,
-            story_session_id=story_session_id,
-            body=body,
-            caption=caption,
-        )
         self._session.add(publication)
-        self._session.add(detail)
         if commit:
             await self._session.commit()
             await self._session.refresh(publication)
-            await self._session.refresh(detail)
         else:
             await self._session.flush()
-        return publication, detail
+        return publication
 
     async def get_by_id(self, publication_id: uuid.UUID) -> CreativePublication | None:
         result = await self._session.execute(
@@ -131,35 +81,11 @@ class PublicationRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_sketch_submission_by_session_id(
-        self,
-        sketch_session_id: uuid.UUID,
-    ) -> SketchSubmission | None:
+    async def get_by_session_id(self, session_id: uuid.UUID) -> CreativePublication | None:
         result = await self._session.execute(
-            select(SketchSubmission).where(SketchSubmission.sketch_session_id == sketch_session_id)
+            select(CreativePublication).where(CreativePublication.session_id == session_id)
         )
         return result.scalar_one_or_none()
-
-    async def get_story_submission_by_session_id(
-        self,
-        story_session_id: uuid.UUID,
-    ) -> StorySubmission | None:
-        result = await self._session.execute(
-            select(StorySubmission).where(StorySubmission.story_session_id == story_session_id)
-        )
-        return result.scalar_one_or_none()
-
-    async def get_sketch_submission(
-        self,
-        publication_id: uuid.UUID,
-    ) -> SketchSubmission | None:
-        return await self._session.get(SketchSubmission, publication_id)
-
-    async def get_story_submission(
-        self,
-        publication_id: uuid.UUID,
-    ) -> StorySubmission | None:
-        return await self._session.get(StorySubmission, publication_id)
 
     async def list_recent_published(
         self,
@@ -280,64 +206,24 @@ class PublicationRepository:
 
     async def _map_feed_rows(self, statement: Select[Any]) -> list[FeedRow]:
         result = await self._session.execute(statement)
-        rows: list[FeedRow] = []
-        for (
-            publication,
-            user,
-            prompt,
-            sketch_session,
-            story_session,
-            sketch_submission,
-            story_submission,
-            upload,
-        ) in result.all():
-            rows.append(
-                FeedRow(
-                    publication=publication,
-                    user=user,
-                    prompt=prompt,
-                    sketch_session=sketch_session,
-                    story_session=story_session,
-                    sketch_submission=sketch_submission,
-                    story_submission=story_submission,
-                    upload=upload,
-                )
+        return [
+            FeedRow(
+                publication=publication,
+                user=user,
+                prompt=prompt,
+                session=session,
+                upload=upload,
             )
-        return rows
+            for publication, user, prompt, session, upload in result.all()
+        ]
 
-    def _base_feed_select(
-        self,
-    ) -> Select[Any]:
+    def _base_feed_select(self) -> Select[Any]:
         return (
-            select(
-                CreativePublication,
-                User,
-                DailyPrompt,
-                SketchSession,
-                StorySession,
-                SketchSubmission,
-                StorySubmission,
-                Upload,
-            )
+            select(CreativePublication, User, DailyPrompt, CreativeSession, Upload)
             .join(User, User.id == CreativePublication.user_id)
             .join(DailyPrompt, DailyPrompt.id == CreativePublication.prompt_id)
-            .outerjoin(
-                SketchSubmission,
-                SketchSubmission.publication_id == CreativePublication.id,
-            )
-            .outerjoin(
-                StorySubmission,
-                StorySubmission.publication_id == CreativePublication.id,
-            )
-            .outerjoin(
-                SketchSession,
-                SketchSession.id == CreativePublication.session_id,
-            )
-            .outerjoin(
-                StorySession,
-                StorySession.id == CreativePublication.session_id,
-            )
-            .outerjoin(Upload, Upload.id == SketchSubmission.upload_id)
+            .outerjoin(CreativeSession, CreativeSession.id == CreativePublication.session_id)
+            .outerjoin(Upload, Upload.id == CreativePublication.upload_id)
             .where(
                 CreativePublication.status == PublicationStatus.published,
                 CreativePublication.deleted_at.is_(None),

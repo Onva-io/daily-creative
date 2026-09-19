@@ -4,11 +4,11 @@ import OSLog
 enum AnalyticsEventName: String, Sendable {
     case appOpened = "app_opened"
     case promptViewed = "prompt_viewed"
-    case startSketchTapped = "start_sketch_tapped"
+    case startSessionTapped = "start_session_tapped"
     case timerOptionSelected = "timer_option_selected"
-    case sketchSessionStarted = "sketch_session_started"
-    case sketchSessionPaused = "sketch_session_paused"
-    case sketchSessionResumed = "sketch_session_resumed"
+    case sessionStarted = "session_started"
+    case sessionPaused = "session_paused"
+    case sessionResumed = "session_resumed"
     case timerCompleted = "timer_completed"
     case sessionFinishedEarly = "session_finished_early"
     case sessionAbandoned = "session_abandoned"
@@ -29,10 +29,8 @@ enum AnalyticsEventName: String, Sendable {
     case profileViewed = "profile_viewed"
     case reminderEnabled = "reminder_enabled"
     case reminderDisabled = "reminder_disabled"
-    case storySessionStarted = "story_session_started"
-    case storyWritingStarted = "story_writing_started"
-    case storyPublished = "story_published"
-    case storyDraftSaved = "story_draft_saved"
+    /// Type-specific step after the timer (writing editor opened, capture shown…).
+    case creationStepStarted = "creation_step_started"
 }
 
 struct AnalyticsRecord: Equatable, Sendable {

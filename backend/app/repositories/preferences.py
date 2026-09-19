@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import time
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -25,8 +24,6 @@ class PreferencesRepository:
     async def create_defaults(self, user_id: uuid.UUID) -> UserPreferences:
         prefs = UserPreferences(
             user_id=user_id,
-            notifications_enabled=False,
-            notification_time_local=None,
             timezone="UTC",
             appearance=AppearancePreference.system,
         )
@@ -46,15 +43,9 @@ class PreferencesRepository:
         self,
         prefs: UserPreferences,
         *,
-        notifications_enabled: bool | None = None,
-        notification_time_local: time | None | object = ...,
         timezone: str | None = None,
         appearance: AppearancePreference | None = None,
     ) -> UserPreferences:
-        if notifications_enabled is not None:
-            prefs.notifications_enabled = notifications_enabled
-        if notification_time_local is not ...:
-            prefs.notification_time_local = notification_time_local  # type: ignore[assignment]
         if timezone is not None:
             prefs.timezone = timezone
         if appearance is not None:

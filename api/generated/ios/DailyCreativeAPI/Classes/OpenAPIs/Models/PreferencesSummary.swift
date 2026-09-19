@@ -10,7 +10,7 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Preference summary returned with the current user and preferences endpoints. Values are persisted in &#x60;user_preferences&#x60;.  */
+/** Preference summary returned with the current user and preferences endpoints, scoped by the &#x60;creative_type&#x60; query parameter. Timer memory and the daily reminder are per app (&#x60;creative_type_preferences&#x60;); timezone and appearance are account-wide (&#x60;user_preferences&#x60;).  */
 public struct PreferencesSummary: Codable, JSONEncodable, Hashable {
 
     public var notificationsEnabled: Bool

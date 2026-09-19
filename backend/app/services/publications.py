@@ -1,4 +1,4 @@
-"""Publication application service."""
+"""Publication application service shared by every creative type."""
 
 from __future__ import annotations
 
@@ -12,30 +12,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.clock import Clock
 from app.core.errors import AppError
 from app.core.settings import Settings, get_settings
-from app.creative_types import get_creative_type_registry
+from app.creative_types import MediaUrls, get_creative_type_registry
 from app.models.creative_publication import PublicationStatus
+from app.models.creative_session import TERMINAL_SESSION_STATUSES
 from app.models.enums import CreativeType
-from app.models.sketch_session import SketchSessionStatus
-from app.models.sketch_session_event import SketchSessionEventType
-from app.models.story_session import StorySessionStatus
-from app.models.story_session_event import StorySessionEventType
-from app.models.upload import UploadStatus
+from app.models.upload import Upload, UploadStatus
 from app.models.user import User, UserStatus
 from app.repositories.blocks import BlockRepository
+from app.repositories.creative_sessions import CreativeSessionRepository
 from app.repositories.idempotency import IdempotencyRepository
 from app.repositories.likes import LikeRepository
 from app.repositories.prompts import PromptRepository
 from app.repositories.publications import PublicationRepository
-from app.repositories.sketch_sessions import SketchSessionRepository
-from app.repositories.story_sessions import StorySessionRepository
 from app.repositories.uploads import UploadRepository
 from app.repositories.users import UserRepository
-from app.schemas.submissions import (
-    CreateSubmissionRequest,
-    SketchSubmissionContent,
-    StorySubmissionContent,
-    SubmissionResponse,
-)
+from app.schemas.submissions import CreateSubmissionRequest, SubmissionResponse
+from app.services.creative_sessions import CreativeSessionService
+from app.services.media_urls import signed_display_url, signed_thumbnail_url
 from app.services.profile import ProfileService
 from app.services.prompts import assert_prompt_within_window
 from app.storage.base import StorageAdapter
@@ -54,8 +47,8 @@ class PublicationService:
         self._session = session
         self._publications = PublicationRepository(session)
         self._uploads = UploadRepository(session)
-        self._sketch_sessions = SketchSessionRepository(session)
-        self._story_sessions = StorySessionRepository(session)
+        self._sessions = CreativeSessionRepository(session)
+        self._session_service = CreativeSessionService(session, clock, settings)
         self._prompts = PromptRepository(session)
         self._users = UserRepository(session)
         self._likes = LikeRepository(session)
@@ -94,13 +87,7 @@ class PublicationService:
                     existing.response_status,
                 )
 
-        creative_type = CreativeType(payload.creative_type.value)
-        self._registry.get(creative_type)
-
-        if creative_type == CreativeType.sketch:
-            response = await self._create_sketch(user, payload)
-        else:
-            response = await self._create_story(user, payload)
+        response = await self._create(user, payload)
 
         now = self._clock.now()
         if idempotency_key:
@@ -116,76 +103,80 @@ class PublicationService:
 
         return response, 201
 
-    async def _create_sketch(
-        self,
-        user: User,
-        payload: CreateSubmissionRequest,
-    ) -> SubmissionResponse:
-        if not isinstance(payload.content, SketchSubmissionContent):
+    async def _create(self, user: User, payload: CreateSubmissionRequest) -> SubmissionResponse:
+        creative_type = CreativeType(payload.creative_type.value)
+        definition = self._registry.get(creative_type)
+        if payload.content.creative_type != creative_type.value:
             raise AppError(
                 code="validation_error",
-                message="Sketch submissions require sketch content.",
+                message=f"{creative_type.value.capitalize()} submissions require "
+                f"{creative_type.value} content.",
                 status_code=422,
             )
 
         caption = _normalise_caption(payload.content.caption, self._settings.caption_max_length)
-        sketch_session = await self._sketch_sessions.get_by_id(payload.session_id)
-        if sketch_session is None or sketch_session.user_id != user.id:
+        stored_content = definition.handler.validate(payload.content)
+
+        creative_session = await self._sessions.get_by_id(payload.session_id)
+        if (
+            creative_session is None
+            or creative_session.user_id != user.id
+            or creative_session.creative_type != creative_type
+        ):
             raise AppError(
                 code="session_not_found",
-                message="The requested sketch session could not be found.",
+                message="The requested session could not be found.",
                 status_code=404,
             )
-        if payload.prompt_id != sketch_session.prompt_id:
+        if payload.prompt_id != creative_session.prompt_id:
             raise AppError(
                 code="prompt_mismatch",
                 message="This submission targets a different prompt than its session.",
                 status_code=409,
-                details={"session_prompt_id": str(sketch_session.prompt_id)},
+                details={"session_prompt_id": str(creative_session.prompt_id)},
             )
 
-        existing = await self._publications.get_sketch_submission_by_session_id(sketch_session.id)
+        existing = await self._publications.get_by_session_id(creative_session.id)
         if existing is not None:
             raise AppError(
                 code="session_already_submitted",
-                message="This sketch session already has a published submission.",
+                message="This session already has a published submission.",
                 status_code=409,
             )
 
-        if sketch_session.status in {
-            SketchSessionStatus.abandoned,
-            SketchSessionStatus.expired,
-            SketchSessionStatus.completed,
-        }:
+        if creative_session.status in TERMINAL_SESSION_STATUSES:
             raise AppError(
                 code="invalid_session_transition",
                 message="That lifecycle event is not valid for the current session state.",
                 status_code=422,
-                details={"status": sketch_session.status.value},
+                details={"status": creative_session.status.value},
             )
 
-        upload = await self._uploads.get_by_id(payload.content.upload_id)
-        if upload is None or upload.user_id != user.id:
-            raise AppError(
-                code="upload_not_found",
-                message="The requested upload could not be found.",
-                status_code=404,
-            )
-        if upload.status == UploadStatus.consumed:
-            raise AppError(
-                code="upload_already_consumed",
-                message="This upload has already been used.",
-                status_code=409,
-            )
-        if upload.status != UploadStatus.ready:
-            raise AppError(
-                code="upload_not_ready",
-                message="This upload is not ready to publish yet.",
-                status_code=422,
-                details={"status": upload.status.value},
-            )
+        upload: Upload | None = None
+        if definition.requires_upload:
+            upload_id = getattr(payload.content, "upload_id", None)
+            upload = await self._uploads.get_by_id(upload_id) if upload_id else None
+            if upload is None or upload.user_id != user.id:
+                raise AppError(
+                    code="upload_not_found",
+                    message="The requested upload could not be found.",
+                    status_code=404,
+                )
+            if upload.status == UploadStatus.consumed:
+                raise AppError(
+                    code="upload_already_consumed",
+                    message="This upload has already been used.",
+                    status_code=409,
+                )
+            if upload.status != UploadStatus.ready:
+                raise AppError(
+                    code="upload_not_ready",
+                    message="This upload is not ready to publish yet.",
+                    status_code=422,
+                    details={"status": upload.status.value},
+                )
 
-        prompt = await self._prompts.get_published_by_id(sketch_session.prompt_id)
+        prompt = await self._prompts.get_published_by_id(creative_session.prompt_id)
         if prompt is None:
             raise AppError(
                 code="prompt_not_found",
@@ -202,155 +193,37 @@ class PublicationService:
         from app.services.content_moderation import ContentModerationService
 
         moderator = ContentModerationService(self._session, settings=self._settings)
+        texts = list(definition.handler.moderation_texts(content=stored_content))
         if caption:
+            texts.append((f"{creative_type.value}_caption", caption))
+        for context, text in texts:
+            if not text:
+                continue
             await moderator.screen_text(
-                text=caption,
-                context="sketch_caption",
+                text=text,
+                context=context,
                 target_type=ReportTargetType.submission,
-                target_id=sketch_session.id,
+                target_id=creative_session.id,
                 user_id=user.id,
                 commit=False,
             )
 
         now = self._clock.now()
-        publication, _detail = await self._publications.create_sketch(
+        publication = await self._publications.create(
             user_id=user.id,
             prompt_id=prompt.id,
-            session_id=sketch_session.id,
-            sketch_session_id=sketch_session.id,
-            upload_id=upload.id,
+            creative_type=creative_type,
+            session_id=creative_session.id,
             caption=caption,
+            upload_id=upload.id if upload is not None else None,
+            content=stored_content,
             published_at=now,
             commit=False,
         )
-        await self._uploads.mark_consumed(upload, consumed_at=now, commit=False)
+        if upload is not None:
+            await self._uploads.mark_consumed(upload, consumed_at=now, commit=False)
 
-        await self._sketch_sessions.add_event(
-            sketch_session=sketch_session,
-            event_type=SketchSessionEventType.submission_created,
-            occurred_at=now,
-        )
-        sketch_session.status = SketchSessionStatus.completed
-        sketch_session.completed_at = now
-        if sketch_session.upload_completed_at is None:
-            sketch_session.upload_completed_at = now
-        await self._sketch_sessions.save(sketch_session, commit=False)
-        await self._session.commit()
-
-        return await self._to_response(publication_id=publication.id, viewer=user)
-
-    async def _create_story(
-        self,
-        user: User,
-        payload: CreateSubmissionRequest,
-    ) -> SubmissionResponse:
-        if not isinstance(payload.content, StorySubmissionContent):
-            raise AppError(
-                code="validation_error",
-                message="Story submissions require story content.",
-                status_code=422,
-            )
-
-        if not payload.content.body or not payload.content.body.strip():
-            raise AppError(
-                code="validation_error",
-                message="body is required for story submissions.",
-                status_code=422,
-            )
-
-        caption = _normalise_caption(payload.content.caption, self._settings.caption_max_length)
-        body = payload.content.body.strip()
-
-        story_session = await self._story_sessions.get_by_id(payload.session_id)
-        if story_session is None or story_session.user_id != user.id:
-            raise AppError(
-                code="session_not_found",
-                message="The requested story session could not be found.",
-                status_code=404,
-            )
-        if payload.prompt_id != story_session.prompt_id:
-            raise AppError(
-                code="prompt_mismatch",
-                message="This submission targets a different prompt than its session.",
-                status_code=409,
-                details={"session_prompt_id": str(story_session.prompt_id)},
-            )
-
-        existing = await self._publications.get_story_submission_by_session_id(story_session.id)
-        if existing is not None:
-            raise AppError(
-                code="session_already_submitted",
-                message="This story session already has a published submission.",
-                status_code=409,
-            )
-
-        from app.models.report import ReportTargetType
-        from app.services.content_moderation import ContentModerationService
-
-        moderator = ContentModerationService(self._session, settings=self._settings)
-        await moderator.screen_text(
-            text=body,
-            context="story_body",
-            target_type=ReportTargetType.submission,
-            target_id=story_session.id,
-            user_id=user.id,
-            commit=False,
-        )
-        if caption:
-            await moderator.screen_text(
-                text=caption,
-                context="story_caption",
-                target_type=ReportTargetType.submission,
-                target_id=story_session.id,
-                user_id=user.id,
-                commit=False,
-            )
-
-        if story_session.status in {
-            StorySessionStatus.completed,
-            StorySessionStatus.abandoned,
-            StorySessionStatus.expired,
-        }:
-            raise AppError(
-                code="invalid_session_transition",
-                message="That lifecycle event is not valid for the current session state.",
-                status_code=422,
-                details={"status": story_session.status.value},
-            )
-
-        prompt = await self._prompts.get_published_by_id(story_session.prompt_id)
-        if prompt is None:
-            raise AppError(
-                code="prompt_not_found",
-                message="The requested prompt could not be found.",
-                status_code=404,
-            )
-        assert_prompt_within_window(
-            prompt.prompt_date,
-            today=self._clock.today(),
-            backdate_days=self._settings.submission_backdate_days,
-        )
-
-        now = self._clock.now()
-        publication, _detail = await self._publications.create_story(
-            user_id=user.id,
-            prompt_id=prompt.id,
-            session_id=story_session.id,
-            story_session_id=story_session.id,
-            body=body,
-            caption=caption,
-            published_at=now,
-            commit=False,
-        )
-
-        await self._story_sessions.add_event(
-            story_session=story_session,
-            event_type=StorySessionEventType.submission_created,
-            occurred_at=now,
-        )
-        story_session.status = StorySessionStatus.completed
-        story_session.completed_at = now
-        await self._story_sessions.save(story_session, commit=False)
+        await self._session_service.complete_for_publication(creative_session, now=now)
         await self._session.commit()
 
         return await self._to_response(publication_id=publication.id, viewer=user)
@@ -365,13 +238,11 @@ class PublicationService:
 
     async def delete(self, *, user: User, submission_id: uuid.UUID) -> None:
         publication = await self._publications.get_by_id(submission_id)
-        if publication is None or publication.status == PublicationStatus.deleted:
-            raise AppError(
-                code="submission_not_found",
-                message="The requested submission could not be found.",
-                status_code=404,
-            )
-        if publication.user_id != user.id:
+        if (
+            publication is None
+            or publication.status == PublicationStatus.deleted
+            or publication.user_id != user.id
+        ):
             raise AppError(
                 code="submission_not_found",
                 message="The requested submission could not be found.",
@@ -381,25 +252,10 @@ class PublicationService:
         now = self._clock.now()
         await self._publications.soft_delete(publication, deleted_at=now)
 
-        definition = self._registry.get(publication.creative_type)
-        if definition.cleans_up_upload_on_delete:
-            sketch_detail = await self._publications.get_sketch_submission(publication.id)
-            if sketch_detail is not None:
-                upload = await self._uploads.get_by_id(sketch_detail.upload_id)
-                if upload is not None:
-                    display_key = self._storage.derivative_key(
-                        original_key=upload.storage_key,
-                        kind="display",
-                    )
-                    thumbnail_key = self._storage.derivative_key(
-                        original_key=upload.storage_key,
-                        kind="thumbnail",
-                    )
-                    for key in (upload.storage_key, display_key, thumbnail_key):
-                        try:
-                            await self._storage.delete_object(key=key)
-                        except Exception:
-                            pass
+        if publication.upload_id is not None:
+            upload = await self._uploads.get_by_id(publication.upload_id)
+            if upload is not None:
+                await delete_upload_media(self._storage, upload)
 
     async def _to_response(
         self,
@@ -421,34 +277,14 @@ class PublicationService:
 
         user = await self._users.get_by_id(publication.user_id)
         prompt = await self._prompts.get_by_id(publication.prompt_id)
-
-        sketch_session = None
-        story_session = None
-        sketch_detail = None
-        story_detail = None
-        if publication.creative_type == CreativeType.sketch:
-            sketch_session = await self._sketch_sessions.get_by_id(publication.session_id)
-            sketch_detail = await self._publications.get_sketch_submission(publication.id)
-        else:
-            story_session = await self._story_sessions.get_by_id(publication.session_id)
-            story_detail = await self._publications.get_story_submission(publication.id)
-
-        session = sketch_session or story_session
-
-        upload = None
-        if sketch_detail is not None:
-            upload = await self._uploads.get_by_id(sketch_detail.upload_id)
+        creative_session = await self._sessions.get_by_id(publication.session_id)
 
         if (
             user is None
             or prompt is None
-            or session is None
+            or creative_session is None
             or user.deleted_at is not None
-            or user.status
-            not in {
-                UserStatus.incomplete,
-                UserStatus.active,
-            }
+            or user.status not in {UserStatus.incomplete, UserStatus.active}
         ):
             raise AppError(
                 code="submission_not_found",
@@ -466,40 +302,35 @@ class PublicationService:
                 status_code=404,
             )
 
-        image_url = None
-        thumbnail_url = None
-        if upload is not None:
-            expires_at = self._clock.now() + timedelta(
-                seconds=self._settings.signed_read_expiry_seconds
-            )
-            display_key = self._storage.derivative_key(
-                original_key=upload.storage_key,
-                kind="display",
-            )
-            thumbnail_key = self._storage.derivative_key(
-                original_key=upload.storage_key,
-                kind="thumbnail",
-            )
-            image_url = await self._storage.read_url(key=display_key, expires_at=expires_at)
-            thumbnail_url = await self._storage.read_url(
-                key=thumbnail_key,
-                expires_at=expires_at,
-            )
+        expires_at = self._clock.now() + timedelta(
+            seconds=self._settings.signed_read_expiry_seconds
+        )
+
+        media = MediaUrls()
+        if publication.upload_id is not None:
+            upload = await self._uploads.get_by_id(publication.upload_id)
+            if upload is not None:
+                media = MediaUrls(
+                    image_url=await signed_display_url(
+                        storage=self._storage,
+                        original_key=upload.storage_key,
+                        expires_at=expires_at,
+                    ),
+                    thumbnail_url=await signed_thumbnail_url(
+                        storage=self._storage,
+                        original_key=upload.storage_key,
+                        expires_at=expires_at,
+                    ),
+                )
 
         avatar_url = None
         if user.avatar_upload_id is not None:
-            avatar_expires = self._clock.now() + timedelta(
-                seconds=self._settings.signed_read_expiry_seconds
-            )
             avatar_upload = await self._uploads.get_by_id(user.avatar_upload_id)
             if avatar_upload is not None:
-                avatar_display_key = self._storage.derivative_key(
+                avatar_url = await signed_display_url(
+                    storage=self._storage,
                     original_key=avatar_upload.storage_key,
-                    kind="display",
-                )
-                avatar_url = await self._storage.read_url(
-                    key=avatar_display_key,
-                    expires_at=avatar_expires,
+                    expires_at=expires_at,
                 )
 
         is_owner = viewer is not None and viewer.id == publication.user_id
@@ -510,31 +341,38 @@ class PublicationService:
                 user_id=viewer.id,
             )
 
-        caption = None
-        body = None
-        upload_id = None
-        if sketch_detail is not None:
-            caption = sketch_detail.caption
-            upload_id = sketch_detail.upload_id
-        if story_detail is not None:
-            caption = story_detail.caption
-            body = story_detail.body
+        definition = self._registry.get(publication.creative_type)
+        content = definition.handler.project(
+            content=publication.content or {},
+            media=media,
+            is_owner=is_owner,
+            preview=False,
+        )
 
         return SubmissionResponse.from_parts(
             publication=publication,
             user=user,
             prompt=prompt,
-            sketch_session=sketch_session,
-            story_session=story_session,
-            image_url=image_url,
-            thumbnail_url=thumbnail_url,
-            body=body,
-            caption=caption,
-            upload_id=upload_id,
+            session=creative_session,
+            content=content,
             is_owner=is_owner,
             viewer_has_liked=viewer_has_liked,
             avatar_url=avatar_url,
         )
+
+
+async def delete_upload_media(storage: StorageAdapter, upload: Upload) -> None:
+    """Best-effort removal of an upload's original and derivatives."""
+    keys = (
+        upload.storage_key,
+        storage.derivative_key(original_key=upload.storage_key, kind="display"),
+        storage.derivative_key(original_key=upload.storage_key, kind="thumbnail"),
+    )
+    for key in keys:
+        try:
+            await storage.delete_object(key=key)
+        except Exception:
+            pass
 
 
 # Backward-compatible alias.

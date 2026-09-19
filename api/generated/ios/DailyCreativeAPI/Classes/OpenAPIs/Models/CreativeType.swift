@@ -14,4 +14,5 @@ import AnyCodable
 public enum CreativeType: String, Codable, CaseIterable {
     case sketch = "sketch"
     case story = "story"
+    case photo = "photo"
 }

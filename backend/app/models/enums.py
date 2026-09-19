@@ -8,7 +8,7 @@ from sqlalchemy import Enum
 
 
 class TimerMode(str, enum.Enum):
-    """Remembered Sketch Session timer mode."""
+    """Creative session timer mode."""
 
     countdown = "countdown"
     no_timer = "no_timer"
@@ -19,6 +19,7 @@ class CreativeType(str, enum.Enum):
 
     sketch = "sketch"
     story = "story"
+    photo = "photo"
 
 
 # Single shared Postgres enum type so create_all / multiple models do not
