@@ -64,6 +64,7 @@ make ios-build IOS_ENV=development          # remote development API
 make ios-build IOS_ENV=staging              # staging API
 make ios-build IOS_ENV=production           # production API
 make ios-build IOS_APP=DailyStory           # Daily Story instead of Daily Sketch
+make ios-build IOS_APP=DailyPhoto           # Daily Photo
 ```
 
 ### iOS build environments
@@ -72,10 +73,10 @@ Each environment is defined once in `ios/Config/Environments/*.xcconfig` (shared
 
 | Environment | Xcode scheme | API base URL |
 | --- | --- | --- |
-| Local | DailySketch / DailyStory | `http://localhost:8000` |
-| Development | DailySketch Development / DailyStory Development | `https://api.development.dailycreative.example` |
-| Staging | DailySketch Staging / DailyStory Staging | `https://daily-creative-staging.up.railway.app` |
-| Production | DailySketch Production / DailyStory Production | `https://api.dailycreative.example` |
+| Local | DailySketch / DailyStory / DailyPhoto | `http://localhost:8000` |
+| Development | DailySketch Development / DailyStory Development / DailyPhoto Development | `https://api.development.dailycreative.example` |
+| Staging | DailySketch Staging / DailyStory Staging / DailyPhoto Staging | `https://daily-creative-staging.up.railway.app` |
+| Production | DailySketch Production / DailyStory Production / DailyPhoto Production | `https://api.dailycreative.example` |
 
 Staging points at the shared Railway test API and Descope project (`P3GtbG5aJKoUuefcaA8DfyMzA0nK`). Development/production hostnames and Descope IDs remain placeholders until real values are supplied. Non-production builds show an environment badge in the app.
 

@@ -67,9 +67,16 @@ An app target contributes only its module, entry point and resources.
      `makeGuestDraftCard(dependencies:)`.
    - `Resources/` (Info.plist, entitlements, assets, PrivacyInfo.xcprivacy).
 2. Image-based types compose `CaptureModuleSupport` (timer → capture → review →
-   publish) and only supply a `PublicationContentBuilder`. Other flows write a
-   `{Type}FlowViewModel` on top of `TimedSessionViewModel` and a home view
-   built from `HomeSections` + `HomeViewModel.make(dependencies:)`.
+   publish) and supply a `CaptureContentPlugin`. The plugin owns everything the
+   type adds to an image: it receives the `CapturedImage` (normalised JPEG plus
+   the picker's original bytes for metadata), returns a
+   `CaptureExtrasControlling` per review session that renders an optional
+   editor under the caption, persists its state as the opaque
+   `LocalDraft.contentExtras`, and builds the `PublicationContent`. Sketch uses
+   `SketchCapturePlugin` (nothing extra); Photo uses `PhotoCapturePlugin`
+   (location). Other flows write a `{Type}FlowViewModel` on top of
+   `TimedSessionViewModel` and a home view built from `HomeSections` +
+   `HomeViewModel.make(dependencies:)`.
 3. Add one target in `ios/project.yml` with `templates: [CreativeApp]`, the
    branding settings (`APP_BUNDLE_ID_BASE`, `BRAND_NAME`, `CREATIVE_TYPE_ID`,
    `COMMUNITY_TITLE`, `START_ACTION_TITLE`, `REQUIRES_CAMERA`,
@@ -77,9 +84,13 @@ An app target contributes only its module, entry point and resources.
    keys. Add four schemes with `templates: [CreativeAppScheme]`.
    Environment xcconfigs in `ios/Config/Environments/` are shared; do not add
    per-app copies.
-4. Add one `case` to `SubmissionContentModel` (+ `FeedMapping.mapContent`) and
-   one branch to `SubmissionContentView` for the new `content` shape.
-5. No `#if PRODUCT_*` or `creativeType ==` checks in `ios/DailyCreative/`.
+4. Add one `case` to `SubmissionContentModel` (+ `FeedMapping.mapContent`),
+   one to `PublicationContent` (+ `PublicationRepository.createPublication`),
+   and one branch to `SubmissionContentView` for the new `content` shape.
+5. Type-only logic gets its own `Daily{Type}Tests` unit-test target hosted by
+   the new app (see `DailyPhotoTests`); shared-shell tests stay in
+   `DailySketchTests`.
+6. No `#if PRODUCT_*` or `creativeType ==` checks in `ios/DailyCreative/`.
 
 ### 4. Tests
 

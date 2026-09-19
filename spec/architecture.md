@@ -265,6 +265,17 @@ publication networking go through the unified `CreativeSessionRepository` and
 `PublicationRepository`; type-specific stage events are opaque strings supplied
 by the module's flow.
 
+Image-based types (sketch, photo) share one capture flow (`CaptureFlowViewModel`
+→ `CaptureSourceView` → `ReviewSubmissionViewModel`) and differ only through a
+`CaptureContentPlugin`. The flow hands the plugin each `CapturedImage`
+(normalised JPEG plus the picker's original bytes, so EXIF can be read before
+it is discarded), and the plugin returns a `CaptureExtrasControlling` per
+review session. That controller renders an optional editor under the caption,
+serialises its state into the opaque `LocalDraft.contentExtras`, and turns the
+finished upload into a `PublicationContent`. Daily Photo's controller is the
+location editor; Daily Sketch's is empty. The review screen, draft store and
+guest sign-in checkpoint never learn what the extras contain.
+
 Compile-time product switches (`#if PRODUCT_*`) and `creativeType ==` checks
 are not permitted in `ios/DailyCreative/`. Build environments live once in
 `ios/Config/Environments/`; per-app branding is set on the target in
@@ -1535,7 +1546,7 @@ Version one should avoid adding a durable queue unless necessary.
 
 ## 18.4 Metadata stripping
 
-Remove unnecessary EXIF metadata, including precise location.
+Remove unnecessary EXIF metadata, including precise location. This holds for Daily Photo too: the iOS client reads EXIF GPS from the picker's original bytes purely to seed the author's location editor, and uploads a re-encoded JPEG with no metadata. Stored location is the author-confirmed value in `creative_publications.content`, not anything read from the image server-side.
 
 ## 18.5 Read URLs
 
@@ -1826,7 +1837,7 @@ Rate-limit or protect:
 ## 23.5 Privacy
 
 - strip EXIF;
-- no precise location;
+- no precise location, except the author-confirmed, per-post location of a Daily Photo publication (exact coordinates are projected to other users only when the author opted in; the coordinate `source` is never returned);
 - do not log tokens;
 - minimise user data in logs;
 - protect Draft files with iOS file protection.
@@ -2223,7 +2234,7 @@ The platform supports multiple creative types (sketch, story, and future types) 
 - **Publication anchor + typed detail tables**: `creative_publications` holds shared social/index fields with a generic `session_id`. Each creative type has a 1:1 detail table (`sketch_submissions`, `story_submissions`) with typed payload columns.
 - **Shared social layer**: Likes, reflections, blocks, and reports remain keyed on `creative_publications.id` regardless of creative type.
 - **Type-scoped queries**: Feed, profile, and streak endpoints accept an optional `creative_type` filter parameter.
-- **Per-type iOS targets**: DailySketch and DailyStory are separate app targets sharing code from DailyCore (auth, profile, design system, social). Each target has its own session flow, branding, and build configuration.
+- **Per-type iOS targets**: DailySketch, DailyStory and DailyPhoto are separate app targets compiling the shared `DailyCreative` shell (see 5.1.1). Each target contributes one `CreativeModule` plus branding; image-based types further plug into the shared capture flow through a `CaptureContentPlugin`.
 - **ProductConfig**: Info.plist-driven branding (`BRAND_NAME`, `CREATIVE_TYPE_ID`) allows each app target to customize UI without code changes.
 
 To add a new creative type, see the "Adding a Future Creative Type" section in the [plan](../plans/daily_creative_platform.plan.md).

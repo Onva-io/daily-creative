@@ -155,6 +155,27 @@ targets:
         REQUIRES_CAMERA: "NO"
         DAILY_REMINDER_NOTIFICATION_ID: daily-story.daily-reminder
 
+  DailyPhoto:
+    templates: [CreativeApp]
+    info:
+      properties:
+        NSCameraUsageDescription: Daily Photo uses the camera so you can take today’s photo and share it with the community.
+        NSPhotoLibraryUsageDescription: Daily Photo accesses your photo library so you can choose an existing photo to review and share.
+        NSLocationWhenInUseUsageDescription: Daily Photo uses your location only to suggest where a photo was taken. You can change or remove it, and exact coordinates are shared only if you turn that on for a post.
+    entitlements:
+      properties:
+        com.apple.security.application-groups:
+          - group.com.codebrewery.dailycreatives.photo
+    settings:
+      base:
+        APP_BUNDLE_ID_BASE: com.codebrewery.dailycreatives.photo
+        BRAND_NAME: Daily Photo
+        CREATIVE_TYPE_ID: photo
+        COMMUNITY_TITLE: Community Photos
+        START_ACTION_TITLE: Take Photo
+        REQUIRES_CAMERA: "YES"
+        DAILY_REMINDER_NOTIFICATION_ID: daily-photo.daily-reminder
+
   # Shared-code unit tests run against the Daily Sketch host.
   DailySketchTests:
     type: bundle.unit-test
@@ -173,6 +194,25 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreatives.sketch.dev.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DailySketch.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/DailySketch"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  # Photo-only logic (location seeding, sharing, payload) against the Daily Photo host.
+  DailyPhotoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DailyPhotoTests
+    dependencies:
+      - target: DailyPhoto
+    configFiles:
+      Debug-Local: Config/Environments/Debug-Local.xcconfig
+      Debug-Development: Config/Environments/Debug-Development.xcconfig
+      Release-Staging: Config/Environments/Release-Staging.xcconfig
+      Release-Production: Config/Environments/Release-Production.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreatives.photo.dev.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DailyPhoto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/DailyPhoto"
         BUNDLE_LOADER: "$(TEST_HOST)"
   DailySketchUITests:
     type: bundle.ui-testing
@@ -269,5 +309,41 @@ schemes:
     templates: [CreativeAppScheme]
     templateAttributes:
       appTarget: DailyStory
+      runConfig: Release-Production
+      archiveConfig: Release-Production
+
+  DailyPhoto:
+    build:
+      targets:
+        DailyPhoto: all
+        DailyPhotoTests: [test]
+    run:
+      config: Debug-Local
+    test:
+      config: Debug-Local
+      targets:
+        - DailyPhotoTests
+    analyze:
+      config: Debug-Local
+    profile:
+      config: Release-Production
+    archive:
+      config: Release-Production
+  DailyPhoto Development:
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyPhoto
+      runConfig: Debug-Development
+      archiveConfig: Release-Staging
+  DailyPhoto Staging:
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyPhoto
+      runConfig: Release-Staging
+      archiveConfig: Release-Staging
+  DailyPhoto Production:
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyPhoto
       runConfig: Release-Production
       archiveConfig: Release-Production

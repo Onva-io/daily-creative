@@ -37,7 +37,7 @@ help:
 	@echo "  backup-postgres / restore-postgres BACKUP=path"
 	@echo "  api-validate / api-generate-ios / api-check-generated"
 	@echo "  repo-checks / ios-config-check / docker-build / ios-generate / ios-build / ios-test / test"
-	@echo "  ios-build|test with IOS_ENV=local|development|staging|production (IOS_APP=DailySketch|DailyStory)"
+	@echo "  ios-build|test with IOS_ENV=local|development|staging|production (IOS_APP=DailySketch|DailyStory|DailyPhoto)"
 
 up:
 	$(COMPOSE) up --build postgres minio minio-init backend
