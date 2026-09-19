@@ -1,9 +1,17 @@
 import Foundation
 import Observation
 
+/// Orchestrates the story flow: timer → writing editor → publish.
+///
+/// Uses the shared `TimedSessionViewModel` for the timer part and only adds
+/// what is story-specific: the text editor, local text drafts and the
+/// `writing_started` / `draft_saved` stage events.
 @MainActor
 @Observable
 final class StoryFlowViewModel {
+    static let writingStageEvent = "writing_started"
+    static let draftSavedEvent = "draft_saved"
+
     var showsTimerSelection = false
     var showsActiveSession = false
     var showsWritingEditor = false
@@ -18,43 +26,81 @@ final class StoryFlowViewModel {
     var draftSavedBanner: String?
     var lastPublishedSubmissionId: UUID?
 
-    private(set) var sessionViewModel: StorySessionViewModel?
+    private(set) var sessionViewModel: TimedSessionViewModel?
     private(set) var promptWords: [String]?
+
+    let creativeType: String
+    let sessionLabels: TimedSessionLabels
+    let defaultTimerOption: TimerPreferenceOption?
 
     private let auth: AuthSessionStore
     private let preferencesService: any PreferencesServing
     private let guestTimerStore: any GuestTimerPreferenceStoring
-    private let sessionService: any StorySessionServing
+    private let activeSessionStore: any ActiveSessionStoring
+    private let sessionService: any CreativeSessionServing
     private let draftTextStore: any DraftTextStoring
     private let submissionService: any SubmissionServing
     private let publishedStore: any PublishedSubmissionStoring
+    private let dateProvider: any DateProviding
     private let analytics: any AnalyticsTracking
     private let onPublishedToday: (() -> Void)?
 
     private var currentSessionId: UUID?
     private var currentPrompt: DailyPromptModel?
+    private var currentTimerOption: TimerPreferenceOption?
     private var cachedAuthenticatedPreference: TimerPreferenceOption?
 
     init(
+        creativeType: String,
+        sessionLabels: TimedSessionLabels,
+        defaultTimerOption: TimerPreferenceOption? = nil,
         auth: AuthSessionStore,
         preferencesService: any PreferencesServing,
         guestTimerStore: any GuestTimerPreferenceStoring,
-        sessionService: any StorySessionServing,
+        activeSessionStore: any ActiveSessionStoring,
+        sessionService: any CreativeSessionServing,
         draftTextStore: any DraftTextStoring,
         submissionService: any SubmissionServing,
         publishedStore: any PublishedSubmissionStoring,
+        dateProvider: any DateProviding = SystemDateProvider(),
         analytics: any AnalyticsTracking,
         onPublishedToday: (() -> Void)? = nil
     ) {
+        self.creativeType = creativeType
+        self.sessionLabels = sessionLabels
+        self.defaultTimerOption = defaultTimerOption
         self.auth = auth
         self.preferencesService = preferencesService
         self.guestTimerStore = guestTimerStore
+        self.activeSessionStore = activeSessionStore
         self.sessionService = sessionService
         self.draftTextStore = draftTextStore
         self.submissionService = submissionService
         self.publishedStore = publishedStore
+        self.dateProvider = dateProvider
         self.analytics = analytics
         self.onPublishedToday = onPublishedToday
+    }
+
+    static func make(
+        dependencies: AppDependencies,
+        onPublishedToday: (() -> Void)? = nil
+    ) -> StoryFlowViewModel {
+        StoryFlowViewModel(
+            creativeType: dependencies.module.creativeTypeID,
+            sessionLabels: dependencies.module.sessionLabels,
+            defaultTimerOption: dependencies.module.defaultTimerOption,
+            auth: dependencies.auth,
+            preferencesService: dependencies.preferencesService,
+            guestTimerStore: dependencies.guestTimerPreferenceStore,
+            activeSessionStore: dependencies.activeSessionStore,
+            sessionService: dependencies.sessionRepository,
+            draftTextStore: dependencies.draftTextStore,
+            submissionService: dependencies.submissionRepository,
+            publishedStore: dependencies.publishedSubmissionStore,
+            analytics: dependencies.analytics,
+            onPublishedToday: onPublishedToday
+        )
     }
 
     var wordCount: Int {
@@ -68,7 +114,7 @@ final class StoryFlowViewModel {
         Task { await refreshRememberedPreference() }
     }
 
-    func startWriting(prompt: DailyPromptModel) {
+    func start(prompt: DailyPromptModel) {
         guard auth.isAuthenticated else {
             authSheetMode = .signUp
             showsAuthSheet = true
@@ -82,7 +128,7 @@ final class StoryFlowViewModel {
                 selectedTimerOption = remembered
                 await beginSession(prompt: prompt, option: remembered, remember: false)
             } else {
-                selectedTimerOption = nil
+                selectedTimerOption = defaultTimerOption
                 rememberChoice = false
                 showsTimerSelection = true
             }
@@ -97,6 +143,7 @@ final class StoryFlowViewModel {
 
     func confirmTimerSelection(prompt: DailyPromptModel) {
         guard let selectedTimerOption else { return }
+        analytics.track(.timerOptionSelected, properties: ["timer_mode": selectedTimerOption.mode])
         showsTimerSelection = false
         Task {
             await beginSession(
@@ -107,18 +154,12 @@ final class StoryFlowViewModel {
         }
     }
 
-    func handleTimerCompleted() {
-        enterWritingPhase(eventType: "timer_completed")
-    }
-
-    func handleFinishedEarly() {
-        enterWritingPhase(eventType: "finished_early")
-    }
-
     func handleSessionEnded() {
         showsActiveSession = false
+        sessionViewModel?.stopTicking()
         if !showsWritingEditor {
             sessionViewModel = nil
+            currentSessionId = nil
         }
     }
 
@@ -126,13 +167,14 @@ final class StoryFlowViewModel {
         guard let sessionId = currentSessionId else { return }
         draftTextStore.saveDraft(draftText, forSessionId: sessionId)
         draftSavedBanner = "Draft saved."
-        analytics.track(.storyDraftSaved)
+        analytics.track(.draftSaved)
         Task {
             if let token = auth.accessToken {
-                _ = try? await sessionService.recordEvent(
+                _ = try? await sessionService.postEvent(
                     accessToken: token,
                     sessionId: sessionId,
-                    eventType: "draft_saved"
+                    eventType: Self.draftSavedEvent,
+                    clientOccurredAt: dateProvider.now()
                 )
             }
         }
@@ -158,20 +200,32 @@ final class StoryFlowViewModel {
             do {
                 let submission = try await submissionService.createPublication(
                     accessToken: token,
-                    creativeType: ProductConfig.current.creativeTypeID,
+                    creativeType: creativeType,
                     sessionId: sessionId,
                     promptId: currentPrompt?.id ?? UUID(),
                     content: .story(body: body, caption: nil),
-                    idempotencyKey: UUID().uuidString
+                    idempotencyKey: "story-publish-\(sessionId.uuidString)"
                 )
                 draftTextStore.deleteDraft(forSessionId: sessionId)
+                if let prompt = currentPrompt {
+                    let published = PublishedLocalSubmission(
+                        id: submission.id,
+                        promptId: prompt.id,
+                        promptDate: prompt.promptDate,
+                        timerMode: currentTimerOption?.mode ?? submission.timerMode,
+                        selectedTimerSeconds: currentTimerOption?.seconds ?? submission.timerSeconds,
+                        caption: submission.caption,
+                        publishedAt: submission.publishedAt
+                    )
+                    try? publishedStore.save(published)
+                }
                 lastPublishedSubmissionId = submission.id
                 showsWritingEditor = false
                 draftText = ""
                 currentSessionId = nil
                 sessionViewModel = nil
                 onPublishedToday?()
-                analytics.track(.storyPublished)
+                analytics.track(.submissionPublished, properties: ["submission_id": submission.id.uuidString])
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -196,57 +250,67 @@ final class StoryFlowViewModel {
         isCreatingSession = true
         defer { isCreatingSession = false }
 
+        let localId = UUID()
+        let startedAt = dateProvider.now()
         do {
             let session = try await sessionService.createSession(
                 accessToken: token,
+                creativeType: creativeType,
                 promptId: prompt.id,
                 timerMode: option.mode,
                 selectedTimerSeconds: option.seconds,
-                clientStartedAt: Date(),
-                idempotencyKey: UUID().uuidString
+                clientTimezone: TimeZone.current.identifier,
+                clientSessionId: localId.uuidString,
+                clientStartedAt: startedAt,
+                idempotencyKey: localId.uuidString
             )
             currentSessionId = session.id
             currentPrompt = prompt
+            currentTimerOption = option
             promptWords = prompt.words
             if let draft = draftTextStore.loadDraft(forSessionId: session.id) {
                 draftText = draft
             }
 
-            let model = StorySessionViewModel(
-                sessionId: session.id,
-                promptWords: prompt.words,
-                timerMode: option.mode,
-                timerSeconds: option.seconds,
+            let model = TimedSessionViewModel(
+                creativeType: creativeType,
+                labels: sessionLabels,
+                prompt: prompt,
+                timerOption: option,
+                localSessionId: localId,
+                serverSessionId: session.id,
+                startedAt: startedAt,
+                isGuest: false,
+                postTimerStageEvent: Self.writingStageEvent,
+                accessTokenProvider: { [weak self] in await self?.auth.validAccessToken() },
                 sessionService: sessionService,
-                accessToken: token,
-                onTimerCompleted: { [weak self] in
-                    self?.handleTimerCompleted()
+                activeSessionStore: activeSessionStore,
+                dateProvider: dateProvider,
+                analytics: analytics,
+                onEnded: { [weak self] in
+                    self?.handleSessionEnded()
                 },
-                onFinishedEarly: { [weak self] in
-                    self?.handleFinishedEarly()
+                onContinue: { [weak self] in
+                    self?.enterWritingPhase()
                 }
             )
             sessionViewModel = model
             showsActiveSession = true
-            analytics.track(.storySessionStarted)
+            analytics.track(.sessionStarted, properties: ["timer_mode": option.mode])
+            model.startTicking()
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func enterWritingPhase(eventType: String) {
-        _ = eventType
+    private func enterWritingPhase() {
+        sessionViewModel?.stopTicking()
+        // The story flow has no session-recovery UI; the text draft is what
+        // survives, keyed by server session id.
+        try? activeSessionStore.clear()
         showsActiveSession = false
         showsWritingEditor = true
-        analytics.track(.storyWritingStarted)
-        guard let token = auth.accessToken, let sessionId = currentSessionId else { return }
-        Task {
-            _ = try? await sessionService.recordEvent(
-                accessToken: token,
-                sessionId: sessionId,
-                eventType: "writing_started"
-            )
-        }
+        analytics.track(.creationStepStarted, properties: ["step": "writing"])
     }
 
     private func rememberedTimerOption() -> TimerPreferenceOption? {

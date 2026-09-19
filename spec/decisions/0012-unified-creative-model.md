@@ -45,7 +45,14 @@ Anything a user sets inside one app applies to that app only. Timer memory and t
 
 ## Consequences
 
-- Adding a creative type is one backend module, one enum value, OpenAPI schema additions, and one iOS module conforming to `CreativeModule` (Stage 2). No new tables, services, routes, or jobs.
+- Adding a creative type is one backend module, one enum value, OpenAPI schema additions, and one iOS module conforming to `CreativeModule`. No new tables, services, routes, or jobs.
+
+### iOS
+
+- The client mirrors the registry: `SubmissionContentModel` is the decoded `content` union, `SubmissionContentView` is the single place each type learns how to render, and `CreativeSessionRepository` replaces the per-type session repositories.
+- Each App Store target is a `CreativeModule` plus resources. `#if PRODUCT_*` conditionals and per-app copies of shared screens are removed; Daily Story's home, timer and analytics code collapse onto the shared `HomeViewModel`, `TimedSessionViewModel` and generic event names.
+- Timer/session/capture code is written once for image-based types (`CaptureModuleSupport`, `CaptureFlowViewModel`) so Daily Photo differs from Daily Sketch only in its publication payload.
+- Build environments are defined once in `ios/Config/Environments/`; per-app branding is on the target in `project.yml` (`CreativeApp` template). This normalised a few values that had drifted between the Sketch and Story xcconfigs (Story's staging badge/log level now match Sketch).
 - Type-specific queries against `content` are JSONB lookups; anything that needs indexing (none today) would be promoted to a column.
 - Existing sessions are backfilled with status/stage split (`ready_for_photo` → `active` + stage `ready_for_photo`, `writing` → `active` + stage `writing`); the downgrade path recreates the per-type tables and copies data back.
 - iOS clients must adopt the new session and `content` shapes before this backend ships (single coordinated release; local caches are version-bumped).

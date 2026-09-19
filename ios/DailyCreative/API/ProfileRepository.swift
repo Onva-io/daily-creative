@@ -18,13 +18,8 @@ struct PublicProfileModel: Equatable, Sendable, Identifiable {
         return "\(currentStreak)-day streak"
     }
 
-    var submissionCountLabel: String {
-        let noun = ProductConfig.current.creativeTypeID == "story" ? "story" : "sketch"
-        let plural = ProductConfig.current.creativeTypeID == "story" ? "stories" : "sketches"
-        if submissionCount == 1 {
-            return "1 \(noun)"
-        }
-        return "\(submissionCount) \(plural)"
+    func submissionCountLabel(vocabulary: CreativeVocabulary) -> String {
+        vocabulary.countLabel(submissionCount)
     }
 }
 

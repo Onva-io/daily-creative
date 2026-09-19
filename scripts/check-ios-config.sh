@@ -11,7 +11,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONFIG_ROOT="${ROOT}/ios/Config"
+# Environment xcconfigs are shared by every app target; per-app branding lives
+# in ios/project.yml and carries nothing that needs validating here.
+CONFIG_ROOT="${ROOT}/ios/Config/Environments"
 
 REQUIRED_KEYS=(
   API_BASE_URL
@@ -160,24 +162,16 @@ fi
 shopt -s nullglob
 files=()
 if [[ -n "${CONFIGURATION_ARG}" ]]; then
-  # Match Sketch (ios/Config/Release-*.xcconfig) and Story (ios/Config/DailyStory/...).
-  for candidate in \
-    "${CONFIG_ROOT}/${CONFIGURATION_ARG}.xcconfig" \
-    "${CONFIG_ROOT}/DailyStory/${CONFIGURATION_ARG}.xcconfig"
-  do
-    if [[ -f "${candidate}" ]]; then
-      files+=("${candidate}")
-    fi
-  done
+  candidate="${CONFIG_ROOT}/${CONFIGURATION_ARG}.xcconfig"
+  if [[ -f "${candidate}" ]]; then
+    files+=("${candidate}")
+  fi
   if [[ "${#files[@]}" -eq 0 ]]; then
     echo "No xcconfig found for configuration ${CONFIGURATION_ARG} under ${CONFIG_ROOT}" >&2
     exit 1
   fi
 else
-  files=(
-    "${CONFIG_ROOT}"/Release-*.xcconfig
-    "${CONFIG_ROOT}"/DailyStory/Release-*.xcconfig
-  )
+  files=("${CONFIG_ROOT}"/Release-*.xcconfig)
 fi
 
 if [[ "${#files[@]}" -eq 0 ]]; then

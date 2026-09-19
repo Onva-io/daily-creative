@@ -170,36 +170,6 @@ final class HomeOfflineTests: XCTestCase {
         network: FixedNetworkMonitor,
         cache: InMemoryHomeCacheStore = InMemoryHomeCacheStore()
     ) -> HomeViewModel {
-        let auth = AuthSessionStore(
-            authService: MockAuthService(),
-            meFetcher: RecordingMeFetcher(
-                profile: CurrentUserProfile(
-                    id: UUID(),
-                    username: nil,
-                    displayName: "Guest",
-                    profileCompleted: false,
-                    status: "incomplete"
-                )
-            )
-        )
-        let sketchFlow = SketchFlowViewModel(
-            auth: auth,
-            preferencesService: RecordingMeFetcher(
-                profile: CurrentUserProfile(
-                    id: UUID(),
-                    username: nil,
-                    displayName: "Guest",
-                    profileCompleted: false,
-                    status: "incomplete"
-                )
-            ),
-            guestTimerStore: InMemoryGuestTimerPreferenceStore(),
-            activeSessionStore: InMemoryActiveSessionStore(),
-            sessionService: RecordingSketchSessionRepository(),
-            draftStore: InMemoryDraftStore(),
-            imageStore: InMemoryDraftImageStore(),
-            cameraAuthorizer: FakeCameraAuthorizer()
-        )
         return HomeViewModel(
             promptFetcher: fetcher,
             feedFetcher: fetcher,
@@ -207,12 +177,11 @@ final class HomeOfflineTests: XCTestCase {
             publishedStore: InMemoryPublishedSubmissionStore(),
             homeCacheStore: cache,
             networkMonitor: network,
-            analytics: InMemoryAnalyticsClient(),
-            sketchFlow: sketchFlow
+            analytics: InMemoryAnalyticsClient()
         )
     }
 
-    func testOfflineUsesCachedPromptAndAllowsStartSketch() async throws {
+    func testOfflineUsesCachedPromptAndAllowsStart() async throws {
         let fetcher = RecordingPromptFetcher()
         fetcher.prompt = samplePrompt()
         let cache = InMemoryHomeCacheStore()
@@ -230,7 +199,7 @@ final class HomeOfflineTests: XCTestCase {
         await model.load()
 
         XCTAssertTrue(model.isOffline)
-        XCTAssertTrue(model.canStartSketch)
+        XCTAssertTrue(model.canStartSession)
         XCTAssertNotNil(model.offlineIndicatorMessage)
         XCTAssertEqual(fetcher.todaysPromptCallCount, 0)
     }

@@ -243,6 +243,33 @@ Avoid:
 - a large third-party state-management framework unless clearly justified;
 - direct dependence of views on raw networking code.
 
+### 5.1.1 One shared shell, one module per app
+
+The iOS project is one XcodeGen spec (`ios/project.yml`) producing one App
+Store target per creative type. All targets compile `ios/DailyCreative/`; a
+target's own directory contains only three things:
+
+- `Daily{Type}App.swift` — builds `AppDependencies.live(module:)` and shows
+  `CreativeAppRootView`;
+- `{Type}Module.swift` — conforms to `CreativeModule` and supplies the API
+  `creative_type`, vocabulary/copy, timed-session labels, default timer option,
+  the Home tab root view and an optional guest draft card;
+- `Resources/` — Info.plist, entitlements, assets, privacy manifest.
+
+The shared shell (`RootTabView`, profile, settings, submission detail, feed and
+gallery cards, moderation, account deletion) never branches on the creative
+type. Published work renders through `SubmissionContentModel`, a client mirror
+of the API's discriminated `content` object, so mixed feeds and caches decode
+and display without the app knowing which type produced an item. Session and
+publication networking go through the unified `CreativeSessionRepository` and
+`PublicationRepository`; type-specific stage events are opaque strings supplied
+by the module's flow.
+
+Compile-time product switches (`#if PRODUCT_*`) and `creativeType ==` checks
+are not permitted in `ios/DailyCreative/`. Build environments live once in
+`ios/Config/Environments/`; per-app branding is set on the target in
+`project.yml` via the `CreativeApp` target template.
+
 ## 5.2 Backend
 
 Use:

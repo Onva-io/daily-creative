@@ -113,7 +113,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: uploads,
             submissionService: submissions,
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: uploader,
             publishedStore: publishedStore,
             accessTokenProvider: { "token" },
@@ -266,7 +266,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: uploads,
             submissionService: RecordingSubmissionRepository(),
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: RecordingDirectUploader(),
             accessTokenProvider: { "token" },
             isAuthenticated: { true },
@@ -367,7 +367,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: RecordingUploadRepository(),
             submissionService: submissions,
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: RecordingDirectUploader(),
             accessTokenProvider: { "token" },
             isAuthenticated: { true },
@@ -385,7 +385,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
     func testLazySessionCreateSendsClientStartedAt() async throws {
         let draftStore = InMemoryDraftStore()
         let imageStore = InMemoryDraftImageStore()
-        let sessions = RecordingSketchSessionRepository()
+        let sessions = RecordingCreativeSessionRepository()
         let startedAt = Date(timeIntervalSince1970: 1_784_300_000)
         let (baseDraft, data) = try makeDraft(imageStore: imageStore, serverSessionId: nil)
         let draft = LocalDraft(
@@ -446,7 +446,7 @@ final class ReviewSubmissionViewModelTests: XCTestCase {
             imageStore: imageStore,
             uploadService: RecordingUploadRepository(),
             submissionService: submissions,
-            sessionService: RecordingSketchSessionRepository(),
+            sessionService: RecordingCreativeSessionRepository(),
             directUploader: RecordingDirectUploader(),
             accessTokenProvider: { "token" },
             isAuthenticated: { true },

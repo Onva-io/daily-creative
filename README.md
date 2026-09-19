@@ -68,7 +68,7 @@ make ios-build IOS_APP=DailyStory           # Daily Story instead of Daily Sketc
 
 ### iOS build environments
 
-Each environment is defined in `ios/Config/*.xcconfig` and injected into the app at build time via `Info.plist`. Select a scheme in Xcode, or pass `IOS_ENV` to `make ios-build` / `make ios-test`.
+Each environment is defined once in `ios/Config/Environments/*.xcconfig` (shared by every app target) and injected into the app at build time via `Info.plist`. Per-app branding (`BRAND_NAME`, `CREATIVE_TYPE_ID`, bundle id base, …) lives on the target in `ios/project.yml`. Select a scheme in Xcode, or pass `IOS_ENV` to `make ios-build` / `make ios-test`.
 
 | Environment | Xcode scheme | API base URL |
 | --- | --- | --- |

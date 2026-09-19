@@ -76,9 +76,11 @@ STORY_DEFINITION = CreativeTypeDefinition(
     handler=StoryHandler(),
     post_timer_stage=STAGE_WRITING,
     stage_rules=(
+        # Clients emit this after `finished_early`/`timer_completed` already moved
+        # the session into the writing stage, so the transition is idempotent.
         StageRule(
             event="writing_started",
-            from_stages=frozenset({None}),
+            from_stages=frozenset({None, STAGE_WRITING}),
             to_stage=STAGE_WRITING,
         ),
         StageRule(

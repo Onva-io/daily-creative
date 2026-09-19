@@ -10,7 +10,7 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Partial preferences update. Omitted fields are left unchanged. */
+/** Partial preferences update. Omitted fields are left unchanged. Timer memory and reminder fields apply only to the &#x60;creative_type&#x60; in the query.  */
 public struct PreferencesUpdate: Codable, JSONEncodable, Hashable {
 
     public var notificationsEnabled: Bool?

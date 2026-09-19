@@ -10,7 +10,7 @@ import Foundation
 import AnyCodable
 #endif
 
-/** Public Submission projection with signed media URLs. */
+/** Public Submission projection. Shared fields are flat; type-specific fields (signed media URLs, story body, ...) live under &#x60;content&#x60;.  */
 public struct Submission: Codable, JSONEncodable, Hashable {
 
     public static let likeCountRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: nil, exclusiveMaximum: false, multipleOf: nil)
@@ -19,6 +19,7 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     public var id: UUID
     public var creativeType: CreativeType
     public var caption: String?
+    public var content: SubmissionContent
     public var visibility: SubmissionVisibility
     public var status: SubmissionStatus
     public var timerMode: TimerMode
@@ -28,18 +29,12 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     public var reflectionCount: Int
     public var viewerHasLiked: Bool
     public var isOwner: Bool
-    /** Short-lived signed display image URL. */
-    public var imageUrl: String?
-    /** Short-lived signed thumbnail URL. */
-    public var thumbnailUrl: String?
     public var user: FeedUserSummary
     public var prompt: FeedPromptSummary
     /** Canonical UUID string identifier. */
     public var sessionId: UUID
     /** Canonical UUID string identifier. */
     public var uploadId: UUID?
-    /** Full story body text. Null for non-story submissions. */
-    public var body: String?
     /** RFC 3339 UTC timestamp. */
     public var publishedAt: Date
     /** RFC 3339 UTC timestamp. */
@@ -47,10 +42,11 @@ public struct Submission: Codable, JSONEncodable, Hashable {
     /** RFC 3339 UTC timestamp. */
     public var updatedAt: Date
 
-    public init(id: UUID, creativeType: CreativeType, caption: String?, visibility: SubmissionVisibility, status: SubmissionStatus, timerMode: TimerMode, timerSeconds: Int?, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, imageUrl: String?, thumbnailUrl: String?, user: FeedUserSummary, prompt: FeedPromptSummary, sessionId: UUID, uploadId: UUID?, body: String?, publishedAt: Date, createdAt: Date, updatedAt: Date) {
+    public init(id: UUID, creativeType: CreativeType, caption: String?, content: SubmissionContent, visibility: SubmissionVisibility, status: SubmissionStatus, timerMode: TimerMode, timerSeconds: Int?, likeCount: Int, reflectionCount: Int, viewerHasLiked: Bool, isOwner: Bool, user: FeedUserSummary, prompt: FeedPromptSummary, sessionId: UUID, uploadId: UUID?, publishedAt: Date, createdAt: Date, updatedAt: Date) {
         self.id = id
         self.creativeType = creativeType
         self.caption = caption
+        self.content = content
         self.visibility = visibility
         self.status = status
         self.timerMode = timerMode
@@ -59,13 +55,10 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         self.reflectionCount = reflectionCount
         self.viewerHasLiked = viewerHasLiked
         self.isOwner = isOwner
-        self.imageUrl = imageUrl
-        self.thumbnailUrl = thumbnailUrl
         self.user = user
         self.prompt = prompt
         self.sessionId = sessionId
         self.uploadId = uploadId
-        self.body = body
         self.publishedAt = publishedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -75,6 +68,7 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         case id
         case creativeType = "creative_type"
         case caption
+        case content
         case visibility
         case status
         case timerMode = "timer_mode"
@@ -83,13 +77,10 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         case reflectionCount = "reflection_count"
         case viewerHasLiked = "viewer_has_liked"
         case isOwner = "is_owner"
-        case imageUrl = "image_url"
-        case thumbnailUrl = "thumbnail_url"
         case user
         case prompt
         case sessionId = "session_id"
         case uploadId = "upload_id"
-        case body
         case publishedAt = "published_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -102,6 +93,7 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         try container.encode(id, forKey: .id)
         try container.encode(creativeType, forKey: .creativeType)
         try container.encode(caption, forKey: .caption)
+        try container.encode(content, forKey: .content)
         try container.encode(visibility, forKey: .visibility)
         try container.encode(status, forKey: .status)
         try container.encode(timerMode, forKey: .timerMode)
@@ -110,13 +102,10 @@ public struct Submission: Codable, JSONEncodable, Hashable {
         try container.encode(reflectionCount, forKey: .reflectionCount)
         try container.encode(viewerHasLiked, forKey: .viewerHasLiked)
         try container.encode(isOwner, forKey: .isOwner)
-        try container.encode(imageUrl, forKey: .imageUrl)
-        try container.encode(thumbnailUrl, forKey: .thumbnailUrl)
         try container.encode(user, forKey: .user)
         try container.encode(prompt, forKey: .prompt)
         try container.encode(sessionId, forKey: .sessionId)
         try container.encode(uploadId, forKey: .uploadId)
-        try container.encode(body, forKey: .body)
         try container.encode(publishedAt, forKey: .publishedAt)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(updatedAt, forKey: .updatedAt)

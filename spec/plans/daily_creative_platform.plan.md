@@ -56,12 +56,30 @@ No new tables, services, routes, jobs, or `if creative_type ==` branches.
 
 ### 3. iOS app target
 
-1. Add xcconfig files under `ios/Config/Daily{Type}/`.
-2. Add the target in `ios/project.yml` from the `CreativeApp` template with
-   `CREATIVE_TYPE_ID` and branding keys.
-3. Add `ios/Daily{Type}/{Type}Module.swift` conforming to `CreativeModule`
-   (home view, session flow, review content editor, content card renderers).
-4. No `#if PRODUCT_*` or `creativeType ==` checks in `ios/DailyCreative/`.
+Everything under `ios/DailyCreative/` is shared and compiled into every app.
+An app target contributes only its module, entry point and resources.
+
+1. Create `ios/Daily{Type}/` with:
+   - `Daily{Type}App.swift` — `AppDependencies.live(module: {Type}Module())`
+     inside `CreativeAppRootView` (copy `DailyStoryApp.swift`; it is ~15 lines).
+   - `{Type}Module.swift` conforming to `CreativeModule`: `creativeTypeID`,
+     `vocabulary`, `sessionLabels`, `defaultTimerOption`, `makeHomeView()`,
+     `makeGuestDraftCard(dependencies:)`.
+   - `Resources/` (Info.plist, entitlements, assets, PrivacyInfo.xcprivacy).
+2. Image-based types compose `CaptureModuleSupport` (timer → capture → review →
+   publish) and only supply a `PublicationContentBuilder`. Other flows write a
+   `{Type}FlowViewModel` on top of `TimedSessionViewModel` and a home view
+   built from `HomeSections` + `HomeViewModel.make(dependencies:)`.
+3. Add one target in `ios/project.yml` with `templates: [CreativeApp]`, the
+   branding settings (`APP_BUNDLE_ID_BASE`, `BRAND_NAME`, `CREATIVE_TYPE_ID`,
+   `COMMUNITY_TITLE`, `START_ACTION_TITLE`, `REQUIRES_CAMERA`,
+   `DAILY_REMINDER_NOTIFICATION_ID`), its app group, and any usage-description
+   keys. Add four schemes with `templates: [CreativeAppScheme]`.
+   Environment xcconfigs in `ios/Config/Environments/` are shared; do not add
+   per-app copies.
+4. Add one `case` to `SubmissionContentModel` (+ `FeedMapping.mapContent`) and
+   one branch to `SubmissionContentView` for the new `content` shape.
+5. No `#if PRODUCT_*` or `creativeType ==` checks in `ios/DailyCreative/`.
 
 ### 4. Tests
 

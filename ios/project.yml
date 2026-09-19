@@ -28,168 +28,134 @@ packages:
     from: 0.9.0
   Sentry:
     path: Packages/SentryCocoa
+
+# ---------------------------------------------------------------------------
+# Adding an app
+#
+# 1. Create `<App>/` with `<App>App.swift`, `<App>Module.swift` (a
+#    `CreativeModule`) and `Resources/` (Info.plist, entitlements, assets,
+#    PrivacyInfo.xcprivacy) — copy DailyStory/Resources as a starting point.
+# 2. Add a target below with `templates: [CreativeApp]` and fill in the
+#    branding settings + app group. Add usage-description keys only if the
+#    app needs camera / photos / location.
+# 3. Add four schemes with `templates: [CreativeAppScheme]`, then run
+#    `make ios-generate`.
+#
+# Everything under DailyCreative/ is shared and compiled into every app.
+# Environment values come from Config/Environments/<Configuration>.xcconfig.
+# ---------------------------------------------------------------------------
+targetTemplates:
+  CreativeApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: ${target_name}
+      - path: DailyCreative
+    info:
+      path: ${target_name}/Resources/Info.plist
+      properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        API_BASE_URL: $(API_BASE_URL)
+        APP_ENVIRONMENT: $(APP_ENVIRONMENT)
+        DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
+        SUPPORT_URL: $(SUPPORT_URL)
+        SUPPORT_EMAIL: $(SUPPORT_EMAIL)
+        PRIVACY_URL: $(PRIVACY_URL)
+        TERMS_URL: $(TERMS_URL)
+        COMMUNITY_GUIDELINES_URL: $(COMMUNITY_GUIDELINES_URL)
+        SENTRY_DSN: $(SENTRY_DSN)
+        SHOW_ENVIRONMENT_BADGE: $(SHOW_ENVIRONMENT_BADGE)
+        ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
+        BRAND_NAME: $(BRAND_NAME)
+        CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
+        COMMUNITY_TITLE: $(COMMUNITY_TITLE)
+        START_ACTION_TITLE: $(START_ACTION_TITLE)
+        REQUIRES_CAMERA: $(REQUIRES_CAMERA)
+        DAILY_REMINDER_NOTIFICATION_ID: $(DAILY_REMINDER_NOTIFICATION_ID)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    configFiles:
+      Debug-Local: Config/Environments/Debug-Local.xcconfig
+      Debug-Development: Config/Environments/Debug-Development.xcconfig
+      Release-Staging: Config/Environments/Release-Staging.xcconfig
+      Release-Production: Config/Environments/Release-Production.xcconfig
+    preBuildScripts:
+      - name: Check Release Config
+        script: |
+          "$SRCROOT/../scripts/check-ios-config.sh" "$CONFIGURATION"
+        basedOnDependencyAnalysis: false
+    entitlements:
+      path: ${target_name}/Resources/${target_name}.entitlements
+      properties:
+        com.apple.developer.applesignin: [Default]
+    dependencies:
+      - package: DailyCreativeAPI
+      - package: DescopeKit
+      - package: Sentry
+    settings:
+      base:
+        PRODUCT_NAME: ${target_name}
+        INFOPLIST_FILE: ${target_name}/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGNING_ALLOWED: "YES"
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: 547PA5L58A
+        PROVISIONING_PROFILE_SPECIFIER: ""
+
 targets:
   DailySketch:
-    type: application
-    platform: iOS
-    sources:
-      - path: DailySketch
-      - path: DailyCreative
+    templates: [CreativeApp]
     info:
-      path: DailySketch/Resources/Info.plist
       properties:
-        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        API_BASE_URL: $(API_BASE_URL)
-        APP_ENVIRONMENT: $(APP_ENVIRONMENT)
-        DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
-        SUPPORT_URL: $(SUPPORT_URL)
-        SUPPORT_EMAIL: $(SUPPORT_EMAIL)
-        PRIVACY_URL: $(PRIVACY_URL)
-        TERMS_URL: $(TERMS_URL)
-        COMMUNITY_GUIDELINES_URL: $(COMMUNITY_GUIDELINES_URL)
-        SENTRY_DSN: $(SENTRY_DSN)
-        SHOW_ENVIRONMENT_BADGE: $(SHOW_ENVIRONMENT_BADGE)
-        ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
-        BRAND_NAME: $(BRAND_NAME)
-        CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
-        COMMUNITY_TITLE: $(COMMUNITY_TITLE)
-        START_ACTION_TITLE: $(START_ACTION_TITLE)
-        REQUIRES_CAMERA: $(REQUIRES_CAMERA)
-        DAILY_REMINDER_NOTIFICATION_ID: $(DAILY_REMINDER_NOTIFICATION_ID)
         NSCameraUsageDescription: Daily Sketch uses the camera so you can photograph your drawing and share it with the community.
         NSPhotoLibraryUsageDescription: Daily Sketch accesses your photo library so you can choose an existing sketch photo to review and share.
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-        UILaunchScreen:
-          UIColorName: LaunchBackground
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: false
-          UISceneConfigurations: {}
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-    configFiles:
-      Debug-Local: Config/Debug-Local.xcconfig
-      Debug-Development: Config/Debug-Development.xcconfig
-      Release-Staging: Config/Release-Staging.xcconfig
-      Release-Production: Config/Release-Production.xcconfig
-    preBuildScripts:
-      - name: Check Release Config
-        script: |
-          "$SRCROOT/../scripts/check-ios-config.sh" "$CONFIGURATION"
-        basedOnDependencyAnalysis: false
     entitlements:
-      path: DailySketch/Resources/DailySketch.entitlements
       properties:
-        com.apple.developer.applesignin: [Default]
         com.apple.security.application-groups:
           - group.com.codebrewery.dailycreatives.sketch
-    dependencies:
-      - package: DailyCreativeAPI
-      - package: DescopeKit
-      - package: Sentry
     settings:
       base:
-        PRODUCT_NAME: DailySketch
-        INFOPLIST_FILE: DailySketch/Resources/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        SWIFT_STRICT_CONCURRENCY: complete
-        CODE_SIGNING_ALLOWED: "YES"
-        CODE_SIGNING_REQUIRED: "NO"
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: 547PA5L58A
-        PROVISIONING_PROFILE_SPECIFIER: ""
+        APP_BUNDLE_ID_BASE: com.codebrewery.dailycreatives.sketch
+        BRAND_NAME: Daily Sketch
+        CREATIVE_TYPE_ID: sketch
+        COMMUNITY_TITLE: Community Sketches
+        START_ACTION_TITLE: Start Sketch
+        REQUIRES_CAMERA: "YES"
+        DAILY_REMINDER_NOTIFICATION_ID: daily-sketch.daily-reminder
+
   DailyStory:
-    type: application
-    platform: iOS
-    sources:
-      - path: DailyStory
-      - path: DailyCreative
-      - path: DailySketch/App
-        excludes:
-          - DailySketchApp.swift
-      - path: DailySketch/Features/Auth
-      - path: DailySketch/Features/Profile
-      - path: DailySketch/Features/Settings
-      - path: DailySketch/Features/Onboarding
-      - path: DailySketch/Features/Blocking
-      - path: DailySketch/Features/Reporting
-      - path: DailySketch/Features/SubmissionDetail
-      - path: DailySketch/Features/TimerSelection
-    info:
-      path: DailyStory/Resources/Info.plist
-      properties:
-        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        API_BASE_URL: $(API_BASE_URL)
-        APP_ENVIRONMENT: $(APP_ENVIRONMENT)
-        DESCOPE_PROJECT_ID: $(DESCOPE_PROJECT_ID)
-        SUPPORT_URL: $(SUPPORT_URL)
-        SUPPORT_EMAIL: $(SUPPORT_EMAIL)
-        PRIVACY_URL: $(PRIVACY_URL)
-        TERMS_URL: $(TERMS_URL)
-        COMMUNITY_GUIDELINES_URL: $(COMMUNITY_GUIDELINES_URL)
-        SENTRY_DSN: $(SENTRY_DSN)
-        SHOW_ENVIRONMENT_BADGE: $(SHOW_ENVIRONMENT_BADGE)
-        ANALYTICS_ENVIRONMENT: $(ANALYTICS_ENVIRONMENT)
-        BRAND_NAME: $(BRAND_NAME)
-        CREATIVE_TYPE_ID: $(CREATIVE_TYPE_ID)
-        COMMUNITY_TITLE: $(COMMUNITY_TITLE)
-        START_ACTION_TITLE: $(START_ACTION_TITLE)
-        REQUIRES_CAMERA: $(REQUIRES_CAMERA)
-        DAILY_REMINDER_NOTIFICATION_ID: $(DAILY_REMINDER_NOTIFICATION_ID)
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-        UILaunchScreen:
-          UIColorName: LaunchBackground
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: false
-          UISceneConfigurations: {}
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-    configFiles:
-      Debug-Local: Config/DailyStory/Debug-Local.xcconfig
-      Debug-Development: Config/DailyStory/Debug-Development.xcconfig
-      Release-Staging: Config/DailyStory/Release-Staging.xcconfig
-      Release-Production: Config/DailyStory/Release-Production.xcconfig
-    preBuildScripts:
-      - name: Check Release Config
-        script: |
-          "$SRCROOT/../scripts/check-ios-config.sh" "$CONFIGURATION"
-        basedOnDependencyAnalysis: false
+    templates: [CreativeApp]
     entitlements:
-      path: DailyStory/Resources/DailyStory.entitlements
       properties:
-        com.apple.developer.applesignin: [Default]
         com.apple.security.application-groups:
           - group.com.codebrewery.dailycreatives.story
-    dependencies:
-      - package: DailyCreativeAPI
-      - package: DescopeKit
-      - package: Sentry
     settings:
       base:
-        PRODUCT_NAME: DailyStory
-        INFOPLIST_FILE: DailyStory/Resources/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        SWIFT_STRICT_CONCURRENCY: complete
-        CODE_SIGNING_ALLOWED: "YES"
-        CODE_SIGNING_REQUIRED: "NO"
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: 547PA5L58A
-        PROVISIONING_PROFILE_SPECIFIER: ""
+        APP_BUNDLE_ID_BASE: com.codebrewery.dailycreatives.story
+        BRAND_NAME: Daily Story
+        CREATIVE_TYPE_ID: story
+        COMMUNITY_TITLE: Community Stories
+        START_ACTION_TITLE: Start Writing
+        REQUIRES_CAMERA: "NO"
+        DAILY_REMINDER_NOTIFICATION_ID: daily-story.daily-reminder
+
+  # Shared-code unit tests run against the Daily Sketch host.
   DailySketchTests:
     type: bundle.unit-test
     platform: iOS
@@ -198,10 +164,10 @@ targets:
     dependencies:
       - target: DailySketch
     configFiles:
-      Debug-Local: Config/Debug-Local.xcconfig
-      Debug-Development: Config/Debug-Development.xcconfig
-      Release-Staging: Config/Release-Staging.xcconfig
-      Release-Production: Config/Release-Production.xcconfig
+      Debug-Local: Config/Environments/Debug-Local.xcconfig
+      Debug-Development: Config/Environments/Debug-Development.xcconfig
+      Release-Staging: Config/Environments/Release-Staging.xcconfig
+      Release-Production: Config/Environments/Release-Production.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreatives.sketch.dev.tests
@@ -216,15 +182,32 @@ targets:
     dependencies:
       - target: DailySketch
     configFiles:
-      Debug-Local: Config/Debug-Local.xcconfig
-      Debug-Development: Config/Debug-Development.xcconfig
-      Release-Staging: Config/Release-Staging.xcconfig
-      Release-Production: Config/Release-Production.xcconfig
+      Debug-Local: Config/Environments/Debug-Local.xcconfig
+      Debug-Development: Config/Environments/Debug-Development.xcconfig
+      Release-Staging: Config/Environments/Release-Staging.xcconfig
+      Release-Production: Config/Environments/Release-Production.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.codebrewery.dailycreatives.sketch.dev.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: DailySketch
+
+schemeTemplates:
+  CreativeAppScheme:
+    build:
+      targets:
+        ${appTarget}: all
+    run:
+      config: ${runConfig}
+    test:
+      config: ${runConfig}
+    analyze:
+      config: ${runConfig}
+    profile:
+      config: ${archiveConfig}
+    archive:
+      config: ${archiveConfig}
+
 schemes:
   DailySketch:
     build:
@@ -246,100 +229,45 @@ schemes:
     archive:
       config: Release-Production
   DailySketch Development:
-    build:
-      targets:
-        DailySketch: all
-    run:
-      config: Debug-Development
-    test:
-      config: Debug-Development
-    analyze:
-      config: Debug-Development
-    profile:
-      config: Release-Staging
-    archive:
-      config: Release-Staging
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailySketch
+      runConfig: Debug-Development
+      archiveConfig: Release-Staging
   DailySketch Staging:
-    build:
-      targets:
-        DailySketch: all
-    run:
-      config: Release-Staging
-    test:
-      config: Release-Staging
-    analyze:
-      config: Release-Staging
-    profile:
-      config: Release-Staging
-    archive:
-      config: Release-Staging
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailySketch
+      runConfig: Release-Staging
+      archiveConfig: Release-Staging
   DailySketch Production:
-    build:
-      targets:
-        DailySketch: all
-    run:
-      config: Release-Production
-    test:
-      config: Release-Production
-    analyze:
-      config: Release-Production
-    profile:
-      config: Release-Production
-    archive:
-      config: Release-Production
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailySketch
+      runConfig: Release-Production
+      archiveConfig: Release-Production
+
   DailyStory:
-    build:
-      targets:
-        DailyStory: all
-    run:
-      config: Debug-Local
-    test:
-      config: Debug-Local
-    analyze:
-      config: Debug-Local
-    profile:
-      config: Release-Production
-    archive:
-      config: Release-Production
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyStory
+      runConfig: Debug-Local
+      archiveConfig: Release-Production
   DailyStory Development:
-    build:
-      targets:
-        DailyStory: all
-    run:
-      config: Debug-Development
-    test:
-      config: Debug-Development
-    analyze:
-      config: Debug-Development
-    profile:
-      config: Release-Staging
-    archive:
-      config: Release-Staging
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyStory
+      runConfig: Debug-Development
+      archiveConfig: Release-Staging
   DailyStory Staging:
-    build:
-      targets:
-        DailyStory: all
-    run:
-      config: Release-Staging
-    test:
-      config: Release-Staging
-    analyze:
-      config: Release-Staging
-    profile:
-      config: Release-Staging
-    archive:
-      config: Release-Staging
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyStory
+      runConfig: Release-Staging
+      archiveConfig: Release-Staging
   DailyStory Production:
-    build:
-      targets:
-        DailyStory: all
-    run:
-      config: Release-Production
-    test:
-      config: Release-Production
-    analyze:
-      config: Release-Production
-    profile:
-      config: Release-Production
-    archive:
-      config: Release-Production
+    templates: [CreativeAppScheme]
+    templateAttributes:
+      appTarget: DailyStory
+      runConfig: Release-Production
+      archiveConfig: Release-Production

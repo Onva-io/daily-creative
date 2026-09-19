@@ -77,8 +77,7 @@ enum HomeFeedState: Equatable {
 struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
     let id: UUID
     let creativeType: String
-    let imageURL: URL?
-    let thumbnailURL: URL?
+    let content: SubmissionContentModel
     let userId: UUID
     let username: String
     let displayName: String
@@ -88,15 +87,11 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
     let timerMode: String
     let timerSeconds: Int?
     let captionPreview: String?
-    let bodyPreview: String?
-    let wordCount: Int?
     let likeCount: Int
     let reflectionCount: Int
     let viewerHasLiked: Bool
     let isOwner: Bool
     let publishedAt: Date
-
-    var isStory: Bool { creativeType == "story" }
 
     var relativePublishedAt: String {
         RelativeTimestampFormatter.string(from: publishedAt)
@@ -116,7 +111,7 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
 
     var metadataLine: String {
         let prompt = promptWords.joined(separator: ", ")
-        if isStory, let wordCount {
+        if let wordCount = content.wordCount {
             let words = wordCount == 1 ? "1 word" : "\(wordCount) words"
             return "Prompt: \(prompt) • \(timerLabel) • \(words)"
         }
@@ -127,8 +122,7 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
         FeedItemModel(
             id: id,
             creativeType: creativeType,
-            imageURL: imageURL,
-            thumbnailURL: thumbnailURL,
+            content: content,
             userId: userId,
             username: username,
             displayName: displayName,
@@ -138,8 +132,6 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
             timerMode: timerMode,
             timerSeconds: timerSeconds,
             captionPreview: captionPreview,
-            bodyPreview: bodyPreview,
-            wordCount: wordCount,
             likeCount: likeCount,
             reflectionCount: reflectionCount,
             viewerHasLiked: liked,
@@ -152,8 +144,12 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
         FeedItemModel(
             id: UUID(uuidString: "d4e5f6a7-b8c9-0123-def0-234567890123")!,
             creativeType: "sketch",
-            imageURL: URL(string: "https://example.test/display")!,
-            thumbnailURL: URL(string: "https://example.test/thumb")!,
+            content: .sketch(
+                SketchContentModel(
+                    imageURL: URL(string: "https://example.test/display")!,
+                    thumbnailURL: URL(string: "https://example.test/thumb")!
+                )
+            ),
             userId: UUID(uuidString: "f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1")!,
             username: "sketchy_matt",
             displayName: "Matt",
@@ -163,8 +159,6 @@ struct FeedItemModel: Codable, Equatable, Sendable, Identifiable {
             timerMode: "countdown",
             timerSeconds: 300,
             captionPreview: "A quiet coffee and banana sketch.",
-            bodyPreview: nil,
-            wordCount: nil,
             likeCount: 0,
             reflectionCount: 0,
             viewerHasLiked: false,
