@@ -25,6 +25,10 @@ struct ReviewSubmissionView: View {
 
                     captionSection
 
+                    if let extrasEditor = model.extras.makeReviewView(isDisabled: model.isPublishing) {
+                        extrasEditor
+                    }
+
                     metadataRow
 
                     if model.isPublishing {

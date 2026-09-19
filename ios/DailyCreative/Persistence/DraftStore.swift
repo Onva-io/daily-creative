@@ -27,6 +27,9 @@ struct LocalDraft: Codable, Equatable, Sendable, Identifiable {
     var uploadId: UUID? = nil
     /// True after a successful signed upload and completeUpload call.
     var uploadCompleted: Bool = false
+    /// Type-specific state owned by the app's `CaptureContentPlugin` (for a
+    /// photo, its location). Opaque to the shared shell.
+    var contentExtras: Data? = nil
 
     var isRecoverable: Bool {
         !imageFileName.isEmpty

@@ -41,7 +41,7 @@ final class CaptureFlowViewModel {
     let creativeType: String
     let sessionLabels: TimedSessionLabels
     let defaultTimerOption: TimerPreferenceOption?
-    private let contentBuilder: PublicationContentBuilder
+    let plugin: any CaptureContentPlugin
 
     private let auth: AuthSessionStore
     private let preferencesService: any PreferencesServing
@@ -67,7 +67,7 @@ final class CaptureFlowViewModel {
         creativeType: String,
         sessionLabels: TimedSessionLabels,
         defaultTimerOption: TimerPreferenceOption? = nil,
-        contentBuilder: @escaping PublicationContentBuilder,
+        plugin: any CaptureContentPlugin = SketchCapturePlugin(),
         auth: AuthSessionStore,
         preferencesService: any PreferencesServing,
         guestTimerStore: any GuestTimerPreferenceStoring,
@@ -87,7 +87,7 @@ final class CaptureFlowViewModel {
         self.creativeType = creativeType
         self.sessionLabels = sessionLabels
         self.defaultTimerOption = defaultTimerOption
-        self.contentBuilder = contentBuilder
+        self.plugin = plugin
         self.auth = auth
         self.preferencesService = preferencesService
         self.guestTimerStore = guestTimerStore
@@ -232,10 +232,14 @@ final class CaptureFlowViewModel {
     }
 
     func handleCapturedImageData(_ data: Data) {
+        handleCapturedImage(CapturedImage(jpegData: data, originalData: nil, source: .library))
+    }
+
+    func handleCapturedImage(_ captured: CapturedImage) {
         captureValidationMessage = nil
         if replacingImageInReview, let reviewViewModel {
             do {
-                try reviewViewModel.replaceImage(with: data)
+                try reviewViewModel.replaceImage(with: captured)
                 replacingImageInReview = false
                 showsCaptureSource = false
                 showsReviewSubmission = true
@@ -247,13 +251,13 @@ final class CaptureFlowViewModel {
 
         guard let session = sessionViewModel else { return }
         do {
-            let draft = try createDraft(from: session, imageData: data)
+            let draft = try createDraft(from: session, imageData: captured.jpegData)
             try activeSessionStore.clear()
             showsActiveSession = false
             showsCaptureSource = false
             sessionViewModel?.stopTicking()
             sessionViewModel = nil
-            presentReview(for: draft, imageData: data)
+            presentReview(for: draft, imageData: captured.jpegData, captured: captured)
             analytics?.track(.photoCapturedOrSelected)
             refreshRecoveryState()
             refreshDraftState()
@@ -387,7 +391,7 @@ final class CaptureFlowViewModel {
         refreshDraftState()
     }
 
-    private func presentReview(for draft: LocalDraft, imageData: Data) {
+    private func presentReview(for draft: LocalDraft, imageData: Data, captured: CapturedImage? = nil) {
         let model = ReviewSubmissionViewModel(
             draft: draft,
             imageData: imageData,
@@ -397,7 +401,7 @@ final class CaptureFlowViewModel {
             uploadService: uploadService,
             submissionService: submissionService,
             sessionService: sessionService,
-            contentBuilder: contentBuilder,
+            extras: plugin.makeExtrasController(draft: draft, captured: captured),
             directUploader: directUploader,
             publishedStore: publishedStore,
             accessTokenProvider: { [weak self] in await self?.auth.validAccessToken() },

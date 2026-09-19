@@ -14,10 +14,6 @@ enum ReviewSubmissionLimits {
     static let maxCaptionLength = 280
 }
 
-/// Builds the type-specific publication payload once the image is uploaded.
-/// Image-based types differ only here (e.g. photo adds location).
-typealias PublicationContentBuilder = @MainActor (_ uploadId: UUID, _ caption: String?) -> PublicationContent
-
 @MainActor
 @Observable
 final class ReviewSubmissionViewModel {
@@ -41,13 +37,16 @@ final class ReviewSubmissionViewModel {
     }
 
     let creativeType: String
+    /// Type-specific state for this draft (e.g. a photo's location). The
+    /// review screen renders `extras.makeReviewView`; nothing here reads
+    /// inside it.
+    let extras: any CaptureExtrasControlling
 
     private let draftStore: any DraftStoring
     private let imageStore: any DraftImageStoring
     private let uploadService: (any UploadServing)?
     private let submissionService: (any SubmissionServing)?
     private let sessionService: (any CreativeSessionServing)?
-    private let contentBuilder: PublicationContentBuilder
     private let directUploader: (any DirectUploadTransporting)?
     private let publishedStore: (any PublishedSubmissionStoring)?
     private let accessTokenProvider: () async -> String?
@@ -68,7 +67,7 @@ final class ReviewSubmissionViewModel {
         uploadService: (any UploadServing)? = nil,
         submissionService: (any SubmissionServing)? = nil,
         sessionService: (any CreativeSessionServing)? = nil,
-        contentBuilder: PublicationContentBuilder? = nil,
+        extras: (any CaptureExtrasControlling)? = nil,
         directUploader: (any DirectUploadTransporting)? = nil,
         publishedStore: (any PublishedSubmissionStoring)? = nil,
         accessTokenProvider: @escaping () async -> String? = { nil },
@@ -91,9 +90,7 @@ final class ReviewSubmissionViewModel {
         self.submissionService = submissionService
         self.sessionService = sessionService
         // Plain image payload unless the creative type adds fields of its own.
-        self.contentBuilder = contentBuilder ?? { uploadId, caption in
-            .sketch(uploadId: uploadId, caption: caption)
-        }
+        self.extras = extras ?? SketchExtrasController()
         self.directUploader = directUploader
         self.publishedStore = publishedStore
         self.accessTokenProvider = accessTokenProvider
@@ -135,17 +132,22 @@ final class ReviewSubmissionViewModel {
     }
 
     func replaceImage(with data: Data) throws {
-        let image = try ImageValidation.validatedImage(from: data)
+        try replaceImage(with: CapturedImage(jpegData: data, originalData: nil, source: .library))
+    }
+
+    func replaceImage(with captured: CapturedImage) throws {
+        let image = try ImageValidation.validatedImage(from: captured.jpegData)
         let jpeg = try ImageValidation.normalizedJPEGData(from: image)
         let previousFileName = draft.imageFileName
         let newFileName = try imageStore.write(jpeg)
-        let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
-        draft.caption = trimmed.isEmpty ? nil : trimmed
+        extras.handleImageReplaced(captured)
         draft.imageFileName = newFileName
         draft.uploadId = nil
         draft.uploadCompleted = false
-        draft.updatedAt = dateProvider.now()
-        try draftStore.save(draft)
+        try persistEdits(
+            pendingAuthentication: draft.pendingAuthentication,
+            pendingPublication: draft.pendingPublication
+        )
         try? imageStore.delete(fileName: previousFileName)
         imageData = jpeg
         previewImage = UIImage(data: jpeg)
@@ -159,7 +161,7 @@ final class ReviewSubmissionViewModel {
             isSaving = true
             defer { isSaving = false }
             do {
-                try persistCaption(pendingAuthentication: draft.pendingAuthentication, pendingPublication: false)
+                try persistEdits(pendingAuthentication: draft.pendingAuthentication, pendingPublication: false)
                 analytics?.track(.draftSaved)
                 bannerMessage = "Saved to Drafts."
                 onFinished(.savedToDrafts)
@@ -184,7 +186,7 @@ final class ReviewSubmissionViewModel {
     }
 
     func continueLaterFromAuthCheckpoint() throws {
-        try persistCaption(pendingAuthentication: true, pendingPublication: false)
+        try persistEdits(pendingAuthentication: true, pendingPublication: false)
         onFinished(.continueLater)
     }
 
@@ -202,7 +204,7 @@ final class ReviewSubmissionViewModel {
         defer { isPublishing = false }
 
         do {
-            try persistCaption(
+            try persistEdits(
                 pendingAuthentication: !isAuthenticated(),
                 pendingPublication: true
             )
@@ -239,7 +241,10 @@ final class ReviewSubmissionViewModel {
                 creativeType: creativeType,
                 sessionId: sessionId,
                 promptId: draft.promptId,
-                content: contentBuilder(uploadId, trimmed.isEmpty ? nil : trimmed),
+                content: extras.makePublicationContent(
+                    uploadId: uploadId,
+                    caption: trimmed.isEmpty ? nil : trimmed
+                ),
                 idempotencyKey: idempotencyKey
             )
 
@@ -258,7 +263,7 @@ final class ReviewSubmissionViewModel {
             onFinished(.published(submission))
         } catch PublicationAPIError.sessionExpired {
             publishErrorMessage = PublicationAPIError.sessionExpired.localizedDescription
-            try? persistCaption(pendingAuthentication: true, pendingPublication: true)
+            try? persistEdits(pendingAuthentication: true, pendingPublication: true)
             analytics?.track(.authCheckpointShown)
             onFinished(.needsAuthentication)
         } catch PublicationAPIError.signedUploadExpired {
@@ -266,26 +271,26 @@ final class ReviewSubmissionViewModel {
             draft.uploadCompleted = false
             try? draftStore.save(draft)
             publishErrorMessage = PublicationAPIError.signedUploadExpired.localizedDescription
-            try? persistCaption(pendingAuthentication: false, pendingPublication: true)
+            try? persistEdits(pendingAuthentication: false, pendingPublication: true)
         } catch PublicationAPIError.promptDateOutOfWindow {
             isPublishBlocked = true
             publishErrorMessage = PublicationAPIError.promptDateOutOfWindow.localizedDescription
-            try? persistCaption(pendingAuthentication: false, pendingPublication: false)
+            try? persistEdits(pendingAuthentication: false, pendingPublication: false)
         } catch CreativeSessionAPIError.promptDateOutOfWindow {
             isPublishBlocked = true
             publishErrorMessage = CreativeSessionAPIError.promptDateOutOfWindow.localizedDescription
-            try? persistCaption(pendingAuthentication: false, pendingPublication: false)
+            try? persistEdits(pendingAuthentication: false, pendingPublication: false)
         } catch {
             if let apiError = error as? PublicationAPIError, apiError == .sessionExpired {
                 publishErrorMessage = apiError.localizedDescription
-                try? persistCaption(pendingAuthentication: true, pendingPublication: true)
+                try? persistEdits(pendingAuthentication: true, pendingPublication: true)
                 analytics?.track(.authCheckpointShown)
                 onFinished(.needsAuthentication)
                 return
             }
             publishErrorMessage = error.localizedDescription
             analytics?.track(.uploadFailed, properties: ["reason": "publish_error"])
-            try? persistCaption(pendingAuthentication: false, pendingPublication: true)
+            try? persistEdits(pendingAuthentication: false, pendingPublication: true)
         }
     }
 
@@ -424,9 +429,11 @@ final class ReviewSubmissionViewModel {
         return slot.id
     }
 
-    private func persistCaption(pendingAuthentication: Bool, pendingPublication: Bool) throws {
+    /// Writes the caption and the type-specific extras to the draft.
+    private func persistEdits(pendingAuthentication: Bool, pendingPublication: Bool) throws {
         let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         draft.caption = trimmed.isEmpty ? nil : trimmed
+        draft.contentExtras = try extras.encodeExtras()
         draft.pendingAuthentication = pendingAuthentication
         draft.pendingPublication = pendingPublication
         draft.updatedAt = dateProvider.now()

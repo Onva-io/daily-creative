@@ -43,7 +43,7 @@ enum TestFixtures {
             creativeType: module.creativeTypeID,
             sessionLabels: module.sessionLabels,
             defaultTimerOption: module.defaultTimerOption,
-            contentBuilder: { uploadId, caption in .sketch(uploadId: uploadId, caption: caption) },
+            plugin: SketchCapturePlugin(),
             auth: auth ?? makeAuth(profile: profile),
             preferencesService: RecordingMeFetcher(profile: profile),
             guestTimerStore: guestStore,

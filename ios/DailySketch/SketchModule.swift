@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Daily Sketch: timer → photograph your drawing → review → publish.
 ///
-/// Everything here is copy plus the choice of `CaptureModuleSupport`; the
-/// shell, session, capture and review screens are shared.
+/// Everything here is copy plus `SketchCapturePlugin`; the shell, session,
+/// capture and review screens are shared.
 @MainActor
 final class SketchModule: CreativeModule {
     let creativeTypeID = "sketch"
@@ -35,9 +35,7 @@ final class SketchModule: CreativeModule {
     let defaultTimerOption: TimerPreferenceOption? = nil
 
     func makeHomeView() -> AnyView {
-        CaptureModuleSupport.makeHomeView { uploadId, caption in
-            .sketch(uploadId: uploadId, caption: caption)
-        }
+        CaptureModuleSupport.makeHomeView { _ in SketchCapturePlugin() }
     }
 
     func makeGuestDraftCard(dependencies: AppDependencies) -> AnyView? {

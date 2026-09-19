@@ -5,8 +5,10 @@ import UIKit
 struct CaptureSourceView: View {
     /// "sketch" / "photo" — what the user is adding.
     let noun: String
+    /// Sentence under the title, from the app's `CaptureContentPlugin`.
+    let instructions: String
     let cameraAuthorizer: any CameraAuthorizing
-    let onImageData: (Data) -> Void
+    let onImage: (CapturedImage) -> Void
     let onCancel: () -> Void
     let onValidationError: (String) -> Void
 
@@ -30,7 +32,7 @@ struct CaptureSourceView: View {
                     .foregroundStyle(AppColors.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("Photograph your drawing or choose an existing photo from your library.")
+                Text(instructions)
                     .font(AppTypography.body)
                     .foregroundStyle(AppColors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,7 +106,7 @@ struct CaptureSourceView: View {
                 CameraPickerView(
                     onImage: { image in
                         showsCamera = false
-                        accept(image: image)
+                        accept(image: image, originalData: nil, source: .camera)
                     },
                     onCancel: { showsCamera = false }
                 )
@@ -159,7 +161,7 @@ struct CaptureSourceView: View {
                 return
             }
             let image = try ImageValidation.validatedImage(from: data)
-            accept(image: image)
+            accept(image: image, originalData: data, source: .library)
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             onValidationError(message)
@@ -167,10 +169,10 @@ struct CaptureSourceView: View {
         librarySelection = nil
     }
 
-    private func accept(image: UIImage) {
+    private func accept(image: UIImage, originalData: Data?, source: CapturedImage.Source) {
         do {
-            let data = try ImageValidation.normalizedJPEGData(from: image)
-            onImageData(data)
+            let jpeg = try ImageValidation.normalizedJPEGData(from: image)
+            onImage(CapturedImage(jpegData: jpeg, originalData: originalData, source: source))
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             onValidationError(message)
@@ -181,8 +183,9 @@ struct CaptureSourceView: View {
 #Preview {
     CaptureSourceView(
         noun: "sketch",
+        instructions: SketchCapturePlugin().captureInstructions,
         cameraAuthorizer: FakeCameraAuthorizer(),
-        onImageData: { _ in },
+        onImage: { _ in },
         onCancel: {},
         onValidationError: { _ in }
     )
@@ -191,8 +194,9 @@ struct CaptureSourceView: View {
 #Preview("Permission Denied") {
     CaptureSourceView(
         noun: "sketch",
+        instructions: SketchCapturePlugin().captureInstructions,
         cameraAuthorizer: FakeCameraAuthorizer(status: .denied, isCameraAvailable: false),
-        onImageData: { _ in },
+        onImage: { _ in },
         onCancel: {},
         onValidationError: { _ in }
     )

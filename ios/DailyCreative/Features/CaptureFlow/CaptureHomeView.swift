@@ -103,9 +103,10 @@ struct CaptureHomeView: View {
         ) {
             CaptureSourceView(
                 noun: vocabulary.noun,
+                instructions: flow.plugin.captureInstructions,
                 cameraAuthorizer: flow.cameraAuthorizerForCapture,
-                onImageData: { data in
-                    flow.handleCapturedImageData(data)
+                onImage: { captured in
+                    flow.handleCapturedImage(captured)
                 },
                 onCancel: {
                     flow.dismissCaptureSource()

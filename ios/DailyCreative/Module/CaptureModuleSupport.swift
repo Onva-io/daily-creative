@@ -5,27 +5,27 @@ import SwiftUI
 ///
 /// A module for such a type composes these instead of re-implementing the
 /// Home tab, flow view model and guest draft card. The only type-specific
-/// input is how the uploaded image becomes a publication payload.
+/// input is its `CaptureContentPlugin`.
 @MainActor
 enum CaptureModuleSupport {
-    static func makeHomeView(contentBuilder: @escaping PublicationContentBuilder) -> AnyView {
+    static func makeHomeView(plugin: @escaping @MainActor (AppDependencies) -> any CaptureContentPlugin) -> AnyView {
         AnyView(
             CaptureHomeView { dependencies in
-                makeFlowViewModel(dependencies: dependencies, contentBuilder: contentBuilder)
+                makeFlowViewModel(dependencies: dependencies, plugin: plugin(dependencies))
             }
         )
     }
 
     static func makeFlowViewModel(
         dependencies: AppDependencies,
-        contentBuilder: @escaping PublicationContentBuilder,
+        plugin: any CaptureContentPlugin,
         onPublishedToday: (() -> Void)? = nil
     ) -> CaptureFlowViewModel {
         CaptureFlowViewModel(
             creativeType: dependencies.module.creativeTypeID,
             sessionLabels: dependencies.module.sessionLabels,
             defaultTimerOption: dependencies.module.defaultTimerOption,
-            contentBuilder: contentBuilder,
+            plugin: plugin,
             auth: dependencies.auth,
             preferencesService: dependencies.preferencesService,
             guestTimerStore: dependencies.guestTimerPreferenceStore,
@@ -97,9 +97,7 @@ final class PreviewCreativeModule: CreativeModule {
     let defaultTimerOption: TimerPreferenceOption? = nil
 
     func makeHomeView() -> AnyView {
-        CaptureModuleSupport.makeHomeView { uploadId, caption in
-            .sketch(uploadId: uploadId, caption: caption)
-        }
+        CaptureModuleSupport.makeHomeView { _ in SketchCapturePlugin() }
     }
 
     func makeGuestDraftCard(dependencies: AppDependencies) -> AnyView? {
