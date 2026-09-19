@@ -87,10 +87,11 @@ class CreativeTypeRegistry:
 def _build_registry() -> CreativeTypeRegistry:
     # Adding a creative type: add its module here and its enum value in
     # app.models.enums.CreativeType (plus the one-line enum migration).
+    from app.creative_types.photo import PHOTO_DEFINITION
     from app.creative_types.sketch import SKETCH_DEFINITION
     from app.creative_types.story import STORY_DEFINITION
 
-    definitions = (SKETCH_DEFINITION, STORY_DEFINITION)
+    definitions = (SKETCH_DEFINITION, STORY_DEFINITION, PHOTO_DEFINITION)
     return CreativeTypeRegistry({definition.id: definition for definition in definitions})
 
 

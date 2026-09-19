@@ -19,6 +19,7 @@ class CreativeType(str, enum.Enum):
 
     sketch = "sketch"
     story = "story"
+    photo = "photo"
 
 
 # Single shared Postgres enum type so create_all / multiple models do not

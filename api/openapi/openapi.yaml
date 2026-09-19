@@ -3288,6 +3288,7 @@ components:
       enum:
         - sketch
         - story
+        - photo
     SubmissionVisibility:
       type: string
       description: Submission visibility. Version one supports public only.
@@ -3344,6 +3345,72 @@ components:
             - "null"
           description: Optional plain-text caption.
           maxLength: 280
+    PhotoLocationInput:
+      type: object
+      description: |
+        Where the photo was taken, as confirmed by the author. Coordinates
+        come as a pair; a label alone is allowed. `source` records how the
+        coordinates were obtained (EXIF, device, search, pin) for audit only
+        and is never returned. `share_exact` publishes the coordinates to
+        other users; off by default, in which case they only see `label`.
+      additionalProperties: false
+      properties:
+        latitude:
+          type:
+            - number
+            - "null"
+          minimum: -90
+          maximum: 90
+        longitude:
+          type:
+            - number
+            - "null"
+          minimum: -180
+          maximum: 180
+        label:
+          type:
+            - string
+            - "null"
+          description: Author-written place title, e.g. "Brighton seafront".
+          maxLength: 120
+        source:
+          oneOf:
+            - $ref: "#/components/schemas/PhotoLocationSource"
+            - type: "null"
+        share_exact:
+          type: boolean
+          default: false
+    PhotoLocationSource:
+      type: string
+      description: How a photo's coordinates were obtained. Audit only.
+      enum:
+        - exif
+        - device
+        - search
+        - pin
+    PhotoSubmissionContent:
+      type: object
+      description: Photo-specific submission payload.
+      additionalProperties: false
+      required:
+        - creative_type
+        - upload_id
+      properties:
+        creative_type:
+          type: string
+          const: photo
+        upload_id:
+          $ref: "#/components/schemas/UUID"
+        caption:
+          type:
+            - string
+            - "null"
+          description: Optional plain-text caption.
+          maxLength: 280
+        location:
+          oneOf:
+            - $ref: "#/components/schemas/PhotoLocationInput"
+            - type: "null"
     SketchContent:
       type: object
       description: Sketch-specific content returned on feed items and submissions.
@@ -3395,6 +3462,61 @@ components:
         word_count:
           type: integer
           minimum: 0
+    PhotoLocation:
+      type: object
+      description: |
+        A photo's location as seen by the requesting user. `latitude` and
+        `longitude` are null unless the author opted in to exact sharing
+        (`exact_shared`) or the requesting user is the author. `label` is the
+        author's own place title and is what other users see otherwise.
+      required:
+        - label
+        - latitude
+        - longitude
+        - exact_shared
+      properties:
+        label:
+          type:
+            - string
+            - "null"
+        latitude:
+          type:
+            - number
+            - "null"
+        longitude:
+          type:
+            - number
+            - "null"
+        exact_shared:
+          type: boolean
+    PhotoContent:
+      type: object
+      description: Photo-specific content returned on feed items and submissions.
+      required:
+        - creative_type
+        - image_url
+        - thumbnail_url
+        - location
+      properties:
+        creative_type:
+          type: string
+          const: photo
+        image_url:
+          type:
+            - string
+            - "null"
+          format: uri
+          description: Short-lived signed display image URL.
+        thumbnail_url:
+          type:
+            - string
+            - "null"
+          format: uri
+          description: Short-lived signed thumbnail URL.
+        location:
+          oneOf:
+            - $ref: "#/components/schemas/PhotoLocation"
+            - type: "null"
     SubmissionContent:
       description: |
         Type-specific content of a published Submission, discriminated by
@@ -3403,11 +3525,13 @@ components:
       oneOf:
         - $ref: "#/components/schemas/SketchContent"
         - $ref: "#/components/schemas/StoryContent"
+        - $ref: "#/components/schemas/PhotoContent"
       discriminator:
         propertyName: creative_type
         mapping:
           sketch: "#/components/schemas/SketchContent"
           story: "#/components/schemas/StoryContent"
+          photo: "#/components/schemas/PhotoContent"
     CreateSubmissionRequest:
       type: object
       description: |
@@ -3433,11 +3557,13 @@ components:
           oneOf:
             - $ref: "#/components/schemas/SketchSubmissionContent"
             - $ref: "#/components/schemas/StorySubmissionContent"
+            - $ref: "#/components/schemas/PhotoSubmissionContent"
           discriminator:
             propertyName: creative_type
             mapping:
               sketch: "#/components/schemas/SketchSubmissionContent"
               story: "#/components/schemas/StorySubmissionContent"
+              photo: "#/components/schemas/PhotoSubmissionContent"
     Submission:
       type: object
       description: |

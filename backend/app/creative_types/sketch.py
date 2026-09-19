@@ -9,14 +9,16 @@ from app.creative_types.base import (
     ContentResponseBase,
     CreativeTypeHandler,
     MediaUrls,
-    StageRule,
     SubmissionContentBase,
+)
+from app.creative_types.capture import (
+    CAPTURE_ABANDON_FORBIDDEN_STAGES,
+    CAPTURE_READ_EXPIRY_EXEMPT_STAGES,
+    CAPTURE_STAGE_RULES,
+    STAGE_READY_FOR_PHOTO,
 )
 from app.creative_types.registry import CreativeTypeDefinition
 from app.models.enums import CreativeType
-
-STAGE_READY_FOR_PHOTO = "ready_for_photo"
-STAGE_UPLOADING = "uploading"
 
 
 class SketchSubmissionContent(SubmissionContentBase):
@@ -54,27 +56,8 @@ SKETCH_DEFINITION = CreativeTypeDefinition(
     response_schema=SketchContentResponse,
     handler=SketchHandler(),
     post_timer_stage=STAGE_READY_FOR_PHOTO,
-    stage_rules=(
-        StageRule(
-            event="photo_step_reached",
-            from_stages=frozenset({None, STAGE_READY_FOR_PHOTO}),
-            to_stage=STAGE_READY_FOR_PHOTO,
-            timestamp_key="photo_step_reached_at",
-        ),
-        StageRule(
-            event="upload_started",
-            from_stages=frozenset({STAGE_READY_FOR_PHOTO}),
-            to_stage=STAGE_UPLOADING,
-            timestamp_key="upload_started_at",
-        ),
-        StageRule(
-            event="upload_completed",
-            from_stages=frozenset({STAGE_UPLOADING}),
-            to_stage=STAGE_UPLOADING,
-            timestamp_key="upload_completed_at",
-        ),
-    ),
-    abandon_forbidden_stages=frozenset({STAGE_UPLOADING}),
-    read_expiry_exempt_stages=frozenset({STAGE_READY_FOR_PHOTO, STAGE_UPLOADING}),
+    stage_rules=CAPTURE_STAGE_RULES,
+    abandon_forbidden_stages=CAPTURE_ABANDON_FORBIDDEN_STAGES,
+    read_expiry_exempt_stages=CAPTURE_READ_EXPIRY_EXEMPT_STAGES,
     requires_upload=True,
 )

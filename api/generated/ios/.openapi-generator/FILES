@@ -55,6 +55,11 @@ DailyCreativeAPI/Classes/OpenAPIs/Models/HealthLiveResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/HealthReadyResponse.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/LikeState.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/ModelError.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PhotoContent.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PhotoLocation.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PhotoLocationInput.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PhotoLocationSource.swift
+DailyCreativeAPI/Classes/OpenAPIs/Models/PhotoSubmissionContent.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/PolicyAcceptanceSummary.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/PolicyDocument.swift
 DailyCreativeAPI/Classes/OpenAPIs/Models/PolicyKind.swift
@@ -127,6 +132,11 @@ docs/HealthReadyResponse.md
 docs/LikeState.md
 docs/MeAPI.md
 docs/ModelError.md
+docs/PhotoContent.md
+docs/PhotoLocation.md
+docs/PhotoLocationInput.md
+docs/PhotoLocationSource.md
+docs/PhotoSubmissionContent.md
 docs/PoliciesAPI.md
 docs/PolicyAcceptanceSummary.md
 docs/PolicyDocument.md

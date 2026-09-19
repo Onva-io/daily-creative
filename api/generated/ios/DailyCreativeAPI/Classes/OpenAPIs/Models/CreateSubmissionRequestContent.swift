@@ -11,12 +11,15 @@ import AnyCodable
 #endif
 
 public enum CreateSubmissionRequestContent: Codable, JSONEncodable, Hashable {
+    case typePhotoSubmissionContent(PhotoSubmissionContent)
     case typeSketchSubmissionContent(SketchSubmissionContent)
     case typeStorySubmissionContent(StorySubmissionContent)
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
+        case .typePhotoSubmissionContent(let value):
+            try container.encode(value)
         case .typeSketchSubmissionContent(let value):
             try container.encode(value)
         case .typeStorySubmissionContent(let value):
@@ -33,6 +36,8 @@ public enum CreateSubmissionRequestContent: Codable, JSONEncodable, Hashable {
         let discriminatorValue = try keyedContainer.decode(String.self, forKey: .creativeType)
 
         switch discriminatorValue {
+        case "photo":
+            self = .typePhotoSubmissionContent(try PhotoSubmissionContent(from: decoder))
         case "sketch":
             self = .typeSketchSubmissionContent(try SketchSubmissionContent(from: decoder))
         case "story":

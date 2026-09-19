@@ -12,12 +12,15 @@ import AnyCodable
 
 /** Type-specific content of a published Submission, discriminated by &#x60;creative_type&#x60;. Shared fields (caption, timer, author, prompt, counts) are flat on the parent object.  */
 public enum SubmissionContent: Codable, JSONEncodable, Hashable {
+    case typePhotoContent(PhotoContent)
     case typeSketchContent(SketchContent)
     case typeStoryContent(StoryContent)
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
+        case .typePhotoContent(let value):
+            try container.encode(value)
         case .typeSketchContent(let value):
             try container.encode(value)
         case .typeStoryContent(let value):
@@ -34,6 +37,8 @@ public enum SubmissionContent: Codable, JSONEncodable, Hashable {
         let discriminatorValue = try keyedContainer.decode(String.self, forKey: .creativeType)
 
         switch discriminatorValue {
+        case "photo":
+            self = .typePhotoContent(try PhotoContent(from: decoder))
         case "sketch":
             self = .typeSketchContent(try SketchContent(from: decoder))
         case "story":

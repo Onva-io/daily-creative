@@ -30,6 +30,7 @@ from app.schemas.me import TimerModeSchema
 class CreativeTypeSchema(str, Enum):
     sketch = "sketch"
     story = "story"
+    photo = "photo"
 
 
 class SubmissionVisibilitySchema(str, Enum):
