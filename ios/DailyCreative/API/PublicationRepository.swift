@@ -177,9 +177,32 @@ protocol UploadServing: Sendable {
     ) async throws -> UploadSlotModel
 }
 
+/// Where a photo was taken, as the author confirmed it for publication.
+struct PhotoLocationInputModel: Codable, Equatable, Sendable {
+    /// Mirrors the API's `PhotoLocationSource`; audit only, never shown.
+    enum Source: String, Codable, Sendable {
+        case exif
+        case device
+        case search
+        case pin
+    }
+
+    var latitude: Double?
+    var longitude: Double?
+    var label: String?
+    var source: Source?
+    /// Publish exact coordinates to other users. Off unless the author opts in.
+    var shareExact: Bool = false
+
+    var hasCoordinates: Bool {
+        latitude != nil && longitude != nil
+    }
+}
+
 enum PublicationContent: Sendable {
     case sketch(uploadId: UUID, caption: String?)
     case story(body: String, caption: String?)
+    case photo(uploadId: UUID, caption: String?, location: PhotoLocationInputModel?)
 }
 
 protocol PublicationServing: Sendable {
@@ -349,6 +372,23 @@ struct PublicationRepository: PublicationServing {
                         creativeType: .story,
                         body: body,
                         caption: caption
+                    )
+                )
+            case .photo(let uploadId, let caption, let location):
+                contentPayload = .typePhotoSubmissionContent(
+                    PhotoSubmissionContent(
+                        creativeType: .photo,
+                        uploadId: uploadId,
+                        caption: caption,
+                        location: location.map { location in
+                            PhotoLocationInput(
+                                latitude: location.latitude,
+                                longitude: location.longitude,
+                                label: location.label,
+                                source: location.source.flatMap { PhotoLocationSource(rawValue: $0.rawValue) },
+                                shareExact: location.shareExact
+                            )
+                        }
                     )
                 )
             }
@@ -599,6 +639,23 @@ final class RecordingPublicationRepository: PublicationServing, @unchecked Senda
                     body: body,
                     bodyPreview: String(body.prefix(200)),
                     wordCount: body.split(whereSeparator: \.isWhitespace).count
+                )
+            )
+        case .photo(_, let photoCaption, let location):
+            caption = photoCaption
+            modelContent = .photo(
+                PhotoContentModel(
+                    imageURL: URL(string: "https://example.test/display")!,
+                    thumbnailURL: URL(string: "https://example.test/thumb")!,
+                    location: location.map { location in
+                        // The author always sees their own coordinates.
+                        PhotoLocationModel(
+                            label: location.label,
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            exactShared: location.shareExact
+                        )
+                    }
                 )
             )
         }

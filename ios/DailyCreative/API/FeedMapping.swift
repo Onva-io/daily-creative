@@ -46,6 +46,21 @@ enum FeedMapping {
                     wordCount: story.wordCount
                 )
             )
+        case .typePhotoContent(let photo):
+            return .photo(
+                PhotoContentModel(
+                    imageURL: photo.imageUrl.flatMap(URL.init(string:)),
+                    thumbnailURL: photo.thumbnailUrl.flatMap(URL.init(string:)),
+                    location: photo.location.map { location in
+                        PhotoLocationModel(
+                            label: location.label,
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            exactShared: location.exactShared
+                        )
+                    }
+                )
+            )
         }
     }
 

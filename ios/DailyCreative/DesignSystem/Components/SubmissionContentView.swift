@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 /// Renders the type-specific part of a published item by switching on its
@@ -26,8 +27,28 @@ struct SubmissionContentView: View {
                 text: context == .detail ? (story.body ?? story.bodyPreview) : story.bodyPreview,
                 wordCount: story.wordCount
             )
+        case .photo(let photo):
+            photoContent(photo)
         case .unsupported:
             unsupportedContent
+        }
+    }
+
+    /// The image, then the place the author chose to show. Coordinates only
+    /// ever arrive when the author opted in (or is the viewer), so drawing a
+    /// map here never reveals more than the API already did.
+    @ViewBuilder
+    private func photoContent(_ photo: PhotoContentModel) -> some View {
+        if let location = photo.location, location.isPresentable, context != .gallery {
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                imageContent(url: photo.imageURL)
+                PhotoLocationRow(location: location)
+                if context == .detail, location.hasCoordinates {
+                    PhotoLocationMap(location: location)
+                }
+            }
+        } else {
+            imageContent(url: photo.imageURL)
         }
     }
 
@@ -118,6 +139,62 @@ struct SubmissionContentView: View {
         case .feed: 220
         case .gallery: 200
         case .detail: 280
+        }
+    }
+}
+
+/// One line: pin, then the author's place title (or coordinates when there is
+/// no title but the author shared them).
+struct PhotoLocationRow: View {
+    let location: PhotoLocationModel
+
+    var body: some View {
+        if let text {
+            Label(text, systemImage: location.exactShared ? "mappin.and.ellipse" : "mappin")
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+                .lineLimit(1)
+                .accessibilityLabel("Taken at \(text)")
+        }
+    }
+
+    private var text: String? {
+        if let label = location.label, !label.isEmpty {
+            return label
+        }
+        if let latitude = location.latitude, let longitude = location.longitude {
+            return Self.coordinateText(latitude: latitude, longitude: longitude)
+        }
+        return nil
+    }
+
+    static func coordinateText(latitude: Double, longitude: Double) -> String {
+        String(format: "%.4f, %.4f", latitude, longitude)
+    }
+}
+
+/// Non-interactive map of one shared location. Pans nowhere, lists nothing.
+struct PhotoLocationMap: View {
+    let location: PhotoLocationModel
+
+    var body: some View {
+        if let latitude = location.latitude, let longitude = location.longitude {
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            Map(
+                initialPosition: .region(
+                    MKCoordinateRegion(
+                        center: coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+                    )
+                ),
+                interactionModes: []
+            ) {
+                Marker(location.label ?? "", coordinate: coordinate)
+                    .tint(AppColors.primary)
+            }
+            .frame(height: 160)
+            .clipShape(RoundedRectangle(cornerRadius: AppRadii.medium, style: .continuous))
+            .accessibilityLabel("Map of where this photo was taken")
         }
     }
 }
