@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime, time
+from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text, Time, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -26,7 +26,11 @@ class AppearancePreference(str, enum.Enum):
 
 
 class UserPreferences(Base):
-    """Server-backed preferences for an authenticated user."""
+    """Account-wide preferences shared by every app.
+
+    Per-app preferences (timer memory, daily reminder) live in
+    ``creative_type_preferences``.
+    """
 
     __tablename__ = "user_preferences"
 
@@ -35,8 +39,6 @@ class UserPreferences(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    notification_time_local: Mapped[time | None] = mapped_column(Time, nullable=True)
     timezone: Mapped[str] = mapped_column(Text, nullable=False, default="UTC")
     appearance: Mapped[AppearancePreference] = mapped_column(
         Enum(AppearancePreference, name="appearance", native_enum=True),

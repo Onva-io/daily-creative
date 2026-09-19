@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.models.enums import TimerMode
+from app.creative_types import MediaUrls, get_creative_type_registry
+from app.creative_types.base import truncate_preview
 from app.models.user import User
 from app.repositories.publications import FeedRow
 from app.schemas.feed import FeedItem
 from app.schemas.feed_shared import FeedPromptSummary, FeedUserSummary
-from app.schemas.me import TimerModeSchema
-from app.schemas.submissions import CreativeTypeSchema
+from app.schemas.submissions import CreativeTypeSchema, timer_fields
 from app.services.media_urls import signed_display_url, signed_thumbnail_url
 from app.storage.base import StorageAdapter
 
@@ -19,14 +19,7 @@ CAPTION_PREVIEW_MAX_LENGTH = 140
 
 def caption_preview(caption: str | None) -> str | None:
     """Truncate a caption for feed/profile display."""
-    if caption is None:
-        return None
-    stripped = caption.strip()
-    if not stripped:
-        return None
-    if len(stripped) <= CAPTION_PREVIEW_MAX_LENGTH:
-        return stripped
-    return f"{stripped[: CAPTION_PREVIEW_MAX_LENGTH - 1]}…"
+    return truncate_preview(caption, CAPTION_PREVIEW_MAX_LENGTH)
 
 
 async def build_feed_item(
@@ -39,49 +32,36 @@ async def build_feed_item(
     avatar_url: str | None = None,
 ) -> FeedItem:
     """Build a FeedItem from a joined feed/profile row."""
-    image_url = None
-    thumbnail_url = None
+    media = MediaUrls()
     if row.upload is not None:
-        image_url = await signed_display_url(
-            storage=storage,
-            original_key=row.upload.storage_key,
-            expires_at=expires_at,
-        )
-        thumbnail_url = await signed_thumbnail_url(
-            storage=storage,
-            original_key=row.upload.storage_key,
-            expires_at=expires_at,
+        media = MediaUrls(
+            image_url=await signed_display_url(
+                storage=storage,
+                original_key=row.upload.storage_key,
+                expires_at=expires_at,
+            ),
+            thumbnail_url=await signed_thumbnail_url(
+                storage=storage,
+                original_key=row.upload.storage_key,
+                expires_at=expires_at,
+            ),
         )
 
-    session = row.sketch_session or row.story_session
-    if session is not None:
-        timer_mode = TimerModeSchema(session.timer_mode.value)
-        if session.timer_mode == TimerMode.no_timer:
-            timer_seconds = None
-        else:
-            timer_seconds = session.selected_timer_seconds
-    else:
-        timer_mode = TimerModeSchema.no_timer
-        timer_seconds = None
-
+    timer_mode, timer_seconds = timer_fields(row.session)
     is_owner = viewer is not None and viewer.id == row.publication.user_id
-    creative_type = CreativeTypeSchema(row.publication.creative_type.value)
-
-    caption = None
-    body_preview_text = None
-    word_count = None
-    if row.sketch_submission is not None:
-        caption = row.sketch_submission.caption
-    if row.story_submission is not None:
-        caption = row.story_submission.caption
-        body_preview_text = caption_preview(row.story_submission.body)
-        word_count = len(row.story_submission.body.split())
+    definition = get_creative_type_registry().get(row.publication.creative_type)
+    content = definition.handler.project(
+        content=row.publication.content or {},
+        media=media,
+        is_owner=is_owner,
+        preview=True,
+    )
 
     return FeedItem(
         id=row.publication.id,
-        creative_type=creative_type,
-        image_url=image_url,
-        thumbnail_url=thumbnail_url,
+        creative_type=CreativeTypeSchema(row.publication.creative_type.value),
+        caption_preview=caption_preview(row.publication.caption),
+        content=content,
         user=FeedUserSummary(
             id=row.user.id,
             username=row.user.username or "",
@@ -97,9 +77,6 @@ async def build_feed_item(
         ),
         timer_mode=timer_mode,
         timer_seconds=timer_seconds,
-        caption_preview=caption_preview(caption),
-        body_preview=body_preview_text,
-        word_count=word_count,
         like_count=row.publication.like_count,
         reflection_count=row.publication.reflection_count,
         viewer_has_liked=viewer_has_liked,

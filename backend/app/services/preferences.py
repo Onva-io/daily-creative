@@ -92,6 +92,8 @@ class PreferencesService:
                 "remember_timer_option",
                 "remembered_timer_mode",
                 "remembered_timer_seconds",
+                "notifications_enabled",
+                "notification_time_local",
             )
         ):
             await self._creative_type_repo.update(
@@ -99,12 +101,12 @@ class PreferencesService:
                 remember_timer_option=payload.remember_timer_option,
                 remembered_timer_mode=remembered_mode,
                 remembered_timer_seconds=remembered_seconds,
+                notifications_enabled=payload.notifications_enabled,
+                notification_time_local=notification_time,
             )
 
         updated = await self._repo.update(
             prefs,
-            notifications_enabled=payload.notifications_enabled,
-            notification_time_local=notification_time,
             timezone=payload.timezone,
             appearance=appearance,
         )

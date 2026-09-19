@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import time
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +45,8 @@ class CreativeTypePreferencesRepository:
             remember_timer_option=False,
             remembered_timer_mode=None,
             remembered_timer_seconds=None,
+            notifications_enabled=False,
+            notification_time_local=None,
         )
         self._session.add(prefs)
         await self._session.commit()
@@ -57,6 +60,8 @@ class CreativeTypePreferencesRepository:
         remember_timer_option: bool | None = None,
         remembered_timer_mode: TimerMode | None | object = ...,
         remembered_timer_seconds: int | None | object = ...,
+        notifications_enabled: bool | None = None,
+        notification_time_local: time | None | object = ...,
     ) -> CreativeTypePreferences:
         if remember_timer_option is not None:
             prefs.remember_timer_option = remember_timer_option
@@ -64,6 +69,10 @@ class CreativeTypePreferencesRepository:
             prefs.remembered_timer_mode = remembered_timer_mode  # type: ignore[assignment]
         if remembered_timer_seconds is not ...:
             prefs.remembered_timer_seconds = remembered_timer_seconds  # type: ignore[assignment]
+        if notifications_enabled is not None:
+            prefs.notifications_enabled = notifications_enabled
+        if notification_time_local is not ...:
+            prefs.notification_time_local = notification_time_local  # type: ignore[assignment]
         await self._session.commit()
         await self._session.refresh(prefs)
         return prefs

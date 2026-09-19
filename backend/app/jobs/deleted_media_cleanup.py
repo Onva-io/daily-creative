@@ -1,4 +1,4 @@
-"""Remove media for soft-deleted sketch publications after retention."""
+"""Remove media for soft-deleted publications after retention (any creative type)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from app.core.settings import get_settings
 from app.db.session import SessionLocal
 from app.jobs.runner import job_main
 from app.models.creative_publication import CreativePublication, PublicationStatus
-from app.models.sketch_submission import SketchSubmission
 from app.models.upload import Upload
 from app.storage.base import get_storage_adapter
 
@@ -23,12 +22,8 @@ async def run(dry_run: bool) -> int:
 
     async with SessionLocal() as session:
         result = await session.execute(
-            select(CreativePublication, SketchSubmission, Upload)
-            .join(
-                SketchSubmission,
-                SketchSubmission.publication_id == CreativePublication.id,
-            )
-            .join(Upload, Upload.id == SketchSubmission.upload_id)
+            select(Upload)
+            .join(CreativePublication, CreativePublication.upload_id == Upload.id)
             .where(
                 CreativePublication.status == PublicationStatus.deleted,
                 CreativePublication.deleted_at.is_not(None),
@@ -36,8 +31,7 @@ async def run(dry_run: bool) -> int:
                 Upload.deleted_at.is_(None),
             )
         )
-        rows = result.all()
-        for _publication, _detail, upload in rows:
+        for upload in result.scalars().all():
             affected += 1
             if dry_run:
                 continue

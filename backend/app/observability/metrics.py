@@ -48,10 +48,8 @@ def _route_key(scope: Scope) -> str:
         return f"{method} upload"
     if path.startswith("/api/v1/submissions"):
         return f"{method} submission"
-    if path.startswith("/api/v1/sketch-sessions"):
-        return f"{method} sketch_session"
-    if path.startswith("/api/v1/story-sessions"):
-        return f"{method} story_session"
+    if path.startswith("/api/v1/sessions"):
+        return f"{method} session"
     if path.startswith("/api/v1/reports"):
         return f"{method} report"
     if path.startswith("/api/v1/policies"):

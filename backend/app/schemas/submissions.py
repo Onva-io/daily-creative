@@ -1,19 +1,27 @@
-"""Submission API schemas."""
+"""Submission API schemas.
+
+The type-specific ``content`` unions are assembled from the creative type
+registry, so adding a creative type never touches this module.
+"""
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal, Union
+from typing import TYPE_CHECKING, Annotated, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, Tag
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.creative_types import (
+    ContentResponseBase,
+    SubmissionContentBase,
+    get_creative_type_registry,
+)
 from app.models.creative_publication import CreativePublication
+from app.models.creative_session import CreativeSession
 from app.models.daily_prompt import DailyPrompt
 from app.models.enums import TimerMode
-from app.models.sketch_session import SketchSession
-from app.models.story_session import StorySession
 from app.models.user import User
 from app.schemas.feed_shared import FeedPromptSummary, FeedUserSummary
 from app.schemas.me import TimerModeSchema
@@ -36,29 +44,22 @@ class SubmissionStatusSchema(str, Enum):
     deleted = "deleted"
 
 
-class SketchSubmissionContent(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    creative_type: Literal["sketch"] = "sketch"
-    upload_id: UUID
-    caption: str | None = Field(default=None, max_length=280)
-
-
-class StorySubmissionContent(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    creative_type: Literal["story"] = "story"
-    body: str = Field(min_length=1, max_length=10000)
-    caption: str | None = Field(default=None, max_length=280)
-
-
-SubmissionContent = Annotated[
-    Union[
-        Annotated[SketchSubmissionContent, Tag("sketch")],
-        Annotated[StorySubmissionContent, Tag("story")],
-    ],
-    Field(discriminator="creative_type"),
-]
+if TYPE_CHECKING:
+    # Static view: the common base. Runtime view: a discriminated union of
+    # every registered type's schema, so pydantic validates/serialises the
+    # concrete shape.
+    SubmissionContent = SubmissionContentBase
+    SubmissionContentResponse = ContentResponseBase
+else:
+    _registry = get_creative_type_registry()
+    SubmissionContent = Annotated[
+        Union[_registry.content_schemas()],  # noqa: UP007
+        Field(discriminator="creative_type"),
+    ]
+    SubmissionContentResponse = Annotated[
+        Union[_registry.response_schemas()],  # noqa: UP007
+        Field(discriminator="creative_type"),
+    ]
 
 
 class CreateSubmissionRequest(BaseModel):
@@ -70,13 +71,22 @@ class CreateSubmissionRequest(BaseModel):
     content: SubmissionContent
 
 
+def timer_fields(session: CreativeSession | None) -> tuple[TimerModeSchema, int | None]:
+    if session is None:
+        return TimerModeSchema.no_timer, None
+    timer_mode = TimerModeSchema(session.timer_mode.value)
+    if session.timer_mode == TimerMode.no_timer:
+        return timer_mode, None
+    return timer_mode, session.selected_timer_seconds
+
+
 class SubmissionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: UUID
     creative_type: CreativeTypeSchema
     caption: str | None
-    body: str | None
+    content: SubmissionContentResponse
     visibility: SubmissionVisibilitySchema
     status: SubmissionStatusSchema
     timer_mode: TimerModeSchema
@@ -85,8 +95,6 @@ class SubmissionResponse(BaseModel):
     reflection_count: int
     viewer_has_liked: bool
     is_owner: bool
-    image_url: str | None
-    thumbnail_url: str | None
     user: FeedUserSummary
     prompt: FeedPromptSummary
     session_id: UUID
@@ -102,33 +110,18 @@ class SubmissionResponse(BaseModel):
         publication: CreativePublication,
         user: User,
         prompt: DailyPrompt,
-        sketch_session: SketchSession | None = None,
-        story_session: StorySession | None = None,
-        image_url: str | None = None,
-        thumbnail_url: str | None = None,
-        body: str | None = None,
-        caption: str | None = None,
-        upload_id: UUID | None = None,
+        session: CreativeSession | None,
+        content: ContentResponseBase,
         is_owner: bool,
         viewer_has_liked: bool = False,
         avatar_url: str | None = None,
     ) -> SubmissionResponse:
-        session = sketch_session or story_session
-        if session is not None:
-            timer_mode = TimerModeSchema(session.timer_mode.value)
-            if session.timer_mode == TimerMode.no_timer:
-                timer_seconds = None
-            else:
-                timer_seconds = session.selected_timer_seconds
-        else:
-            timer_mode = TimerModeSchema.no_timer
-            timer_seconds = None
-
+        timer_mode, timer_seconds = timer_fields(session)
         return cls(
             id=publication.id,
             creative_type=CreativeTypeSchema(publication.creative_type.value),
-            caption=caption,
-            body=body,
+            caption=publication.caption,
+            content=content,
             visibility=SubmissionVisibilitySchema(publication.visibility.value),
             status=SubmissionStatusSchema(publication.status.value),
             timer_mode=timer_mode,
@@ -137,8 +130,6 @@ class SubmissionResponse(BaseModel):
             reflection_count=publication.reflection_count,
             viewer_has_liked=viewer_has_liked,
             is_owner=is_owner,
-            image_url=image_url,
-            thumbnail_url=thumbnail_url,
             user=FeedUserSummary(
                 id=user.id,
                 username=user.username or "",
@@ -153,7 +144,7 @@ class SubmissionResponse(BaseModel):
                 word_3=prompt.word_3,
             ),
             session_id=publication.session_id,
-            upload_id=upload_id,
+            upload_id=publication.upload_id,
             published_at=publication.published_at,
             created_at=publication.created_at,
             updated_at=publication.updated_at,

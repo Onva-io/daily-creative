@@ -6,10 +6,12 @@ import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.auth.descope_mgmt import DescopeUserDeleter, delete_descope_user, is_descope_not_found
 from app.core.clock import Clock
 from app.core.settings import Settings, get_settings
+from app.creative_types import get_creative_type_registry
 from app.models.creative_publication import PublicationStatus
 from app.models.user import User, UserStatus
 from app.repositories.idempotency import IdempotencyRepository
@@ -26,7 +28,6 @@ logger = logging.getLogger(__name__)
 DELETE_ME_ENDPOINT = "DELETE /api/v1/me"
 DELETION_MESSAGE = "Your account deletion has been scheduled."
 DELETED_DISPLAY_NAME = "Deleted account"
-REDACTED_STORY_BODY = ""
 
 
 class AccountDeletionService:
@@ -153,11 +154,11 @@ class AccountDeletionService:
         if user.status == UserStatus.deleted:
             return
 
+        registry = get_creative_type_registry()
         all_publications = await self._publications.list_all_for_user(user.id)
         for publication in all_publications:
-            sketch_detail = await self._publications.get_sketch_submission(publication.id)
-            if sketch_detail is not None:
-                upload = await self._uploads.get_by_id(sketch_detail.upload_id)
+            if publication.upload_id is not None:
+                upload = await self._uploads.get_by_id(publication.upload_id)
                 if upload is not None and self._storage is not None:
                     for key in (
                         upload.storage_key,
@@ -176,12 +177,10 @@ class AccountDeletionService:
                             logger.exception("Failed to delete media key during account finalize")
                     if upload.deleted_at is None:
                         upload.deleted_at = self._clock.now()
-            story_detail = await self._publications.get_story_submission(publication.id)
-            if story_detail is not None:
-                story_detail.body = REDACTED_STORY_BODY
-                story_detail.caption = None
-            if sketch_detail is not None:
-                sketch_detail.caption = None
+            definition = registry.get(publication.creative_type)
+            publication.caption = None
+            publication.content = definition.handler.redact(publication.content or {})
+            flag_modified(publication, "content")
             if publication.status != PublicationStatus.deleted:
                 await self._publications.set_status(
                     publication,

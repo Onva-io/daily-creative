@@ -1,4 +1,4 @@
-"""Story Session API schemas."""
+"""Creative Session API schemas (shared by every creative type)."""
 
 from __future__ import annotations
 
@@ -9,34 +9,23 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.story_session import StorySession
+from app.models.creative_session import CreativeSession
 from app.schemas.me import TimerModeSchema
+from app.schemas.submissions import CreativeTypeSchema
 
 
-class StorySessionStatusSchema(str, Enum):
+class CreativeSessionStatusSchema(str, Enum):
     active = "active"
     paused = "paused"
-    writing = "writing"
     completed = "completed"
     abandoned = "abandoned"
     expired = "expired"
 
 
-class StorySessionEventTypeSchema(str, Enum):
-    started = "started"
-    paused = "paused"
-    resumed = "resumed"
-    timer_completed = "timer_completed"
-    finished_early = "finished_early"
-    writing_started = "writing_started"
-    draft_saved = "draft_saved"
-    submission_created = "submission_created"
-    abandoned = "abandoned"
-
-
-class CreateStorySessionRequest(BaseModel):
+class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    creative_type: CreativeTypeSchema
     prompt_id: UUID
     timer_mode: TimerModeSchema
     selected_timer_seconds: int | None = None
@@ -45,23 +34,28 @@ class CreateStorySessionRequest(BaseModel):
     client_started_at: datetime | None = None
 
 
-class StorySessionEventRequest(BaseModel):
+class SessionEventRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    event_type: StorySessionEventTypeSchema
+    # Validated against the generic vocabulary plus the creative type's
+    # declared stage events, so the contract stays open for new types.
+    event_type: str = Field(min_length=1, max_length=64)
     client_occurred_at: datetime | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class StorySessionResponse(BaseModel):
+class CreativeSessionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: UUID
     user_id: UUID
     prompt_id: UUID
+    creative_type: CreativeTypeSchema
     timer_mode: TimerModeSchema
     selected_timer_seconds: int | None
-    status: StorySessionStatusSchema
+    status: CreativeSessionStatusSchema
+    stage: str | None
+    stage_timestamps: dict[str, datetime]
     started_at: datetime
     paused_total_seconds: int
     timer_completed_at: datetime | None
@@ -72,14 +66,20 @@ class StorySessionResponse(BaseModel):
     updated_at: datetime
 
     @classmethod
-    def from_orm(cls, session: StorySession) -> StorySessionResponse:
+    def from_orm(cls, session: CreativeSession) -> CreativeSessionResponse:
         return cls(
             id=session.id,
             user_id=session.user_id,
             prompt_id=session.prompt_id,
+            creative_type=CreativeTypeSchema(session.creative_type.value),
             timer_mode=TimerModeSchema(session.timer_mode.value),
             selected_timer_seconds=session.selected_timer_seconds,
-            status=StorySessionStatusSchema(session.status.value),
+            status=CreativeSessionStatusSchema(session.status.value),
+            stage=session.stage,
+            stage_timestamps={
+                key: datetime.fromisoformat(value) if isinstance(value, str) else value
+                for key, value in (session.stage_timestamps or {}).items()
+            },
             started_at=session.started_at,
             paused_total_seconds=session.paused_total_seconds,
             timer_completed_at=session.timer_completed_at,

@@ -33,7 +33,11 @@ class AppearancePreferenceSchema(str, Enum):
 
 
 class PreferencesSummary(BaseModel):
-    """Server-backed preferences projection."""
+    """Server-backed preferences projection for one app.
+
+    Timer memory and the daily reminder are scoped to the requesting creative
+    type; timezone and appearance are account-wide.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -52,11 +56,10 @@ class PreferencesSummary(BaseModel):
         type_prefs: CreativeTypePreferences | None = None,
     ) -> PreferencesSummary:
         time_value: str | None = None
-        if prefs.notification_time_local is not None:
-            time_value = prefs.notification_time_local.strftime("%H:%M:%S")
         mode = None
         remembered_seconds = None
         remember_timer_option = False
+        notifications_enabled = False
         if type_prefs is not None:
             remember_timer_option = type_prefs.remember_timer_option
             mode = (
@@ -65,8 +68,11 @@ class PreferencesSummary(BaseModel):
                 else None
             )
             remembered_seconds = type_prefs.remembered_timer_seconds
+            notifications_enabled = type_prefs.notifications_enabled
+            if type_prefs.notification_time_local is not None:
+                time_value = type_prefs.notification_time_local.strftime("%H:%M:%S")
         return cls(
-            notifications_enabled=prefs.notifications_enabled,
+            notifications_enabled=notifications_enabled,
             notification_time_local=time_value,
             timezone=prefs.timezone,
             remember_timer_option=remember_timer_option,

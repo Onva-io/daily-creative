@@ -5,7 +5,7 @@
 	ios-test-local ios-test-development ios-test-staging ios-test-production \
 	account-deletion-finalize \
 	staging-up staging-smoke backup-postgres restore-postgres perf-profile \
-	job-upload-cleanup job-sketch-session-cleanup job-story-session-cleanup job-idempotency-cleanup \
+	job-upload-cleanup job-session-cleanup job-idempotency-cleanup \
 	job-deleted-media-cleanup job-missing-prompt-check jobs-dry-run \
 	pre-commit-install
 
@@ -117,11 +117,8 @@ account-deletion-finalize:
 job-upload-cleanup:
 	$(call run_backend,python -m app.jobs.upload_cleanup)
 
-job-sketch-session-cleanup:
-	$(call run_backend,python -m app.jobs.sketch_session_cleanup)
-
-job-story-session-cleanup:
-	$(call run_backend,python -m app.jobs.story_session_cleanup)
+job-session-cleanup:
+	$(call run_backend,python -m app.jobs.session_cleanup)
 
 job-idempotency-cleanup:
 	$(call run_backend,python -m app.jobs.idempotency_cleanup)
@@ -134,8 +131,7 @@ job-missing-prompt-check:
 
 jobs-dry-run:
 	$(call run_backend,python -m app.jobs.upload_cleanup --dry-run)
-	$(call run_backend,python -m app.jobs.sketch_session_cleanup --dry-run)
-	$(call run_backend,python -m app.jobs.story_session_cleanup --dry-run)
+	$(call run_backend,python -m app.jobs.session_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.idempotency_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.deleted_media_cleanup --dry-run)
 	$(call run_backend,python -m app.jobs.missing_prompt_check --dry-run)

@@ -634,19 +634,31 @@ Rules:
 
 ## 10.2 User preferences
 
+Settings scope rule: anything a user sets inside one app applies to that app
+only. Only preferences that describe the account holder are shared.
+
 ```text
-user_preferences
+user_preferences                       -- account-wide (shared by every app)
 - user_id uuid pk fk users
-- notifications_enabled boolean not null
-- notification_time_local time null
 - timezone text not null
-- remember_timer_option boolean not null
-- remembered_timer_mode enum null
-- remembered_timer_seconds integer null
 - appearance enum not null
 - created_at timestamptz not null
 - updated_at timestamptz not null
+
+creative_type_preferences              -- per app (user_id, creative_type)
+- user_id uuid pk fk users
+- creative_type enum pk
+- remember_timer_option boolean not null
+- remembered_timer_mode enum null
+- remembered_timer_seconds integer null
+- notifications_enabled boolean not null
+- notification_time_local time null
+- created_at timestamptz not null
+- updated_at timestamptz not null
 ```
+
+`GET/PATCH /api/v1/me/preferences?creative_type=` returns and updates one
+merged projection for the calling app.
 
 Timer mode:
 
@@ -693,74 +705,56 @@ Rules:
 - one published prompt per Prompt Date;
 - no per-user random prompt generation.
 
-## 10.4 Sketch sessions
+## 10.4 Creative sessions
+
+One table serves every creative type. The generic lifecycle (start, pause,
+resume, timer complete, finish early, abandon, expire) is shared; type-owned
+sub-states live in `stage` and are declared by the type's definition in
+`backend/app/creative_types/`.
 
 ```text
-sketch_sessions
+creative_sessions
 - id uuid pk
 - user_id uuid fk users not null
 - prompt_id uuid fk daily_prompts not null
+- creative_type enum not null
 - timer_mode enum not null
 - selected_timer_seconds integer null
-- status enum not null
+- status enum not null            -- active | paused | completed | abandoned | expired
+- stage text null                 -- type-owned: sketch/photo ready_for_photo|uploading, story writing
+- stage_timestamps jsonb not null default '{}'  -- e.g. photo_step_reached_at, upload_started_at
 - started_at timestamptz not null
 - paused_total_seconds integer not null default 0
 - timer_completed_at timestamptz null
 - finish_requested_at timestamptz null
-- photo_step_reached_at timestamptz null
-- upload_started_at timestamptz null
-- upload_completed_at timestamptz null
 - completed_at timestamptz null
 - abandoned_at timestamptz null
 - created_at timestamptz not null
 - updated_at timestamptz not null
 ```
 
-Suggested status:
-
-```text
-active
-paused
-ready_for_photo
-uploading
-completed
-abandoned
-expired
-```
-
 A session is private.
 
-## 10.5 Sketch session events
+## 10.5 Creative session events
 
 ```text
-sketch_session_events
+creative_session_events
 - id uuid pk
-- sketch_session_id uuid fk
-- event_type enum not null
+- session_id uuid fk creative_sessions
+- event_type text not null
 - occurred_at timestamptz not null
 - client_occurred_at timestamptz null
 - metadata_json jsonb not null default '{}'
 - created_at timestamptz not null
 ```
 
-Events may include:
-
-```text
-started
-paused
-resumed
-timer_completed
-finished_early
-photo_step_reached
-upload_started
-upload_completed
-submission_created
-abandoned
-```
+Generic events every type accepts: `started` (server), `paused`, `resumed`,
+`timer_completed`, `finished_early`, `abandoned`, `submission_created` (server).
+Stage events are declared per type as `StageRule`s (event, allowed from-stages,
+resulting stage, optional timestamp key) and validated against the definition
+at runtime, so the column is free text rather than a Postgres enum.
 
 Use event rows for analytics and auditability.
-
-Keep key timestamps denormalised on `sketch_sessions` for efficient reads.
 
 ## 10.6 Uploads
 
@@ -808,23 +802,30 @@ expired
 deleted
 ```
 
-## 10.7 Submissions
+## 10.7 Publications
 
 ```text
-submissions
+creative_publications
 - id uuid pk
 - user_id uuid fk users not null
 - prompt_id uuid fk daily_prompts not null
-- sketch_session_id uuid fk sketch_sessions unique not null
-- upload_id uuid fk uploads unique not null
-- caption text null
+- creative_type enum not null
+- session_id uuid fk creative_sessions unique not null
+- caption text null                 -- shared by every type
+- upload_id uuid fk uploads unique null   -- image-based types only
+- content jsonb not null default '{}'     -- type-specific, shaped by the type's content schema
 - visibility enum not null
 - status enum not null
+- like_count / reflection_count integer not null default 0
 - published_at timestamptz not null
 - created_at timestamptz not null
 - updated_at timestamptz not null
 - deleted_at timestamptz null
 ```
+
+Shared fields are columns; type-specific fields are JSONB validated and
+projected by the type's handler (`validate`, `project`, `moderation_texts`,
+`redact`). There are no per-type detail tables.
 
 Visibility version one:
 
@@ -1187,11 +1188,10 @@ The by-date and prompt-submissions endpoints may be implemented after the core f
 ## 13.6 Sketch sessions
 
 ```text
-POST  /api/v1/sketch-sessions
-GET   /api/v1/sketch-sessions/{session_id}
-PATCH /api/v1/sketch-sessions/{session_id}
-POST  /api/v1/sketch-sessions/{session_id}/events
-POST  /api/v1/sketch-sessions/{session_id}/abandon
+POST  /api/v1/sessions                        (creative_type in body)
+GET   /api/v1/sessions/{session_id}
+POST  /api/v1/sessions/{session_id}/events
+POST  /api/v1/sessions/{session_id}/abandon
 ```
 
 Session creation request:
@@ -1874,8 +1874,9 @@ submissions(published_at desc, id desc)
 submissions(user_id, published_at desc, id desc)
 submissions(prompt_id, published_at desc, id desc)
 
-sketch_sessions(user_id, created_at desc)
-sketch_sessions(prompt_id, created_at desc)
+creative_sessions(user_id, created_at desc)
+creative_sessions(prompt_id, created_at desc)
+creative_sessions(creative_type, status)
 
 uploads(user_id, created_at desc)
 uploads(status, expires_at)

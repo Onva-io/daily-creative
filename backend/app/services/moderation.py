@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import Clock
 from app.core.errors import AppError
+from app.creative_types import get_creative_type_registry
 from app.models.creative_publication import PublicationStatus
-from app.models.enums import CreativeType
 from app.models.moderation_action import ModerationActionType
 from app.models.moderation_review import ModerationReviewStatus
 from app.models.reflection import ReflectionStatus
@@ -102,24 +102,19 @@ class ModerationService:
                     message="The requested target could not be found.",
                     status_code=404,
                 )
-            caption: str | None = None
-            body: str | None = None
-            if submission.creative_type == CreativeType.sketch:
-                sketch = await self._publications.get_sketch_submission(submission.id)
-                caption = sketch.caption if sketch is not None else None
-            elif submission.creative_type == CreativeType.story:
-                story = await self._publications.get_story_submission(submission.id)
-                if story is not None:
-                    caption = story.caption
-                    body = story.body
+            definition = get_creative_type_registry().get(submission.creative_type)
+            content = definition.handler.inspect(submission.content or {})
             return {
                 "target_type": "submission",
                 "id": str(submission.id),
                 "user_id": str(submission.user_id),
                 "status": submission.status.value,
                 "creative_type": submission.creative_type.value,
-                "caption": caption,
-                "body": body,
+                "caption": submission.caption,
+                "content": content,
+                # Kept for moderators' existing tooling; story body is the
+                # only type-specific text today.
+                "body": content.get("body"),
                 "published_at": submission.published_at.isoformat(),
                 "deleted_at": (
                     submission.deleted_at.isoformat() if submission.deleted_at else None
@@ -552,33 +547,10 @@ class ModerationService:
         if submission is None:
             raise AppError(
                 code="submission_not_found",
-                message="The requested sketch could not be found.",
+                message="The requested submission could not be found.",
                 status_code=404,
             )
-        if submission.creative_type == CreativeType.sketch:
-            sketch = await self._publications.get_sketch_submission(submission.id)
-            if sketch is None:
-                raise AppError(
-                    code="submission_not_found",
-                    message="The requested sketch could not be found.",
-                    status_code=404,
-                )
-            sketch.caption = None
-        elif submission.creative_type == CreativeType.story:
-            story = await self._publications.get_story_submission(submission.id)
-            if story is None:
-                raise AppError(
-                    code="submission_not_found",
-                    message="The requested sketch could not be found.",
-                    status_code=404,
-                )
-            story.caption = None
-        else:
-            raise AppError(
-                code="validation_error",
-                message="This creative type does not support captions.",
-                status_code=422,
-            )
+        submission.caption = None
         await self._actions.record(
             operator_identity=operator_identity,
             action=ModerationActionType.redact_caption,

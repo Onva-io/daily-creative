@@ -4,6 +4,17 @@ Native iOS creative journal with a FastAPI backend. Every user receives the same
 
 This repository is a monorepo. Phase 13 adds production hardening, observability, cleanup jobs, staging rehearsal, iOS release polish, and release/rollback documentation.
 
+## Unified creative model (post Phase 13)
+
+One platform, many apps. Daily Sketch, Daily Story, and Daily Photo are thin creative-type plugins on shared infrastructure (see `spec/decisions/0012-unified-creative-model.md` and `spec/plans/daily_creative_platform.plan.md`).
+
+- **Backend:** `creative_sessions` (+ events) and `creative_publications` with JSONB `content` replace the per-type `sketch_*` / `story_*` tables (migration `0004_unified_creative_model`, with backfill). A creative type is one module in `backend/app/creative_types/` declaring its content schemas, session stages, and `validate`/`project`/`moderation_texts`/`redact` hooks; the registry drives everything else.
+- **Contract:** `/api/v1/sessions` (with `creative_type` in the body) replaces `/api/v1/sketch-sessions` and `/api/v1/story-sessions`. `Submission` and `FeedItem` carry a discriminated `content` object (`SketchContent`, `StoryContent`, …) instead of flat type-specific fields. `CreativeSession` exposes a generic `status` plus type-owned `stage` and `stage_timestamps`.
+- **Preferences:** timer memory and the daily reminder are per app (`creative_type_preferences`); timezone, appearance, and profile remain account-wide.
+- **Jobs:** one `session_cleanup` job (`make job-session-cleanup`) replaces the sketch/story pair; `deleted_media_cleanup` works from `creative_publications.upload_id`.
+
+Phase notes below are kept as history; where they name `sketch-sessions` endpoints or `sketch_sessions` tables, read the unified equivalents above.
+
 ## Phase 13 — Production Hardening and Release Readiness
 
 - **Backend:** Request timeouts, body size limits, in-process rate limits, tunable DB pool + statement timeout, storage readiness ping, `/metrics`, optional Sentry/OTLP, log redaction, staging/production fail-fast settings.

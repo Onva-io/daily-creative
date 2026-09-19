@@ -22,8 +22,8 @@ from app.db.session import Base, get_db_session
 from app.main import create_app
 from app.models.daily_prompt import DailyPrompt  # noqa: F401
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
-from app.models.sketch_session import SketchSession  # noqa: F401
-from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
+from app.models.creative_session import CreativeSession  # noqa: F401
+from app.models.creative_session_event import CreativeSessionEvent  # noqa: F401
 from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload  # noqa: F401
 from app.models.user import User, UserStatus
@@ -212,8 +212,9 @@ async def test_feed_orders_newest_first_and_matches_contract(
     assert lead["reflection_count"] == 0
     assert lead["viewer_has_liked"] is False
     assert lead["is_owner"] is False
-    assert lead["image_url"]
-    assert lead["thumbnail_url"]
+    assert lead["content"]["creative_type"] == "sketch"
+    assert lead["content"]["image_url"]
+    assert lead["content"]["thumbnail_url"]
     assert lead["user"]["username"] == "second_user"
     assert lead["prompt"]["word_1"] == "Chocolate"
     assert_matches_schema(lead, "FeedItem", openapi_spec)

@@ -1,4 +1,4 @@
-"""Expire stale active story sessions."""
+"""Expire stale creative sessions of every type."""
 
 from __future__ import annotations
 
@@ -9,7 +9,11 @@ from sqlalchemy import select, update
 from app.core.settings import get_settings
 from app.db.session import SessionLocal
 from app.jobs.runner import job_main
-from app.models.story_session import StorySession, StorySessionStatus
+from app.models.creative_session import (
+    TERMINAL_SESSION_STATUSES,
+    CreativeSession,
+    CreativeSessionStatus,
+)
 
 
 async def run(dry_run: bool) -> int:
@@ -18,31 +22,25 @@ async def run(dry_run: bool) -> int:
 
     async with SessionLocal() as session:
         result = await session.execute(
-            select(StorySession.id).where(
-                StorySession.status.in_(
-                    [
-                        StorySessionStatus.active,
-                        StorySessionStatus.paused,
-                        StorySessionStatus.writing,
-                    ]
-                ),
-                StorySession.started_at < cutoff,
+            select(CreativeSession.id).where(
+                CreativeSession.status.notin_(list(TERMINAL_SESSION_STATUSES)),
+                CreativeSession.started_at < cutoff,
             )
         )
         ids = [row[0] for row in result.all()]
         if dry_run or not ids:
             return len(ids)
         await session.execute(
-            update(StorySession)
-            .where(StorySession.id.in_(ids))
-            .values(status=StorySessionStatus.expired, abandoned_at=datetime.now(UTC))
+            update(CreativeSession)
+            .where(CreativeSession.id.in_(ids))
+            .values(status=CreativeSessionStatus.expired, abandoned_at=datetime.now(UTC))
         )
         await session.commit()
         return len(ids)
 
 
 def main() -> None:
-    job_main("story_session_cleanup", run)
+    job_main("session_cleanup", run)
 
 
 if __name__ == "__main__":

@@ -325,7 +325,7 @@ class SocialService:
         ):
             raise AppError(
                 code="submission_not_found",
-                message="The requested sketch could not be found.",
+                message="The requested submission could not be found.",
                 status_code=404,
             )
         author = await self._users.get_by_id(submission.user_id)
@@ -340,7 +340,7 @@ class SocialService:
         ):
             raise AppError(
                 code="submission_not_found",
-                message="The requested sketch could not be found.",
+                message="The requested submission could not be found.",
                 status_code=404,
             )
         if viewer is not None and await self._blocks.either_direction_exists(
@@ -349,7 +349,7 @@ class SocialService:
         ):
             raise AppError(
                 code="submission_not_found",
-                message="The requested sketch could not be found.",
+                message="The requested submission could not be found.",
                 status_code=404,
             )
         return submission

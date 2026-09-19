@@ -9,6 +9,8 @@ from app.models.creative_publication import (
     SubmissionStatus,
     SubmissionVisibility,
 )
+from app.models.creative_session import CreativeSession, CreativeSessionStatus
+from app.models.creative_session_event import CreativeSessionEvent, GenericSessionEvent
 from app.models.creative_type_preferences import CreativeTypePreferences
 from app.models.daily_prompt import DailyPrompt, PromptStatus
 from app.models.enums import CreativeType, TimerMode
@@ -19,12 +21,6 @@ from app.models.policy import PolicyAcceptance, PolicyDocument, PolicyKind, Poli
 from app.models.publication_like import PublicationLike, SubmissionLike
 from app.models.reflection import Reflection, ReflectionStatus
 from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
-from app.models.sketch_session import SketchSession, SketchSessionStatus
-from app.models.sketch_session_event import SketchSessionEvent, SketchSessionEventType
-from app.models.sketch_submission import SketchSubmission
-from app.models.story_session import StorySession, StorySessionStatus
-from app.models.story_session_event import StorySessionEvent, StorySessionEventType
-from app.models.story_submission import StorySubmission
 from app.models.upload import DerivativeStatus, Upload, UploadPurpose, UploadStatus
 from app.models.user import User, UserStatus
 from app.models.user_block import UserBlock
@@ -35,10 +31,14 @@ __all__ = [
     "ActivityEventType",
     "AppearancePreference",
     "CreativePublication",
+    "CreativeSession",
+    "CreativeSessionEvent",
+    "CreativeSessionStatus",
     "CreativeType",
     "CreativeTypePreferences",
     "DailyPrompt",
     "DerivativeStatus",
+    "GenericSessionEvent",
     "IdempotencyKey",
     "ModerationAction",
     "ModerationActionType",
@@ -58,16 +58,6 @@ __all__ = [
     "ReportReason",
     "ReportStatus",
     "ReportTargetType",
-    "SketchSession",
-    "SketchSessionEvent",
-    "SketchSessionEventType",
-    "SketchSessionStatus",
-    "SketchSubmission",
-    "StorySession",
-    "StorySessionEvent",
-    "StorySessionEventType",
-    "StorySessionStatus",
-    "StorySubmission",
     "Submission",
     "SubmissionLike",
     "SubmissionStatus",

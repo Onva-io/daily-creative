@@ -102,8 +102,7 @@ Railway does not run the Makefile job targets natively. Options:
 | Job | Command |
 |-----|---------|
 | upload_cleanup | `uv run python -m app.jobs.upload_cleanup` |
-| sketch_session_cleanup | `uv run python -m app.jobs.sketch_session_cleanup` |
-| story_session_cleanup | `uv run python -m app.jobs.story_session_cleanup` |
+| session_cleanup | `uv run python -m app.jobs.session_cleanup` |
 | idempotency_cleanup | `uv run python -m app.jobs.idempotency_cleanup` |
 | deleted_media_cleanup | `uv run python -m app.jobs.deleted_media_cleanup` |
 | missing_prompt_check | `uv run python -m app.jobs.missing_prompt_check` |

@@ -1,4 +1,4 @@
-"""Story Session persistence helpers."""
+"""Creative Session persistence helpers."""
 
 from __future__ import annotations
 
@@ -9,18 +9,18 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import TimerMode
-from app.models.story_session import StorySession, StorySessionStatus
-from app.models.story_session_event import StorySessionEvent, StorySessionEventType
+from app.models.creative_session import CreativeSession, CreativeSessionStatus
+from app.models.creative_session_event import CreativeSessionEvent, GenericSessionEvent
+from app.models.enums import CreativeType, TimerMode
 
 
-class StorySessionRepository:
+class CreativeSessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_by_id(self, session_id: uuid.UUID) -> StorySession | None:
+    async def get_by_id(self, session_id: uuid.UUID) -> CreativeSession | None:
         result = await self._session.execute(
-            select(StorySession).where(StorySession.id == session_id)
+            select(CreativeSession).where(CreativeSession.id == session_id)
         )
         return result.scalar_one_or_none()
 
@@ -29,49 +29,53 @@ class StorySessionRepository:
         *,
         user_id: uuid.UUID,
         prompt_id: uuid.UUID,
+        creative_type: CreativeType,
         timer_mode: TimerMode,
         selected_timer_seconds: int | None,
         started_at: datetime,
         started_metadata: dict[str, Any] | None = None,
-    ) -> StorySession:
-        story_session = StorySession(
+    ) -> CreativeSession:
+        creative_session = CreativeSession(
             id=uuid.uuid4(),
             user_id=user_id,
             prompt_id=prompt_id,
+            creative_type=creative_type,
             timer_mode=timer_mode,
             selected_timer_seconds=selected_timer_seconds,
-            status=StorySessionStatus.active,
+            status=CreativeSessionStatus.active,
+            stage=None,
+            stage_timestamps={},
             started_at=started_at,
             paused_total_seconds=0,
         )
-        self._session.add(story_session)
+        self._session.add(creative_session)
         await self._session.flush()
 
-        started_event = StorySessionEvent(
+        started_event = CreativeSessionEvent(
             id=uuid.uuid4(),
-            story_session_id=story_session.id,
-            event_type=StorySessionEventType.started,
+            session_id=creative_session.id,
+            event_type=GenericSessionEvent.started,
             occurred_at=started_at,
             client_occurred_at=None,
             metadata_json=started_metadata or {},
         )
         self._session.add(started_event)
         await self._session.commit()
-        await self._session.refresh(story_session)
-        return story_session
+        await self._session.refresh(creative_session)
+        return creative_session
 
     async def add_event(
         self,
         *,
-        story_session: StorySession,
-        event_type: StorySessionEventType,
+        creative_session: CreativeSession,
+        event_type: str,
         occurred_at: datetime,
         client_occurred_at: datetime | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> StorySessionEvent:
-        event = StorySessionEvent(
+    ) -> CreativeSessionEvent:
+        event = CreativeSessionEvent(
             id=uuid.uuid4(),
-            story_session_id=story_session.id,
+            session_id=creative_session.id,
             event_type=event_type,
             occurred_at=occurred_at,
             client_occurred_at=client_occurred_at,
@@ -84,29 +88,29 @@ class StorySessionRepository:
     async def get_latest_event(
         self,
         *,
-        story_session_id: uuid.UUID,
-        event_type: StorySessionEventType,
-    ) -> StorySessionEvent | None:
+        session_id: uuid.UUID,
+        event_type: str,
+    ) -> CreativeSessionEvent | None:
         result = await self._session.execute(
-            select(StorySessionEvent)
+            select(CreativeSessionEvent)
             .where(
-                StorySessionEvent.story_session_id == story_session_id,
-                StorySessionEvent.event_type == event_type,
+                CreativeSessionEvent.session_id == session_id,
+                CreativeSessionEvent.event_type == event_type,
             )
-            .order_by(StorySessionEvent.occurred_at.desc())
+            .order_by(CreativeSessionEvent.occurred_at.desc())
             .limit(1)
         )
         return result.scalar_one_or_none()
 
     async def save(
         self,
-        story_session: StorySession,
+        creative_session: CreativeSession,
         *,
         commit: bool = True,
-    ) -> StorySession:
+    ) -> CreativeSession:
         if commit:
             await self._session.commit()
-            await self._session.refresh(story_session)
+            await self._session.refresh(creative_session)
         else:
             await self._session.flush()
-        return story_session
+        return creative_session

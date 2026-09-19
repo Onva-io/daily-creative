@@ -23,8 +23,8 @@ from app.db.session import Base, get_db_session
 from app.main import create_app
 from app.models.daily_prompt import DailyPrompt  # noqa: F401
 from app.models.idempotency_key import IdempotencyKey  # noqa: F401
-from app.models.sketch_session import SketchSession  # noqa: F401
-from app.models.sketch_session_event import SketchSessionEvent  # noqa: F401
+from app.models.creative_session import CreativeSession  # noqa: F401
+from app.models.creative_session_event import CreativeSessionEvent  # noqa: F401
 from app.models.creative_publication import CreativePublication  # noqa: F401
 from app.models.upload import Upload, UploadPurpose, UploadStatus  # noqa: F401
 from app.models.user import User, UserStatus

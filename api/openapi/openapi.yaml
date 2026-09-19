@@ -753,8 +753,11 @@ paths:
                   value:
                     items:
                       - id: d4e5f6a7-b8c9-0123-def0-234567890123
-                        image_url: https://storage.example/display-signed
-                        thumbnail_url: https://storage.example/thumb-signed
+                        creative_type: sketch
+                        content:
+                          creative_type: sketch
+                          image_url: https://storage.example/display-signed
+                          thumbnail_url: https://storage.example/thumb-signed
                         user:
                           id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
                           username: sketchy_matt
@@ -924,8 +927,11 @@ paths:
                   value:
                     items:
                       - id: d4e5f6a7-b8c9-0123-def0-234567890123
-                        image_url: https://storage.example/display-signed
-                        thumbnail_url: https://storage.example/thumb-signed
+                        creative_type: sketch
+                        content:
+                          creative_type: sketch
+                          image_url: https://storage.example/display-signed
+                          thumbnail_url: https://storage.example/thumb-signed
                         user:
                           id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
                           username: sketchy_matt
@@ -952,14 +958,16 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
-  /api/v1/sketch-sessions:
+  /api/v1/sessions:
     post:
-      operationId: createSketchSession
+      operationId: createSession
       tags:
-        - sketch-sessions
-      summary: Start a Sketch Session
+        - sessions
+      summary: Start a Creative Session
       description: |
-        Creates an authenticated Sketch Session for a published Daily Prompt.
+        Creates an authenticated Creative Session for a published Daily Prompt.
+        The same endpoint serves every creative type; `creative_type` selects
+        the type-specific stages and events the session will accept.
         Guests persist sessions only on device and must not call this endpoint.
         Pass an `Idempotency-Key` header to safely retry create without
         duplicating sessions.
@@ -972,8 +980,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateSketchSessionRequest"
+              $ref: "#/components/schemas/CreateSessionRequest"
             example:
+              creative_type: sketch
               prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
               timer_mode: countdown
               selected_timer_seconds: 300
@@ -981,266 +990,24 @@ paths:
               client_session_id: local-session-001
       responses:
         "201":
-          description: Sketch Session created
+          description: Creative Session created
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SketchSession"
+                $ref: "#/components/schemas/CreativeSession"
               example:
                 id: b2c3d4e5-f6a7-8901-bcde-f12345678901
                 user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
                 prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                creative_type: sketch
                 timer_mode: countdown
                 selected_timer_seconds: 300
                 status: active
-                started_at: "2026-07-18T20:00:00Z"
-                paused_total_seconds: 0
-                timer_completed_at: null
-                finish_requested_at: null
-                photo_step_reached_at: null
-                upload_started_at: null
-                upload_completed_at: null
-                completed_at: null
-                abandoned_at: null
-                created_at: "2026-07-18T20:00:00Z"
-                updated_at: "2026-07-18T20:00:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/sketch-sessions/{session_id}:
-    get:
-      operationId: getSketchSession
-      tags:
-        - sketch-sessions
-      summary: Get a Sketch Session
-      description: |
-        Returns a Sketch Session owned by the authenticated user.
-        Non-owner and missing sessions both return `session_not_found`.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          description: Sketch Session UUID.
-          schema:
-            $ref: "#/components/schemas/UUID"
-          example: b2c3d4e5-f6a7-8901-bcde-f12345678901
-      responses:
-        "200":
-          description: Sketch Session
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/RequestId"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SketchSession"
-              example:
-                id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
-                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-                timer_mode: countdown
-                selected_timer_seconds: 300
-                status: active
-                started_at: "2026-07-18T20:00:00Z"
-                paused_total_seconds: 0
-                timer_completed_at: null
-                finish_requested_at: null
-                photo_step_reached_at: null
-                upload_started_at: null
-                upload_completed_at: null
-                completed_at: null
-                abandoned_at: null
-                created_at: "2026-07-18T20:00:00Z"
-                updated_at: "2026-07-18T20:00:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/sketch-sessions/{session_id}/events:
-    post:
-      operationId: postSketchSessionEvent
-      tags:
-        - sketch-sessions
-      summary: Record a Sketch Session lifecycle event
-      description: |
-        Appends a lifecycle event and updates denormalised session timestamps
-        and status when the transition is valid.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          description: Sketch Session UUID.
-          schema:
-            $ref: "#/components/schemas/UUID"
-          example: b2c3d4e5-f6a7-8901-bcde-f12345678901
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SketchSessionEventRequest"
-            example:
-              event_type: paused
-              client_occurred_at: "2026-07-18T20:01:00Z"
-              metadata: {}
-      responses:
-        "200":
-          description: Updated Sketch Session after the event
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/RequestId"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SketchSession"
-              example:
-                id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
-                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-                timer_mode: countdown
-                selected_timer_seconds: 300
-                status: paused
-                started_at: "2026-07-18T20:00:00Z"
-                paused_total_seconds: 0
-                timer_completed_at: null
-                finish_requested_at: null
-                photo_step_reached_at: null
-                upload_started_at: null
-                upload_completed_at: null
-                completed_at: null
-                abandoned_at: null
-                created_at: "2026-07-18T20:00:00Z"
-                updated_at: "2026-07-18T20:01:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/sketch-sessions/{session_id}/abandon:
-    post:
-      operationId: abandonSketchSession
-      tags:
-        - sketch-sessions
-      summary: Abandon a Sketch Session
-      description: |
-        Marks the session abandoned. Calling abandon on an already-abandoned
-        session is idempotent and returns the existing session.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          description: Sketch Session UUID.
-          schema:
-            $ref: "#/components/schemas/UUID"
-          example: b2c3d4e5-f6a7-8901-bcde-f12345678901
-      responses:
-        "200":
-          description: Abandoned Sketch Session
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/RequestId"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SketchSession"
-              example:
-                id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
-                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-                timer_mode: countdown
-                selected_timer_seconds: 300
-                status: abandoned
-                started_at: "2026-07-18T20:00:00Z"
-                paused_total_seconds: 0
-                timer_completed_at: null
-                finish_requested_at: null
-                photo_step_reached_at: null
-                upload_started_at: null
-                upload_completed_at: null
-                completed_at: null
-                abandoned_at: "2026-07-18T20:05:00Z"
-                created_at: "2026-07-18T20:00:00Z"
-                updated_at: "2026-07-18T20:05:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/story-sessions:
-    post:
-      operationId: createStorySession
-      tags:
-        - story-sessions
-      summary: Start a Story Session
-      description: |
-        Creates an authenticated Story Session for a published Daily Prompt.
-        Pass an `Idempotency-Key` header to safely retry create without
-        duplicating sessions.
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/IdempotencyKey"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateStorySessionRequest"
-            example:
-              prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-              timer_mode: countdown
-              selected_timer_seconds: 300
-              client_timezone: Europe/London
-              client_session_id: local-session-001
-      responses:
-        "201":
-          description: Story Session created
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/RequestId"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StorySession"
-              example:
-                id: e3f4a5b6-c7d8-9012-efab-345678901234
-                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
-                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-                timer_mode: countdown
-                selected_timer_seconds: 300
-                status: active
+                stage: null
+                stage_timestamps: {}
                 started_at: "2026-07-18T20:00:00Z"
                 paused_total_seconds: 0
                 timer_completed_at: null
@@ -1261,14 +1028,14 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
-  /api/v1/story-sessions/{session_id}:
+  /api/v1/sessions/{session_id}:
     get:
-      operationId: getStorySession
+      operationId: getSession
       tags:
-        - story-sessions
-      summary: Get a Story Session
+        - sessions
+      summary: Get a Creative Session
       description: |
-        Returns a Story Session owned by the authenticated user.
+        Returns a Creative Session owned by the authenticated user.
         Non-owner and missing sessions both return `session_not_found`.
       security:
         - bearerAuth: []
@@ -1276,35 +1043,20 @@ paths:
         - name: session_id
           in: path
           required: true
-          description: Story Session UUID.
+          description: Creative Session UUID.
           schema:
             $ref: "#/components/schemas/UUID"
-          example: e3f4a5b6-c7d8-9012-efab-345678901234
+          example: b2c3d4e5-f6a7-8901-bcde-f12345678901
       responses:
         "200":
-          description: Story Session
+          description: Creative Session
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StorySession"
-              example:
-                id: e3f4a5b6-c7d8-9012-efab-345678901234
-                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
-                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-                timer_mode: countdown
-                selected_timer_seconds: 300
-                status: active
-                started_at: "2026-07-18T20:00:00Z"
-                paused_total_seconds: 0
-                timer_completed_at: null
-                finish_requested_at: null
-                completed_at: null
-                abandoned_at: null
-                created_at: "2026-07-18T20:00:00Z"
-                updated_at: "2026-07-18T20:00:00Z"
+                $ref: "#/components/schemas/CreativeSession"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1313,56 +1065,63 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-  /api/v1/story-sessions/{session_id}/events:
+  /api/v1/sessions/{session_id}/events:
     post:
-      operationId: postStorySessionEvent
+      operationId: postSessionEvent
       tags:
-        - story-sessions
-      summary: Record a Story Session lifecycle event
+        - sessions
+      summary: Record a Creative Session lifecycle event
       description: |
-        Appends a lifecycle event and updates denormalised session timestamps
-        and status when the transition is valid.
+        Appends a lifecycle event and updates the session status, stage, and
+        timestamps when the transition is valid. Generic events (`paused`,
+        `resumed`, `timer_completed`, `finished_early`, `abandoned`) apply to
+        every type; stage events are declared per creative type (see
+        `SessionEventType`). Invalid transitions return
+        `invalid_session_transition` with the current `status` and `stage`.
       security:
         - bearerAuth: []
       parameters:
         - name: session_id
           in: path
           required: true
-          description: Story Session UUID.
+          description: Creative Session UUID.
           schema:
             $ref: "#/components/schemas/UUID"
-          example: e3f4a5b6-c7d8-9012-efab-345678901234
+          example: b2c3d4e5-f6a7-8901-bcde-f12345678901
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/StorySessionEventRequest"
+              $ref: "#/components/schemas/SessionEventRequest"
             example:
-              event_type: paused
+              event_type: finished_early
               client_occurred_at: "2026-07-18T20:01:00Z"
               metadata: {}
       responses:
         "200":
-          description: Updated Story Session after the event
+          description: Updated Creative Session after the event
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StorySession"
+                $ref: "#/components/schemas/CreativeSession"
               example:
-                id: e3f4a5b6-c7d8-9012-efab-345678901234
+                id: b2c3d4e5-f6a7-8901-bcde-f12345678901
                 user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
                 prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                creative_type: sketch
                 timer_mode: countdown
                 selected_timer_seconds: 300
-                status: paused
+                status: active
+                stage: ready_for_photo
+                stage_timestamps: {}
                 started_at: "2026-07-18T20:00:00Z"
                 paused_total_seconds: 0
                 timer_completed_at: null
-                finish_requested_at: null
+                finish_requested_at: "2026-07-18T20:01:00Z"
                 completed_at: null
                 abandoned_at: null
                 created_at: "2026-07-18T20:00:00Z"
@@ -1377,50 +1136,36 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
-  /api/v1/story-sessions/{session_id}/abandon:
+  /api/v1/sessions/{session_id}/abandon:
     post:
-      operationId: abandonStorySession
+      operationId: abandonSession
       tags:
-        - story-sessions
-      summary: Abandon a Story Session
+        - sessions
+      summary: Abandon a Creative Session
       description: |
         Marks the session abandoned. Calling abandon on an already-abandoned
-        session is idempotent and returns the existing session.
+        session is idempotent and returns the existing session. Types may
+        forbid abandoning from certain stages (e.g. sketch `uploading`).
       security:
         - bearerAuth: []
       parameters:
         - name: session_id
           in: path
           required: true
-          description: Story Session UUID.
+          description: Creative Session UUID.
           schema:
             $ref: "#/components/schemas/UUID"
-          example: e3f4a5b6-c7d8-9012-efab-345678901234
+          example: b2c3d4e5-f6a7-8901-bcde-f12345678901
       responses:
         "200":
-          description: Abandoned Story Session
+          description: Abandoned Creative Session
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StorySession"
-              example:
-                id: e3f4a5b6-c7d8-9012-efab-345678901234
-                user_id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
-                prompt_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-                timer_mode: countdown
-                selected_timer_seconds: 300
-                status: abandoned
-                started_at: "2026-07-18T20:00:00Z"
-                paused_total_seconds: 0
-                timer_completed_at: null
-                finish_requested_at: null
-                completed_at: null
-                abandoned_at: "2026-07-18T20:05:00Z"
-                created_at: "2026-07-18T20:00:00Z"
-                updated_at: "2026-07-18T20:05:00Z"
+                $ref: "#/components/schemas/CreativeSession"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1715,8 +1460,10 @@ paths:
                 reflection_count: 0
                 viewer_has_liked: false
                 is_owner: true
-                image_url: https://storage.example/display-signed
-                thumbnail_url: https://storage.example/thumb-signed
+                content:
+                  creative_type: sketch
+                  image_url: https://storage.example/display-signed
+                  thumbnail_url: https://storage.example/thumb-signed
                 user:
                   id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
                   username: sketchy_matt
@@ -1730,7 +1477,6 @@ paths:
                   word_3: Banana
                 session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
                 upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
-                body: null
                 published_at: "2026-07-18T20:12:00Z"
                 created_at: "2026-07-18T20:12:00Z"
                 updated_at: "2026-07-18T20:12:00Z"
@@ -1791,8 +1537,10 @@ paths:
                 reflection_count: 0
                 viewer_has_liked: false
                 is_owner: false
-                image_url: https://storage.example/display-signed
-                thumbnail_url: https://storage.example/thumb-signed
+                content:
+                  creative_type: sketch
+                  image_url: https://storage.example/display-signed
+                  thumbnail_url: https://storage.example/thumb-signed
                 user:
                   id: f7d7c950-2892-4b6c-9300-ef6c5cbcb2d1
                   username: sketchy_matt
@@ -1806,7 +1554,6 @@ paths:
                   word_3: Banana
                 session_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
                 upload_id: c3d4e5f6-a7b8-9012-cdef-123456789012
-                body: null
                 published_at: "2026-07-18T20:12:00Z"
                 created_at: "2026-07-18T20:12:00Z"
                 updated_at: "2026-07-18T20:12:00Z"
@@ -2666,8 +2413,10 @@ components:
     PreferencesSummary:
       type: object
       description: |
-        Preference summary returned with the current user and preferences endpoints.
-        Values are persisted in `user_preferences`.
+        Preference summary returned with the current user and preferences endpoints,
+        scoped by the `creative_type` query parameter. Timer memory and the daily
+        reminder are per app (`creative_type_preferences`); timezone and appearance
+        are account-wide (`user_preferences`).
       required:
         - notifications_enabled
         - notification_time_local
@@ -2706,7 +2455,9 @@ components:
           $ref: "#/components/schemas/AppearancePreference"
     PreferencesUpdate:
       type: object
-      description: Partial preferences update. Omitted fields are left unchanged.
+      description: |
+        Partial preferences update. Omitted fields are left unchanged. Timer memory
+        and reminder fields apply only to the `creative_type` in the query.
       additionalProperties: false
       properties:
         notifications_enabled:
@@ -3148,12 +2899,14 @@ components:
     FeedItem:
       type: object
       description: |
-        Feed projection for a published Submission. Includes image URLs for
-        sketch submissions, user and Prompt summaries, timer metadata, caption
-        preview, Like/Reflection counts, viewer Like state, and ownership flags.
+        Feed projection for a published Submission. Shared fields are flat
+        (user and Prompt summaries, timer metadata, caption preview,
+        Like/Reflection counts, viewer Like state, ownership flags); the
+        type-specific preview lives under `content`.
       required:
         - id
         - creative_type
+        - content
         - user
         - prompt
         - timer_mode
@@ -3169,18 +2922,8 @@ components:
           $ref: "#/components/schemas/UUID"
         creative_type:
           $ref: "#/components/schemas/CreativeType"
-        image_url:
-          type:
-            - string
-            - "null"
-          format: uri
-          description: Display image URL.
-        thumbnail_url:
-          type:
-            - string
-            - "null"
-          format: uri
-          description: Thumbnail image URL.
+        content:
+          $ref: "#/components/schemas/SubmissionContent"
         user:
           $ref: "#/components/schemas/FeedUserSummary"
         prompt:
@@ -3197,16 +2940,6 @@ components:
             - string
             - "null"
           description: Truncated caption preview, or null when absent.
-        body_preview:
-          type:
-            - string
-            - "null"
-          description: Truncated story body preview. Null for non-story submissions.
-        word_count:
-          type:
-            - integer
-            - "null"
-          description: Story word count. Null for non-story submissions.
         like_count:
           type: integer
           minimum: 0
@@ -3236,42 +2969,50 @@ components:
             - "null"
           description: Opaque cursor for the next page, or null when no further pages exist.
           example: null
-    SketchSessionStatus:
+    CreativeSessionStatus:
       type: string
-      description: Sketch Session lifecycle status.
+      description: |
+        Generic Creative Session lifecycle status shared by every creative
+        type. Type-specific sub-states are reported in `stage`.
       enum:
         - active
         - paused
-        - ready_for_photo
-        - uploading
         - completed
         - abandoned
         - expired
-    SketchSessionEventType:
+    SessionStage:
       type: string
-      description: Sketch Session lifecycle event type.
-      enum:
-        - started
-        - paused
-        - resumed
-        - timer_completed
-        - finished_early
-        - photo_step_reached
-        - upload_started
-        - upload_completed
-        - submission_created
-        - abandoned
-    CreateSketchSessionRequest:
+      description: |
+        Type-owned sub-state of an `active` session. Known values per type:
+        sketch and photo use `ready_for_photo` and `uploading`; story uses
+        `writing`. Clients must tolerate unknown stages from newer types.
+      example: ready_for_photo
+    SessionEventType:
+      type: string
+      description: |
+        Session lifecycle event. Generic events every type accepts from the
+        client: `paused`, `resumed`, `timer_completed`, `finished_early`,
+        `abandoned`. Stage events declared by the creative type: sketch and
+        photo accept `photo_step_reached`, `upload_started`,
+        `upload_completed`; story accepts `writing_started`, `draft_saved`.
+        `started` and `submission_created` are recorded server-side only.
+      minLength: 1
+      maxLength: 64
+      example: finished_early
+    CreateSessionRequest:
       type: object
       description: |
-        Authenticated Sketch Session create payload.
+        Authenticated Creative Session create payload for any creative type.
         Countdown mode requires selected_timer_seconds in {60, 180, 300, 600}.
         No-timer mode requires selected_timer_seconds to be null.
       additionalProperties: false
       required:
+        - creative_type
         - prompt_id
         - timer_mode
       properties:
+        creative_type:
+          $ref: "#/components/schemas/CreativeType"
         prompt_id:
           $ref: "#/components/schemas/UUID"
         timer_mode:
@@ -3304,23 +3045,27 @@ components:
             Optional client-local start timestamp for audit only. The server
             never uses this value for expiry or Prompt Date decisions.
           example: "2026-07-18T23:55:00Z"
-    SketchSession:
+    CreativeSession:
       type: object
-      description: Authenticated Sketch Session record.
+      description: |
+        Authenticated Creative Session record shared by every creative type.
+        Generic lifecycle fields are flat; type-owned sub-state lives in
+        `stage` and any stage-entry timestamps in `stage_timestamps`
+        (e.g. `photo_step_reached_at`, `upload_started_at`, `upload_completed_at`).
       required:
         - id
         - user_id
         - prompt_id
+        - creative_type
         - timer_mode
         - selected_timer_seconds
         - status
+        - stage
+        - stage_timestamps
         - started_at
         - paused_total_seconds
         - timer_completed_at
         - finish_requested_at
-        - photo_step_reached_at
-        - upload_started_at
-        - upload_completed_at
         - completed_at
         - abandoned_at
         - created_at
@@ -3332,6 +3077,8 @@ components:
           $ref: "#/components/schemas/UUID"
         prompt_id:
           $ref: "#/components/schemas/UUID"
+        creative_type:
+          $ref: "#/components/schemas/CreativeType"
         timer_mode:
           $ref: "#/components/schemas/TimerMode"
         selected_timer_seconds:
@@ -3340,7 +3087,17 @@ components:
             - "null"
           example: 300
         status:
-          $ref: "#/components/schemas/SketchSessionStatus"
+          $ref: "#/components/schemas/CreativeSessionStatus"
+        stage:
+          oneOf:
+            - $ref: "#/components/schemas/SessionStage"
+            - type: "null"
+        stage_timestamps:
+          type: object
+          description: Stage-entry timestamps keyed by the type's timestamp names.
+          additionalProperties:
+            $ref: "#/components/schemas/Timestamp"
+          example: {}
         started_at:
           $ref: "#/components/schemas/Timestamp"
         paused_total_seconds:
@@ -3352,18 +3109,6 @@ components:
             - $ref: "#/components/schemas/Timestamp"
             - type: "null"
         finish_requested_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        photo_step_reached_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        upload_started_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        upload_completed_at:
           oneOf:
             - $ref: "#/components/schemas/Timestamp"
             - type: "null"
@@ -3379,15 +3124,15 @@ components:
           $ref: "#/components/schemas/Timestamp"
         updated_at:
           $ref: "#/components/schemas/Timestamp"
-    SketchSessionEventRequest:
+    SessionEventRequest:
       type: object
-      description: Client lifecycle event recorded against a Sketch Session.
+      description: Client lifecycle event recorded against a Creative Session.
       additionalProperties: false
       required:
         - event_type
       properties:
         event_type:
-          $ref: "#/components/schemas/SketchSessionEventType"
+          $ref: "#/components/schemas/SessionEventType"
         client_occurred_at:
           oneOf:
             - $ref: "#/components/schemas/Timestamp"
@@ -3543,151 +3288,6 @@ components:
       enum:
         - sketch
         - story
-    StorySessionStatus:
-      type: string
-      description: Story Session lifecycle status.
-      enum:
-        - active
-        - paused
-        - writing
-        - completed
-        - abandoned
-        - expired
-    StorySessionEventType:
-      type: string
-      description: Story Session lifecycle event type.
-      enum:
-        - started
-        - paused
-        - resumed
-        - timer_completed
-        - finished_early
-        - writing_started
-        - draft_saved
-        - submission_created
-        - abandoned
-    CreateStorySessionRequest:
-      type: object
-      description: |
-        Authenticated Story Session create payload.
-        Countdown mode requires selected_timer_seconds in {60, 180, 300, 600}.
-        No-timer mode requires selected_timer_seconds to be null.
-      additionalProperties: false
-      required:
-        - prompt_id
-        - timer_mode
-      properties:
-        prompt_id:
-          $ref: "#/components/schemas/UUID"
-        timer_mode:
-          $ref: "#/components/schemas/TimerMode"
-        selected_timer_seconds:
-          type:
-            - integer
-            - "null"
-          description: Countdown duration in seconds, or null for no_timer.
-          example: 300
-        client_timezone:
-          type:
-            - string
-            - "null"
-          description: Optional IANA timezone reported by the client for analytics.
-          example: Europe/London
-        client_session_id:
-          type:
-            - string
-            - "null"
-          description: Optional local session identifier for recovery correlation.
-          maxLength: 128
-          example: local-session-001
-        client_started_at:
-          type:
-            - string
-            - "null"
-          format: date-time
-          description: |
-            Optional client-local start timestamp for audit only. The server
-            never uses this value for expiry or Prompt Date decisions.
-          example: "2026-07-18T23:55:00Z"
-    StorySession:
-      type: object
-      description: Authenticated Story Session record.
-      required:
-        - id
-        - user_id
-        - prompt_id
-        - timer_mode
-        - selected_timer_seconds
-        - status
-        - started_at
-        - paused_total_seconds
-        - timer_completed_at
-        - finish_requested_at
-        - completed_at
-        - abandoned_at
-        - created_at
-        - updated_at
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        user_id:
-          $ref: "#/components/schemas/UUID"
-        prompt_id:
-          $ref: "#/components/schemas/UUID"
-        timer_mode:
-          $ref: "#/components/schemas/TimerMode"
-        selected_timer_seconds:
-          type:
-            - integer
-            - "null"
-          example: 300
-        status:
-          $ref: "#/components/schemas/StorySessionStatus"
-        started_at:
-          $ref: "#/components/schemas/Timestamp"
-        paused_total_seconds:
-          type: integer
-          minimum: 0
-          example: 0
-        timer_completed_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        finish_requested_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        completed_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        abandoned_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
-    StorySessionEventRequest:
-      type: object
-      description: Client lifecycle event recorded against a Story Session.
-      additionalProperties: false
-      required:
-        - event_type
-      properties:
-        event_type:
-          $ref: "#/components/schemas/StorySessionEventType"
-        client_occurred_at:
-          oneOf:
-            - $ref: "#/components/schemas/Timestamp"
-            - type: "null"
-          description: Optional client-side occurrence time.
-        metadata:
-          type: object
-          additionalProperties: true
-          description: Optional structured metadata for the event.
-          default: {}
     SubmissionVisibility:
       type: string
       description: Submission visibility. Version one supports public only.
@@ -3744,6 +3344,70 @@ components:
             - "null"
           description: Optional plain-text caption.
           maxLength: 280
+    SketchContent:
+      type: object
+      description: Sketch-specific content returned on feed items and submissions.
+      required:
+        - creative_type
+        - image_url
+        - thumbnail_url
+      properties:
+        creative_type:
+          type: string
+          const: sketch
+        image_url:
+          type:
+            - string
+            - "null"
+          format: uri
+          description: Short-lived signed display image URL.
+        thumbnail_url:
+          type:
+            - string
+            - "null"
+          format: uri
+          description: Short-lived signed thumbnail URL.
+    StoryContent:
+      type: object
+      description: |
+        Story-specific content returned on feed items and submissions. `body`
+        is present on the detail endpoint and null on list surfaces, which
+        carry `body_preview` instead.
+      required:
+        - creative_type
+        - body
+        - body_preview
+        - word_count
+      properties:
+        creative_type:
+          type: string
+          const: story
+        body:
+          type:
+            - string
+            - "null"
+          description: Full story body text (detail only).
+        body_preview:
+          type:
+            - string
+            - "null"
+          description: Truncated story body preview.
+        word_count:
+          type: integer
+          minimum: 0
+    SubmissionContent:
+      description: |
+        Type-specific content of a published Submission, discriminated by
+        `creative_type`. Shared fields (caption, timer, author, prompt, counts)
+        are flat on the parent object.
+      oneOf:
+        - $ref: "#/components/schemas/SketchContent"
+        - $ref: "#/components/schemas/StoryContent"
+      discriminator:
+        propertyName: creative_type
+        mapping:
+          sketch: "#/components/schemas/SketchContent"
+          story: "#/components/schemas/StoryContent"
     CreateSubmissionRequest:
       type: object
       description: |
@@ -3776,11 +3440,14 @@ components:
               story: "#/components/schemas/StorySubmissionContent"
     Submission:
       type: object
-      description: Public Submission projection with signed media URLs.
+      description: |
+        Public Submission projection. Shared fields are flat; type-specific
+        fields (signed media URLs, story body, ...) live under `content`.
       required:
         - id
         - creative_type
         - caption
+        - content
         - visibility
         - status
         - timer_mode
@@ -3789,13 +3456,10 @@ components:
         - reflection_count
         - viewer_has_liked
         - is_owner
-        - image_url
-        - thumbnail_url
         - user
         - prompt
         - session_id
         - upload_id
-        - body
         - published_at
         - created_at
         - updated_at
@@ -3809,6 +3473,8 @@ components:
             - string
             - "null"
           example: A quiet coffee and banana sketch.
+        content:
+          $ref: "#/components/schemas/SubmissionContent"
         visibility:
           $ref: "#/components/schemas/SubmissionVisibility"
         status:
@@ -3835,18 +3501,6 @@ components:
         is_owner:
           type: boolean
           example: true
-        image_url:
-          type:
-            - string
-            - "null"
-          format: uri
-          description: Short-lived signed display image URL.
-        thumbnail_url:
-          type:
-            - string
-            - "null"
-          format: uri
-          description: Short-lived signed thumbnail URL.
         user:
           $ref: "#/components/schemas/FeedUserSummary"
         prompt:
@@ -3857,11 +3511,6 @@ components:
           oneOf:
             - $ref: "#/components/schemas/UUID"
             - type: "null"
-        body:
-          type:
-            - string
-            - "null"
-          description: Full story body text. Null for non-story submissions.
         published_at:
           $ref: "#/components/schemas/Timestamp"
         created_at:
@@ -4069,10 +3718,8 @@ tags:
     description: Shared Daily Prompt endpoints
   - name: feed
     description: Community feed endpoints
-  - name: sketch-sessions
-    description: Authenticated Sketch Session and timer lifecycle endpoints
-  - name: story-sessions
-    description: Authenticated Story Session and timer lifecycle endpoints
+  - name: sessions
+    description: Authenticated Creative Session and timer lifecycle endpoints (all creative types)
   - name: uploads
     description: Direct signed upload orchestration endpoints
   - name: submissions
