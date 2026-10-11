@@ -87,15 +87,15 @@ Originals must not be exposed via public CDN; if using CloudFront for test, appl
 
 Railway does not run the Makefile job targets natively. Options:
 
-1. **Railway cron service** (if available on your plan) — duplicate the backend service with a cron schedule and start command, e.g.:
+1. **Railway cron service** (preferred) — duplicate the backend service with a cron schedule and start command, e.g.:
 
    ```bash
    uv run python -m app.jobs.upload_cleanup
    ```
 
-2. **GitHub Actions** — scheduled workflow calling Railway run or a one-off `railway run` from CI.
+2. **Manual** — from `backend/`: `railway run uv run python -m app.jobs.upload_cleanup` for ad-hoc runs.
 
-3. **Manual** — from `backend/`: `railway run uv run python -m app.jobs.upload_cleanup` for ad-hoc runs.
+Do not schedule these jobs via GitHub Actions.
 
 ### Job commands (from repo `Makefile`)
 

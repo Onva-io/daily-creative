@@ -47,7 +47,7 @@ Use Railway when you need a **stable HTTPS URL** for iOS Release Staging builds,
 - Postgres: Railway plugin
 - Media: AWS S3 (`dailysketch-railway-media` or shared staging bucket via IAM keys in Railway secrets)
 - Migrations: `scripts/start.sh` runs `alembic upgrade head` before uvicorn; local one-offs need the public DB URL (see Railway README)
-- Cron jobs: separate Railway cron services or CI — see [infra/railway/README.md](../../infra/railway/README.md)
+- Cron jobs: separate Railway cron services — see [infra/railway/README.md](../../infra/railway/README.md)
 
 Keep this Descope test project, bucket, and secrets separate from production.
 

@@ -14,14 +14,7 @@ Provider cron examples (UTC):
 
 ## Railway (current deploy)
 
-[`.github/workflows/scheduled-jobs.yml`](../../.github/workflows/scheduled-jobs.yml) runs every hour on `main` via `railway run`. Set repository secrets:
-
-- `RAILWAY_TOKEN` (required)
-- `RAILWAY_PROJECT_ID` (recommended)
-- `RAILWAY_SERVICE` (API service name, optional if the token’s default service is the API)
-- `RAILWAY_ENVIRONMENT` (optional; defaults to the project’s production environment)
-
-Until `RAILWAY_TOKEN` is set, the workflow checks out and exits without failing. Trigger **Run workflow** on the Actions tab to verify once secrets exist.
+Run jobs with a **Railway cron service** (or ad-hoc `railway run`), not GitHub Actions. See [infra/railway/README.md](../../infra/railway/README.md).
 
 AWS EventBridge schedules remain in Terraform for a future AWS cutover.
 
